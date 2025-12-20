@@ -6,6 +6,10 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "creatorrr-api",
 	"main": "src/index.ts",
+	"workers_dev": false,
+	"routes": [
+	{ "pattern": "api.creatorrr.com/*", "zone_name": "creatorrr.com" }
+	],
 	"compatibility_date": "2025-12-18",
 	"observability": {
 		"enabled": true

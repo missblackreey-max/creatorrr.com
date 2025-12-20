@@ -39,7 +39,7 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-function b64url(bytes: ArrayBuffer) {
+function b64url(bytes: ArrayBufferLike) {
   const bin = String.fromCharCode(...new Uint8Array(bytes));
   const b64 = btoa(bin);
   return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
@@ -98,7 +98,7 @@ async function pbkdf2(password: string, saltB64: string) {
     ["deriveBits"],
   );
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt, iterations: 150000, hash: "SHA-256" },
+    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
     keyMaterial,
     256,
   );
@@ -108,9 +108,9 @@ async function pbkdf2(password: string, saltB64: string) {
   return btoa(bin);
 }
 
-async function readJson(req: Request) {
+async function readJson<T = any>(req: Request): Promise<T | null> {
   try {
-    return await req.json();
+    return (await req.json()) as T;
   } catch {
     return null;
   }
@@ -127,7 +127,7 @@ export default {
     const url = new URL(req.url);
 
     if (req.method === "POST" && url.pathname === "/auth/register") {
-      const body = await readJson(req);
+      const body = await readJson<{ email?: string; password?: string }>(req);
       if (!body) return bad("invalid_json");
 
       const email = normalizeEmail(String(body.email || ""));
@@ -164,7 +164,7 @@ export default {
     }
 
     if (req.method === "POST" && url.pathname === "/auth/login") {
-      const body = await readJson(req);
+      const body = await readJson<{ email?: string; password?: string }>(req);
       if (!body) return bad("invalid_json");
 
       const email = normalizeEmail(String(body.email || ""));
