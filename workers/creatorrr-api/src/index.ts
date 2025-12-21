@@ -1,16 +1,3 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Bind resources to your worker in `wrangler.jsonc`. After adding bindings, a type definition for the
- * `Env` object can be regenerated with `npm run cf-typegen`.
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
-
 export interface Env {
   creatorrr_db: D1Database;
   JWT_SECRET: string;
@@ -46,8 +33,8 @@ function json(req: Request, data: any, status = 200) {
   return withCors(req, res);
 }
 
-function bad(req: Request, msg: string, status = 400) {
-  return json(req, { ok: false, error: msg }, status);
+function bad(req: Request, msg: string, status = 400, extra?: Record<string, any>) {
+  return json(req, { ok: false, error: msg, ...(extra || {}) }, status);
 }
 
 function nowIso() {
@@ -145,17 +132,77 @@ function getBearer(req: Request) {
   return m ? m[1] : null;
 }
 
+function isLikelyUuid(s: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s.trim());
+}
+
+function normalizeDeviceId(deviceId: string) {
+  const v = deviceId.trim();
+  if (!v) return "";
+  if (v.length > 80) return "";
+  return v;
+}
+
+// -------------------- DB helpers --------------------
+
+async function ensureDeviceAllowed(env: Env, userId: string, deviceId: string): Promise<{ ok: boolean; reason?: string }> {
+  const did = normalizeDeviceId(deviceId);
+  if (!did) return { ok: false, reason: "invalid_device_id" };
+
+  const existing = await env.creatorrr_db
+    .prepare("SELECT device_id FROM user_devices WHERE user_id=?1 AND device_id=?2")
+    .bind(userId, did)
+    .first<any>();
+
+  const now = nowIso();
+
+  if (existing) {
+    await env.creatorrr_db
+      .prepare("UPDATE user_devices SET last_seen_at=?3 WHERE user_id=?1 AND device_id=?2")
+      .bind(userId, did, now)
+      .run();
+    return { ok: true };
+  }
+
+  const countRow = await env.creatorrr_db
+    .prepare("SELECT COUNT(*) as c FROM user_devices WHERE user_id=?1")
+    .bind(userId)
+    .first<any>();
+
+  const c = Number(countRow?.c ?? 0);
+  if (c >= 3) return { ok: false, reason: "device_limit_reached" };
+
+  await env.creatorrr_db
+    .prepare(
+      "INSERT INTO user_devices (user_id,device_id,token_version,created_at,last_seen_at) VALUES (?1,?2,0,?3,?3)",
+    )
+    .bind(userId, did, now)
+    .run();
+
+  return { ok: true };
+}
+
+async function currentDeviceTokenVersion(env: Env, userId: string, deviceId: string): Promise<number | null> {
+  const row = await env.creatorrr_db
+    .prepare("SELECT token_version FROM user_devices WHERE user_id=?1 AND device_id=?2")
+    .bind(userId, deviceId)
+    .first<any>();
+  if (!row) return null;
+  const v = Number(row.token_version);
+  return Number.isFinite(v) ? v : 0;
+}
+
 // -------------------- Worker --------------------
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
 
-    // Preflight for browser/webview fetch
     if (req.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders(req) });
     }
 
+    // ---------- AUTH REGISTER ----------
     if (req.method === "POST" && url.pathname === "/auth/register") {
       const body = await readJson<{ email?: string; password?: string }>(req);
       if (!body) return bad(req, "invalid_json");
@@ -183,7 +230,6 @@ export default {
           )
           .bind(userId, email, salt, hash, now),
 
-        // Default is FREE (exports allowed only with watermark on frontend policy)
         env.creatorrr_db
           .prepare(
             "INSERT INTO licenses (user_id,plan,status,notes,created_at,updated_at) VALUES (?1,'free','active','free user',?2,?2)",
@@ -194,12 +240,18 @@ export default {
       return json(req, { ok: true });
     }
 
+    // ---------- AUTH LOGIN (device-limited) ----------
     if (req.method === "POST" && url.pathname === "/auth/login") {
-      const body = await readJson<{ email?: string; password?: string }>(req);
+      const body = await readJson<{ email?: string; password?: string; deviceId?: string }>(req);
       if (!body) return bad(req, "invalid_json");
 
       const email = normalizeEmail(String(body.email || ""));
       const password = String(body.password || "");
+      const deviceIdRaw = String(body.deviceId || "");
+      const deviceId = normalizeDeviceId(deviceIdRaw);
+
+      if (!email || !password) return bad(req, "invalid_input");
+      if (!deviceId) return bad(req, "missing_device_id", 400);
 
       const user = await env.creatorrr_db
         .prepare("SELECT id, pass_salt, pass_hash FROM users WHERE email=?1")
@@ -218,18 +270,53 @@ export default {
 
       if (!lic || lic.status !== "active") return bad(req, "no_license", 403);
 
+      const allow = await ensureDeviceAllowed(env, user.id, deviceId);
+      if (!allow.ok) return bad(req, allow.reason || "device_not_allowed", 403);
+
+      const tv = await currentDeviceTokenVersion(env, user.id, deviceId);
+      if (tv === null) return bad(req, "device_not_registered", 403);
+
       const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7;
 
-      // Keep plan in JWT as a hint, but we won't trust it for gating.
       const token = await jwtSign(env.JWT_SECRET, {
         sub: user.id,
         plan: lic.plan,
         exp,
+        did: deviceId,
+        tv,
       });
 
-      return json(req, { ok: true, token, plan: lic.plan, status: lic.status, expiresAt: exp });
+      return json(req, {
+        ok: true,
+        token,
+        plan: lic.plan,
+        status: lic.status,
+        expiresAt: exp,
+      });
     }
 
+    // ---------- AUTH LOGOUT (revokes this device token) ----------
+    if (req.method === "POST" && url.pathname === "/auth/logout") {
+      const token = getBearer(req);
+      if (!token) return bad(req, "missing_token", 401);
+
+      const payload = await jwtVerify(env.JWT_SECRET, token);
+      if (!payload) return bad(req, "invalid_token", 401);
+
+      const userId = String(payload.sub || "");
+      const deviceId = String(payload.did || "");
+
+      if (!userId || !deviceId) return bad(req, "invalid_token", 401);
+
+      await env.creatorrr_db
+        .prepare("UPDATE user_devices SET token_version = token_version + 1, last_seen_at=?3 WHERE user_id=?1 AND device_id=?2")
+        .bind(userId, deviceId, nowIso())
+        .run();
+
+      return json(req, { ok: true });
+    }
+
+    // ---------- LICENSE ME ----------
     if (req.method === "GET" && url.pathname === "/license/me") {
       const token = getBearer(req);
       if (!token) return bad(req, "missing_token", 401);
@@ -242,9 +329,29 @@ export default {
       }
 
       const userId = String(payload.sub || "");
-      if (!userId) return bad(req, "invalid_token", 401);
+      const deviceId = String(payload.did || "");
+      const tokenTv = Number(payload.tv);
 
-      // ✅ Source of truth: DB (so upgrades/revokes apply immediately)
+      if (!userId) return bad(req, "invalid_token", 401);
+      if (!deviceId) return bad(req, "invalid_token_device", 401);
+      if (!Number.isFinite(tokenTv)) return bad(req, "invalid_token_version", 401);
+
+      const row = await env.creatorrr_db
+        .prepare("SELECT token_version FROM user_devices WHERE user_id=?1 AND device_id=?2")
+        .bind(userId, deviceId)
+        .first<any>();
+
+      if (!row) return bad(req, "device_not_allowed", 403);
+
+      const currentTv = Number(row.token_version);
+      if (!Number.isFinite(currentTv)) return bad(req, "device_not_allowed", 403);
+      if (currentTv !== tokenTv) return bad(req, "token_revoked", 401);
+
+      await env.creatorrr_db
+        .prepare("UPDATE user_devices SET last_seen_at=?3 WHERE user_id=?1 AND device_id=?2")
+        .bind(userId, deviceId, nowIso())
+        .run();
+
       const lic = await env.creatorrr_db
         .prepare("SELECT plan,status FROM licenses WHERE user_id=?1")
         .bind(userId)
