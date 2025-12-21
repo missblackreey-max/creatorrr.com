@@ -16,15 +16,38 @@ export interface Env {
   JWT_SECRET: string;
 }
 
-function json(data: any, status = 200) {
-  return new Response(JSON.stringify(data), {
+// -------------------- CORS --------------------
+
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") || "*";
+  return {
+    "access-control-allow-origin": origin,
+    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-headers": "authorization,content-type",
+    "access-control-max-age": "86400",
+    vary: "origin",
+  };
+}
+
+function withCors(req: Request, res: Response): Response {
+  const h = new Headers(res.headers);
+  const cors = corsHeaders(req);
+  for (const [k, v] of Object.entries(cors)) h.set(k, v);
+  return new Response(res.body, { status: res.status, headers: h });
+}
+
+// -------------------- Helpers --------------------
+
+function json(req: Request, data: any, status = 200) {
+  const res = new Response(JSON.stringify(data), {
     status,
     headers: { "content-type": "application/json" },
   });
+  return withCors(req, res);
 }
 
-function bad(msg: string, status = 400) {
-  return json({ ok: false, error: msg }, status);
+function bad(req: Request, msg: string, status = 400) {
+  return json(req, { ok: false, error: msg }, status);
 }
 
 function nowIso() {
@@ -89,7 +112,7 @@ function makeSalt() {
 }
 
 async function pbkdf2(password: string, saltB64: string) {
-  const salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
+  const salt = Uint8Array.from(atob(saltB64), (c) => c.charCodeAt(0));
   const keyMaterial = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(password),
@@ -122,24 +145,31 @@ function getBearer(req: Request) {
   return m ? m[1] : null;
 }
 
+// -------------------- Worker --------------------
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
 
+    // Preflight for browser/webview fetch
+    if (req.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: corsHeaders(req) });
+    }
+
     if (req.method === "POST" && url.pathname === "/auth/register") {
       const body = await readJson<{ email?: string; password?: string }>(req);
-      if (!body) return bad("invalid_json");
+      if (!body) return bad(req, "invalid_json");
 
       const email = normalizeEmail(String(body.email || ""));
       const password = String(body.password || "");
-      if (!email || password.length < 8) return bad("invalid_input");
+      if (!email || password.length < 8) return bad(req, "invalid_input");
 
       const existing = await env.creatorrr_db
         .prepare("SELECT id FROM users WHERE email=?1")
         .bind(email)
         .first();
 
-      if (existing) return bad("email_exists", 409);
+      if (existing) return bad(req, "email_exists", 409);
 
       const userId = uuid();
       const salt = makeSalt();
@@ -153,19 +183,20 @@ export default {
           )
           .bind(userId, email, salt, hash, now),
 
+        // Default is FREE (exports allowed only with watermark on frontend policy)
         env.creatorrr_db
           .prepare(
-            "INSERT INTO licenses (user_id,plan,status,notes,created_at,updated_at) VALUES (?1,'beta','active','beta user',?2,?2)",
+            "INSERT INTO licenses (user_id,plan,status,notes,created_at,updated_at) VALUES (?1,'free','active','free user',?2,?2)",
           )
           .bind(userId, now),
       ]);
 
-      return json({ ok: true });
+      return json(req, { ok: true });
     }
 
     if (req.method === "POST" && url.pathname === "/auth/login") {
       const body = await readJson<{ email?: string; password?: string }>(req);
-      if (!body) return bad("invalid_json");
+      if (!body) return bad(req, "invalid_json");
 
       const email = normalizeEmail(String(body.email || ""));
       const password = String(body.password || "");
@@ -175,43 +206,56 @@ export default {
         .bind(email)
         .first<any>();
 
-      if (!user) return bad("invalid_credentials", 401);
+      if (!user) return bad(req, "invalid_credentials", 401);
 
       const hash = await pbkdf2(password, user.pass_salt);
-      if (hash !== user.pass_hash) return bad("invalid_credentials", 401);
+      if (hash !== user.pass_hash) return bad(req, "invalid_credentials", 401);
 
       const lic = await env.creatorrr_db
         .prepare("SELECT plan,status FROM licenses WHERE user_id=?1")
         .bind(user.id)
         .first<any>();
 
-      if (!lic || lic.status !== "active") return bad("no_license", 403);
+      if (!lic || lic.status !== "active") return bad(req, "no_license", 403);
 
       const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7;
 
+      // Keep plan in JWT as a hint, but we won't trust it for gating.
       const token = await jwtSign(env.JWT_SECRET, {
         sub: user.id,
         plan: lic.plan,
         exp,
       });
 
-      return json({ ok: true, token, plan: lic.plan, expiresAt: exp });
+      return json(req, { ok: true, token, plan: lic.plan, status: lic.status, expiresAt: exp });
     }
 
     if (req.method === "GET" && url.pathname === "/license/me") {
       const token = getBearer(req);
-      if (!token) return bad("missing_token", 401);
+      if (!token) return bad(req, "missing_token", 401);
 
       const payload = await jwtVerify(env.JWT_SECRET, token);
-      if (!payload) return bad("invalid_token", 401);
+      if (!payload) return bad(req, "invalid_token", 401);
 
       if (payload.exp < Math.floor(Date.now() / 1000)) {
-        return bad("token_expired", 401);
+        return bad(req, "token_expired", 401);
       }
 
-      return json({ ok: true, plan: payload.plan });
+      const userId = String(payload.sub || "");
+      if (!userId) return bad(req, "invalid_token", 401);
+
+      // ✅ Source of truth: DB (so upgrades/revokes apply immediately)
+      const lic = await env.creatorrr_db
+        .prepare("SELECT plan,status FROM licenses WHERE user_id=?1")
+        .bind(userId)
+        .first<any>();
+
+      if (!lic) return bad(req, "no_license", 403);
+      if (lic.status !== "active") return bad(req, "license_not_active", 403);
+
+      return json(req, { ok: true, plan: lic.plan, status: lic.status });
     }
 
-    return bad("not_found", 404);
+    return bad(req, "not_found", 404);
   },
 };
