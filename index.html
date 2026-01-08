@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Creatorrr · desktop tool for serious creators</title>
+  <title>Creatorrr · creator ops hub (NSFW-friendly)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Creatorrr is an NSFW-friendly creator ops hub. First app: Contentorrr (desktop). Local-first workflow for cutting, tagging, exporting and organizing content." />
   <style>
     :root {
       --bg: #f5f5f8;
@@ -11,18 +12,18 @@
       --text: #111111;
       --text-soft: #555666;
       --accent: #4a4ddf;
-      --accent-soft: rgba(74, 77, 223, 0.08);
+      --accent-soft: rgba(74, 77, 223, 0.10);
       --border: #ddddf0;
       --radius-lg: 14px;
       --radius-md: 10px;
       --radius-pill: 999px;
       --shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.08);
-      --max-width: 880px;
+      --max-width: 920px;
+      --danger: #b42318;
+      --danger-soft: rgba(180, 35, 24, 0.10);
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -32,10 +33,7 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
+    a { color: inherit; text-decoration: none; }
 
     .page {
       min-height: 100vh;
@@ -52,16 +50,19 @@
     header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 32px;
+      align-items: baseline;
+      gap: 14px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
     }
 
     .logo {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-weight: 700;
+      font-weight: 750;
       font-size: 18px;
+      letter-spacing: 0.2px;
     }
 
     .logo-mark {
@@ -69,11 +70,12 @@
       height: 22px;
       border-radius: 7px;
       background: var(--accent);
-      color: white;
+      color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 13px;
+      line-height: 1;
     }
 
     .tagline {
@@ -89,83 +91,127 @@
       padding: 24px 22px 20px;
     }
 
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .pill {
+      padding: 6px 10px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border);
+      background: #fafafe;
+      color: var(--text-soft);
+      white-space: nowrap;
+    }
+
+    .pill.accent {
+      background: var(--accent-soft);
+      border-color: rgba(74, 77, 223, 0.25);
+      color: #2c2f9a;
+      font-weight: 600;
+    }
+
+    .pill.danger {
+      background: var(--danger-soft);
+      border-color: rgba(180, 35, 24, 0.25);
+      color: var(--danger);
+      font-weight: 650;
+    }
+
     .hero-title {
       font-size: 26px;
-      font-weight: 650;
-      margin: 0 0 8px;
+      font-weight: 720;
+      margin: 4px 0 8px;
+      letter-spacing: -0.2px;
     }
 
     .hero-sub {
       font-size: 14px;
       color: var(--text-soft);
-      margin: 0 0 18px;
-      max-width: 540px;
-    }
-
-    .pill-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 18px;
-      font-size: 12px;
-    }
-
-    .pill {
-      padding: 5px 10px;
-      border-radius: var(--radius-pill);
-      border: 1px solid var(--border);
-      background: #fafafe;
-      color: var(--text-soft);
-    }
-
-    .pill.accent {
-      background: var(--accent-soft);
-      border-color: rgba(74, 77, 223, 0.2);
-      color: #2c2f9a;
-      font-weight: 500;
+      margin: 0 0 16px;
+      max-width: 620px;
+      line-height: 1.45;
     }
 
     .layout {
       display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
       gap: 20px;
-      align-items: flex-start;
+      align-items: start;
+      margin-top: 8px;
     }
+
+    .section-title {
+      margin: 16px 0 8px;
+      font-size: 13px;
+      font-weight: 750;
+      color: var(--text);
+    }
+
+    .list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--text-soft);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .list li { margin: 6px 0; }
 
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 9px 16px;
+      padding: 10px 16px;
       border-radius: var(--radius-pill);
-      border: none;
+      border: 1px solid transparent;
       font-size: 14px;
-      font-weight: 550;
+      font-weight: 650;
       cursor: pointer;
       background: var(--accent);
-      color: #ffffff;
+      color: #fff;
       box-shadow: 0 6px 16px rgba(74, 77, 223, 0.35);
+      transition: transform 0.05s ease, filter 0.15s ease;
+      user-select: none;
     }
 
-    .btn:hover {
-      filter: brightness(1.05);
+    .btn:hover { filter: brightness(1.04); }
+    .btn:active { transform: translateY(1px); }
+
+    .btn.secondary {
+      background: #fff;
+      color: var(--text);
+      border-color: var(--border);
+      box-shadow: none;
+    }
+
+    .btn.secondary:hover { background: #fbfbff; }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
     }
 
     .note {
       font-size: 11px;
       color: var(--text-soft);
       margin-top: 10px;
-      max-width: 440px;
-    }
-
-    .benefits {
-      margin-top: 20px;
-      font-size: 13px;
-      color: var(--text-soft);
-    }
-
-    .benefits-item {
-      margin-bottom: 6px;
+      max-width: 640px;
+      line-height: 1.4;
     }
 
     .side-card {
@@ -179,8 +225,8 @@
 
     .side-title {
       font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 6px;
+      font-weight: 750;
+      margin: 0 0 6px;
       color: var(--text);
     }
 
@@ -194,38 +240,52 @@
       flex: 1;
       border-radius: var(--radius-pill);
       border: 1px solid var(--border);
-      padding: 7px 10px;
+      padding: 8px 10px;
       font-size: 13px;
       outline: none;
+      background: #fff;
     }
 
-    .input::placeholder {
-      color: #9a9ab5;
+    .input::placeholder { color: #9a9ab5; }
+
+    .check {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-soft);
+      line-height: 1.25;
+    }
+
+    .check input { margin-top: 2px; }
+
+    .small {
+      font-size: 11px;
+      color: var(--text-soft);
+      margin-top: 8px;
+      line-height: 1.35;
     }
 
     footer {
-      margin-top: 20px;
+      margin-top: 18px;
       font-size: 11px;
       color: var(--text-soft);
       display: flex;
       justify-content: space-between;
       gap: 8px;
       flex-wrap: wrap;
+      padding: 0 2px;
     }
 
     @media (max-width: 760px) {
-      .layout {
-        grid-template-columns: minmax(0, 1fr);
-      }
-      .card {
-        padding: 20px 16px 16px;
-      }
-      .hero-title {
-        font-size: 22px;
-      }
+      .layout { grid-template-columns: 1fr; }
+      .card { padding: 20px 16px 16px; }
+      .hero-title { font-size: 22px; }
     }
   </style>
 </head>
+
 <body>
 <div class="page">
   <div class="shell">
@@ -235,80 +295,100 @@
         <div class="logo-mark">C</div>
         <span>Creatorrr</span>
       </div>
-      <div class="tagline">Desktop tool for serious creators</div>
+      <div class="tagline">Creator ops hub (NSFW-friendly)</div>
     </header>
 
     <div class="card">
+      <div class="topbar">
+        <div class="badge-row">
+          <div class="pill accent">Under construction</div>
+          <div class="pill">Local-first desktop tools</div>
+          <div class="pill">No cloud required</div>
+          <div class="pill">Windows first</div>
+          <div class="pill danger">18+ only</div>
+        </div>
+      </div>
+
+      <h1 class="hero-title">A creator hub built for high-volume posting</h1>
+      <p class="hero-sub">
+        Creatorrr will be an NSFW-friendly creator ops hub. First app: <strong>Contentorrr</strong>, a local-first desktop tool
+        to cut clips fast, tag consistently, export in batches, and keep a clean library of what you have already posted.
+      </p>
+
+      <div class="btn-row">
+        <a class="btn" href="#waitlist">Join the waitlist</a>
+        <!-- Change href to your real PDF path -->
+        <a class="btn secondary" href="/contentorrr-alpha-onboarding.pdf" target="_blank" rel="noopener">
+          Download alpha PDF
+        </a>
+      </div>
+
+      <div class="note">
+        This site is not a porn site. It’s tooling for adult creators. No media is hosted here.
+      </div>
+
       <div class="layout">
         <div>
-          <h1 class="hero-title">Cut, tag and export creator content without drowning in tools</h1>
-          <p class="hero-sub">
-            Creatorrr is a local first desktop app to slice clips, build simple trailers and keep one small
-            library of what you have. Built by an active NSFW couple for creators who post every week.
-          </p>
+          <div class="section-title">What Contentorrr is for</div>
+          <ul class="list">
+            <li>Slice many clips from one long video in one workflow.</li>
+            <li>Tag content once, then export consistently for Fansly, OF, Reddit, tubes.</li>
+            <li>Batch export (clips, trailers, screenshots) and keep it organized locally.</li>
+            <li>Watermark presets for safer previews.</li>
+          </ul>
 
-          <div class="pill-row">
-            <div class="pill accent">Very early alpha</div>
-            <div class="pill">Windows only for now</div>
-            <div class="pill">No cloud, files stay local</div>
-          </div>
-
-          <button class="btn" onclick="document.getElementById('email').focus()">
-            Apply for alpha access
-          </button>
+          <div class="section-title">What comes later on Creatorrr.com</div>
+          <ul class="list">
+            <li>Creator workflow templates and automation playbooks.</li>
+            <li>Distribution helpers and posting systems.</li>
+            <li>More desktop tools and utilities as separate modules.</li>
+          </ul>
 
           <div class="note">
-            Looking for 3 to 5 creators who already manage at least one serious account and want to
-            replace spreadsheets and random editors with one simple workflow.
-          </div>
-
-          <div class="benefits">
-            <div class="benefits-item">• Drag a full video in, mark clips, export in one go.</div>
-            <div class="benefits-item">• Basic tagging so you know what is for Fansly, OF, Reddit, tubes.</div>
-            <div class="benefits-item">• Simple watermarking so previews leak safe enough.</div>
+            If you already post weekly and you’re tired of spreadsheets + random editors, you’re the target user.
           </div>
         </div>
 
-        <aside class="side-card">
-          <div class="side-title">Join the first test group</div>
-          <p>
-            Leave your email and a few words about your setup. I will reply manually with a download link
-            once the next alpha build is ready.
-          </p>
-          <form class="form" action="https://formsubmit.co/YOUR_EMAIL_HERE" method="POST">
+        <aside class="side-card" id="waitlist">
+          <div class="side-title">Get notified when the next build drops</div>
+          <div class="small">
+            Leave your email and 1 line about your setup. You’ll get a manual reply with a link when a build is ready.
+          </div>
+
+          <!-- Replace YOUR_EMAIL_HERE -->
+          <form action="https://formsubmit.co/YOUR_EMAIL_HERE" method="POST">
             <div class="field-row">
-              <input
-                class="input"
-                id="email"
-                name="email"
-                type="email"
-                required
-                placeholder="you@creatorstudio.com" />
+              <input class="input" id="email" name="email" type="email" required placeholder="you@studio.com" />
             </div>
+
             <div class="field-row" style="margin-top:6px;">
-              <input
-                class="input"
-                name="about"
-                type="text"
-                placeholder="Fansly, OF, Reddit, tubes, how often you post..." />
+              <input class="input" name="about" type="text" placeholder="Platforms + how often you post..." />
             </div>
-            <input type="hidden" name="_subject" value="Creatorrr alpha waitlist" />
-            <div class="field-row" style="margin-top:8px;">
+
+            <label class="check">
+              <input type="checkbox" name="age_confirm" required />
+              <span>I confirm I am 18+ and I’m looking for tools for adult content creation.</span>
+            </label>
+
+            <input type="hidden" name="_subject" value="Creatorrr waitlist" />
+
+            <div class="field-row" style="margin-top:10px;">
               <button class="btn" type="submit" style="width:100%;justify-content:center;box-shadow:none;">
                 Send
               </button>
             </div>
           </form>
-          <p style="font-size:11px;margin-top:6px;">
-            No newsletter. Just a short mail when a build is ready and maybe one or two follow up questions.
-          </p>
+
+          <div class="small">
+            No newsletter spam. One email when a build is ready, maybe 1 follow-up question.
+          </div>
         </aside>
       </div>
     </div>
 
     <footer>
-      <span>© <span id="year"></span> Creatorrr. Built by working creators.</span>
-      <span>Later: proper imprint and privacy page here.</span>
+      <span>© <span id="year"></span> Creatorrr</span>
+      <span>Imprint + privacy coming</span>
     </footer>
 
   </div>
