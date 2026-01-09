@@ -2,400 +2,133 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Creatorrr · creator ops hub (NSFW-friendly)</title>
+  <title>Creatorrr · under construction</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="description" content="Creatorrr is an NSFW-friendly creator ops hub. First app: Contentorrr (desktop). Local-first workflow for cutting, tagging, exporting and organizing content." />
+  <meta name="robots" content="noindex,nofollow" />
   <style>
-    :root {
-      --bg: #f5f5f8;
-      --card: #ffffff;
-      --text: #111111;
-      --text-soft: #555666;
-      --accent: #4a4ddf;
-      --accent-soft: rgba(74, 77, 223, 0.10);
-      --border: #ddddf0;
-      --radius-lg: 14px;
-      --radius-md: 10px;
-      --radius-pill: 999px;
-      --shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.08);
-      --max-width: 920px;
-      --danger: #b42318;
-      --danger-soft: rgba(180, 35, 24, 0.10);
+    :root{
+      --bg:#050505;
+      --card:#0b0b0b;
+      --text:#f4f4f4;
+      --muted:rgba(244,244,244,.72);
+      --gold1:#f7d56a;
+      --gold2:#b8892a;
+      --border:rgba(247,213,106,.22);
+      --radius:18px;
+      --max:820px;
     }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px 16px;
+      background:
+        radial-gradient(900px 500px at 50% 38%, rgba(247,213,106,.10), transparent 60%),
+        radial-gradient(700px 360px at 50% 90%, rgba(184,137,42,.10), transparent 55%),
+        var(--bg);
+      color:var(--text);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-      background: var(--bg);
-      color: var(--text);
       -webkit-font-smoothing: antialiased;
     }
-
-    a { color: inherit; text-decoration: none; }
-
-    .page {
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      padding: 32px 16px;
+    .wrap{
+      width:100%;
+      max-width:var(--max);
+      text-align:center;
     }
-
-    .shell {
-      width: 100%;
-      max-width: var(--max-width);
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:22px 18px 18px;
+      box-shadow: 0 18px 60px rgba(0,0,0,.55);
     }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 14px;
-      margin-bottom: 18px;
-      flex-wrap: wrap;
+    .logo{
+      width:min(420px, 88%);
+      height:auto;
+      display:block;
+      margin: 4px auto 10px;
+      filter: drop-shadow(0 18px 30px rgba(0,0,0,.55));
     }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 750;
-      font-size: 18px;
-      letter-spacing: 0.2px;
+    h1{
+      margin: 10px 0 6px;
+      font-size: 22px;
+      letter-spacing: .2px;
     }
-
-    .logo-mark {
-      width: 22px;
-      height: 22px;
-      border-radius: 7px;
-      background: var(--accent);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    p{
+      margin: 0 auto;
+      max-width: 58ch;
       font-size: 13px;
-      line-height: 1;
-    }
-
-    .tagline {
-      font-size: 12px;
-      color: var(--text-soft);
-    }
-
-    .card {
-      background: var(--card);
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-soft);
-      padding: 24px 22px 20px;
-    }
-
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 14px;
-    }
-
-    .badge-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      font-size: 12px;
-    }
-
-    .pill {
-      padding: 6px 10px;
-      border-radius: var(--radius-pill);
-      border: 1px solid var(--border);
-      background: #fafafe;
-      color: var(--text-soft);
-      white-space: nowrap;
-    }
-
-    .pill.accent {
-      background: var(--accent-soft);
-      border-color: rgba(74, 77, 223, 0.25);
-      color: #2c2f9a;
-      font-weight: 600;
-    }
-
-    .pill.danger {
-      background: var(--danger-soft);
-      border-color: rgba(180, 35, 24, 0.25);
-      color: var(--danger);
-      font-weight: 650;
-    }
-
-    .hero-title {
-      font-size: 26px;
-      font-weight: 720;
-      margin: 4px 0 8px;
-      letter-spacing: -0.2px;
-    }
-
-    .hero-sub {
-      font-size: 14px;
-      color: var(--text-soft);
-      margin: 0 0 16px;
-      max-width: 620px;
+      color: var(--muted);
       line-height: 1.45;
     }
-
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
-      gap: 20px;
-      align-items: start;
-      margin-top: 8px;
+    .row{
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      flex-wrap:wrap;
+      margin-top:14px;
     }
-
-    .section-title {
-      margin: 16px 0 8px;
-      font-size: 13px;
-      font-weight: 750;
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:10px 14px;
+      border-radius:999px;
+      font-size:13px;
+      font-weight:650;
+      border:1px solid transparent;
+      text-decoration:none;
+      cursor:pointer;
+      user-select:none;
+    }
+    .btn.primary{
+      color:#0b0b0b;
+      background: linear-gradient(180deg, var(--gold1), var(--gold2));
+      box-shadow: 0 12px 30px rgba(184,137,42,.22);
+    }
+    .btn.ghost{
       color: var(--text);
+      border-color: rgba(247,213,106,.22);
+      background: rgba(255,255,255,.02);
     }
-
-    .list {
-      margin: 0;
-      padding-left: 18px;
-      color: var(--text-soft);
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    .list li { margin: 6px 0; }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px 16px;
-      border-radius: var(--radius-pill);
-      border: 1px solid transparent;
-      font-size: 14px;
-      font-weight: 650;
-      cursor: pointer;
-      background: var(--accent);
-      color: #fff;
-      box-shadow: 0 6px 16px rgba(74, 77, 223, 0.35);
-      transition: transform 0.05s ease, filter 0.15s ease;
-      user-select: none;
-    }
-
-    .btn:hover { filter: brightness(1.04); }
-    .btn:active { transform: translateY(1px); }
-
-    .btn.secondary {
-      background: #fff;
-      color: var(--text);
-      border-color: var(--border);
-      box-shadow: none;
-    }
-
-    .btn.secondary:hover { background: #fbfbff; }
-
-    .btn-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 14px;
-    }
-
-    .note {
+    .tiny{
+      margin-top: 12px;
       font-size: 11px;
-      color: var(--text-soft);
-      margin-top: 10px;
-      max-width: 640px;
-      line-height: 1.4;
+      color: rgba(244,244,244,.55);
     }
-
-    .side-card {
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border);
-      background: #fbfbff;
-      padding: 14px 12px 12px;
-      font-size: 12px;
-      color: var(--text-soft);
-    }
-
-    .side-title {
-      font-size: 13px;
-      font-weight: 750;
-      margin: 0 0 6px;
-      color: var(--text);
-    }
-
-    .field-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    .input {
-      flex: 1;
-      border-radius: var(--radius-pill);
-      border: 1px solid var(--border);
-      padding: 8px 10px;
-      font-size: 13px;
-      outline: none;
-      background: #fff;
-    }
-
-    .input::placeholder { color: #9a9ab5; }
-
-    .check {
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-      margin-top: 10px;
-      font-size: 12px;
-      color: var(--text-soft);
-      line-height: 1.25;
-    }
-
-    .check input { margin-top: 2px; }
-
-    .small {
-      font-size: 11px;
-      color: var(--text-soft);
-      margin-top: 8px;
-      line-height: 1.35;
-    }
-
-    footer {
-      margin-top: 18px;
-      font-size: 11px;
-      color: var(--text-soft);
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      flex-wrap: wrap;
-      padding: 0 2px;
-    }
-
-    @media (max-width: 760px) {
-      .layout { grid-template-columns: 1fr; }
-      .card { padding: 20px 16px 16px; }
-      .hero-title { font-size: 22px; }
-    }
+    .tiny a{ color: rgba(247,213,106,.9); text-decoration:none; }
+    .tiny a:hover{ text-decoration:underline; }
   </style>
 </head>
-
 <body>
-<div class="page">
-  <div class="shell">
-
-    <header>
-      <div class="logo">
-        <div class="logo-mark">C</div>
-        <span>Creatorrr</span>
-      </div>
-      <div class="tagline">Creator ops hub (NSFW-friendly)</div>
-    </header>
-
+  <div class="wrap">
     <div class="card">
-      <div class="topbar">
-        <div class="badge-row">
-          <div class="pill accent">Under construction</div>
-          <div class="pill">Local-first desktop tools</div>
-          <div class="pill">No cloud required</div>
-          <div class="pill">Windows first</div>
-          <div class="pill danger">18+ only</div>
-        </div>
+      <!-- Put your finalized logo image in the same folder as index.html -->
+      <img class="logo" src="./creatorrr-logo.png" alt="Creatorrr logo" />
+
+      <h1>Under construction</h1>
+      <p>Creatorrr will be an NSFW creator hub. First app: Contentorrr.</p>
+      <p class="tiny">18+ only. This site hosts no adult media.</p>
+
+      <div class="row">
+        <!-- Change to your real PDF path -->
+        <a class="btn primary" href="./contentorrr.pdf" target="_blank" rel="noopener">Download PDF</a>
+
+        <!-- Either mailto, or replace with your waitlist URL -->
+        <a class="btn ghost" href="mailto:YOUR_EMAIL_HERE?subject=Creatorrr%20waitlist&body=Platform%3A%0APosting%20frequency%3A%0AWhat%20you%20need%3A">Join waitlist</a>
       </div>
 
-      <h1 class="hero-title">A creator hub built for high-volume posting</h1>
-      <p class="hero-sub">
-        Creatorrr will be an NSFW-friendly creator ops hub. First app: <strong>Contentorrr</strong>, a local-first desktop tool
-        to cut clips fast, tag consistently, export in batches, and keep a clean library of what you have already posted.
-      </p>
-
-      <div class="btn-row">
-        <a class="btn" href="#waitlist">Join the waitlist</a>
-        <!-- Change href to your real PDF path -->
-        <a class="btn secondary" href="/contentorrr-alpha-onboarding.pdf" target="_blank" rel="noopener">
-          Download alpha PDF
-        </a>
-      </div>
-
-      <div class="note">
-        This site is not a porn site. It’s tooling for adult creators. No media is hosted here.
-      </div>
-
-      <div class="layout">
-        <div>
-          <div class="section-title">What Contentorrr is for</div>
-          <ul class="list">
-            <li>Slice many clips from one long video in one workflow.</li>
-            <li>Tag content once, then export consistently for Fansly, OF, Reddit, tubes.</li>
-            <li>Batch export (clips, trailers, screenshots) and keep it organized locally.</li>
-            <li>Watermark presets for safer previews.</li>
-          </ul>
-
-          <div class="section-title">What comes later on Creatorrr.com</div>
-          <ul class="list">
-            <li>Creator workflow templates and automation playbooks.</li>
-            <li>Distribution helpers and posting systems.</li>
-            <li>More desktop tools and utilities as separate modules.</li>
-          </ul>
-
-          <div class="note">
-            If you already post weekly and you’re tired of spreadsheets + random editors, you’re the target user.
-          </div>
-        </div>
-
-        <aside class="side-card" id="waitlist">
-          <div class="side-title">Get notified when the next build drops</div>
-          <div class="small">
-            Leave your email and 1 line about your setup. You’ll get a manual reply with a link when a build is ready.
-          </div>
-
-          <!-- Replace YOUR_EMAIL_HERE -->
-          <form action="https://formsubmit.co/YOUR_EMAIL_HERE" method="POST">
-            <div class="field-row">
-              <input class="input" id="email" name="email" type="email" required placeholder="you@studio.com" />
-            </div>
-
-            <div class="field-row" style="margin-top:6px;">
-              <input class="input" name="about" type="text" placeholder="Platforms + how often you post..." />
-            </div>
-
-            <label class="check">
-              <input type="checkbox" name="age_confirm" required />
-              <span>I confirm I am 18+ and I’m looking for tools for adult content creation.</span>
-            </label>
-
-            <input type="hidden" name="_subject" value="Creatorrr waitlist" />
-
-            <div class="field-row" style="margin-top:10px;">
-              <button class="btn" type="submit" style="width:100%;justify-content:center;box-shadow:none;">
-                Send
-              </button>
-            </div>
-          </form>
-
-          <div class="small">
-            No newsletter spam. One email when a build is ready, maybe 1 follow-up question.
-          </div>
-        </aside>
+      <div class="tiny">
+        © <span id="y"></span> Creatorrr
       </div>
     </div>
-
-    <footer>
-      <span>© <span id="year"></span> Creatorrr</span>
-      <span>Imprint + privacy coming</span>
-    </footer>
-
   </div>
-</div>
 
-<script>
-  document.getElementById("year").textContent = new Date().getFullYear().toString();
-</script>
+  <script>
+    document.getElementById("y").textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
