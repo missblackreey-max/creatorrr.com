@@ -5,6 +5,7 @@
   <title>Creatorrr · under construction</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="robots" content="noindex,nofollow" />
+
   <style>
     :root{
       --bg:#050505;
@@ -83,6 +84,7 @@
       text-decoration:none;
       cursor:pointer;
       user-select:none;
+      white-space:nowrap;
     }
     .btn.primary{
       color:#0b0b0b;
@@ -94,6 +96,10 @@
       border-color: rgba(247,213,106,.22);
       background: rgba(255,255,255,.02);
     }
+    .btn.disabled{
+      opacity:.45;
+      pointer-events:none;
+    }
     .tiny{
       margin-top: 12px;
       font-size: 11px;
@@ -101,32 +107,97 @@
     }
     .tiny a{ color: rgba(247,213,106,.9); text-decoration:none; }
     .tiny a:hover{ text-decoration:underline; }
-    
+
     .crrr-logo{
       width: 64px;
       height: 64px;
-      flex: 0 0 64px;
+      display:block;
+      margin: 8px auto 0;
+    }
+
+    .agebox{
+      margin-top:14px;
+      text-align:left;
+      max-width:560px;
+      margin-left:auto;
+      margin-right:auto;
+      border:1px solid rgba(247,213,106,.18);
+      background: rgba(255,255,255,.02);
+      border-radius: 14px;
+      padding: 12px 12px 10px;
+    }
+    .age-title{
+      font-weight:800;
+      font-size:12px;
+      color: rgba(247,213,106,.95);
+      margin-bottom:6px;
+      letter-spacing:.2px;
+    }
+    .age-row{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      font-size:12px;
+      color: rgba(244,244,244,.72);
+      line-height:1.35;
+    }
+    .age-row input{ margin-top:2px; }
+    .age-note{
+      font-size:11px;
+      color: rgba(244,244,244,.55);
+      margin-top:8px;
+      line-height:1.35;
+    }
+
+    @media (max-width: 460px){
+      .btn{ width:100%; }
+      .row{ gap:8px; }
     }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="card">
-      <!-- Put your finalized logo image in the same folder as index.html -->
       <img class="logo" src="./creatorrr-logo.png" alt="Creatorrr logo" />
 
       <h1>Under Construction</h1>
-      <p>Creatorrr will be an NSFW creator hub. Advice and tools from creators for creators.</p>
-      <p style = "align-items:center; font-weight: 500; font-size: 14px; margin-top: 10px;">First tool:</p>
-      <p style = "align-items:center; font-weight: 800; font-size: 14px; margin-top: 10px;">CONTENTORRR</p>
-      <img class = "crrr-logo" src="./64x64.png" alt="Contentorrr logo" style = "margin-top: 8px;" />
-      <p>Contentorrr is an operation system independent desktop app that optimizes and speeds up the workflow of (NSFW) creators dramatically and allows you to leave less money on the table by joining more platforms without burning out.</p>
-      <div class="row">
-        <!-- Change to your real PDF path -->
-        <a class="btn primary" href="./contentorrr.pdf" target="_blank" rel="noopener">Download Contentorrr Presentation</a>
 
-        <!-- Either mailto, or replace with your waitlist URL -->
-        <a class="btn ghost" href="mailto:missblackreey.masterb@gmail.com?subject=Creatorrr%20waitlist&body=Platform%3A%0APosting%20frequency%3A%0AWhat%20you%20need%3A">Request Beta Version</a>
+      <p>Creatorrr is an NSFW friendly creator hub.</p>
+      <p>Tips, tricks and tools from creators for creators.</p>
+
+      <p style="font-weight:600;font-size:14px;margin-top:12px;">First tool, in beta now:</p>
+      <p style="font-weight:850;font-size:14px;margin-top:6px;letter-spacing:.6px;">CONTENTORRR</p>
+      <img class="crrr-logo" src="./64x64.png" alt="Contentorrr logo" />
+
+      <p style="margin-top:10px;">
+        Contentorrr is an operating system independent desktop app that speeds up the workflow of NSFW creators and
+        helps you publish to more platforms without burning out.
+      </p>
+
+      <div class="agebox">
+        <div class="age-title">18+ notice (NSFW imagery inside)</div>
+        <label class="age-row">
+          <input id="ageok" type="checkbox" />
+          <span>
+            I confirm I am 18+ and understand this presentation contains NSFW imagery
+            (nudity and sexualized poses, no explicit sexual acts).
+          </span>
+        </label>
+        <div class="age-note">
+          This is a tools site for adult creators. No adult media is hosted here.
+        </div>
+      </div>
+
+      <div class="row">
+        <a id="pdfBtn" class="btn primary disabled" href="#" aria-disabled="true">
+          Download Contentorrr Presentation
+        </a>
+
+        <a class="btn ghost"
+           href="mailto:missblackreey.masterb@gmail.com?subject=Creatorrr%20beta&body=Platform%3A%0APosting%20frequency%3A%0AWhat%20you%20need%3A">
+          Request Beta Version
+        </a>
       </div>
 
       <div class="tiny">
@@ -137,19 +208,21 @@
 
   <script>
     document.getElementById("y").textContent = new Date().getFullYear();
+
+    const cb = document.getElementById("ageok");
+    const btn = document.getElementById("pdfBtn");
+
+    cb.addEventListener("change", () => {
+      if (cb.checked) {
+        btn.href = "./contentorrr.pdf";
+        btn.classList.remove("disabled");
+        btn.setAttribute("aria-disabled", "false");
+      } else {
+        btn.href = "#";
+        btn.classList.add("disabled");
+        btn.setAttribute("aria-disabled", "true");
+      }
+    });
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
