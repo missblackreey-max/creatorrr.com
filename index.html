@@ -94,10 +94,23 @@
       box-shadow: 0 12px 30px rgba(184,137,42,.22);
     }
     .btn.ghost{
-      color: var(--text);
-      border-color: rgba(247,213,106,.22);
-      background: rgba(255,255,255,.02);
+      position: relative;
+      overflow: hidden;
     }
+    .btn.ghost::before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.10) 35%, transparent 70%);
+      transform: translateX(-40%);
+      opacity:.7;
+      pointer-events:none;
+    }
+    .btn.ghost:hover::before{
+      transform: translateX(40%);
+      transition: transform .5s ease;
+    }
+
     .btn.disabled{
       opacity:.45;
       pointer-events:none;
@@ -222,6 +235,7 @@
   </script>
 </body>
 </html>
+
 
 
 
