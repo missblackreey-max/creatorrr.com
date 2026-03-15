@@ -1202,8 +1202,14 @@
         if (!email) throw new Error("Email required.");
 
         setStatus("Sending password reset link...");
-        await apiPost("/auth/forgot-password", { email });
-        setSuccess("If that email exists, we sent a reset link. Check your inbox and spam folder.");
+        const data = await apiPost("/auth/forgot-password", { email });
+        const resetUrl = String(data?.reset_url || "").trim();
+        if (resetUrl) {
+          const safeUrl = escapeHtml(resetUrl);
+          setSuccess(`We could not send email yet, so use this reset link directly:<br><br><a class="text-link" href="${safeUrl}">${safeUrl}</a>`);
+        } else {
+          setSuccess("If that email exists, we sent a reset link. Check your inbox and spam folder.");
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not start password reset.");
       } finally {
