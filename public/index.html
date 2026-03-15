@@ -679,9 +679,114 @@
         margin-bottom: 12px;
       }
     }
+
+
+    body.gate-locked {
+      overflow: hidden;
+    }
+
+    .launch-curtain {
+      position: fixed;
+      inset: 0;
+      z-index: 1200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background:
+        radial-gradient(1000px 600px at 82% -10%, rgba(247, 213, 106, 0.11), transparent 60%),
+        radial-gradient(900px 520px at 8% 0%, rgba(184, 137, 42, 0.11), transparent 55%),
+        rgba(5, 5, 5, 0.95);
+      backdrop-filter: blur(12px);
+    }
+
+    body.gate-locked .launch-curtain {
+      display: flex;
+    }
+
+    .launch-curtain-card {
+      width: min(560px, 100%);
+      padding: 28px;
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(247, 213, 106, 0.24);
+      background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03));
+      box-shadow: var(--shadow);
+    }
+
+    .launch-curtain-card h2 {
+      margin: 0 0 10px;
+      font-size: clamp(30px, 4vw, 42px);
+      line-height: 1;
+      letter-spacing: -1px;
+    }
+
+    .launch-curtain-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    .curtain-form {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .curtain-input {
+      width: 100%;
+      min-height: 46px;
+      padding: 0 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+    }
+
+    .curtain-input:focus {
+      border-color: rgba(247, 213, 106, 0.42);
+      box-shadow: 0 0 0 3px rgba(247, 213, 106, 0.08);
+    }
+
+    .curtain-note {
+      margin-top: 12px;
+      color: var(--muted-2);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .curtain-error {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 90, 90, 0.1);
+      border: 1px solid rgba(255, 90, 90, 0.22);
+      color: #ffd6d6;
+      font-size: 13px;
+    }
+
   </style>
 </head>
-<body>
+<body class="gate-locked">
+  <div class="launch-curtain" id="launch-curtain" role="dialog" aria-modal="true" aria-labelledby="launch-curtain-title">
+    <div class="launch-curtain-card">
+      <span class="eyebrow">Private preview</span>
+      <h2 id="launch-curtain-title">Coming soon</h2>
+      <p>The new Creatorrr site is currently private while we finish polish and testing.</p>
+
+      <form class="curtain-form" id="curtain-form">
+        <input class="curtain-input" id="curtain-user" type="text" placeholder="Username" autocomplete="username" required>
+        <input class="curtain-input" id="curtain-pass" type="password" placeholder="Password" autocomplete="current-password" required>
+        <button class="btn btn-primary" type="submit">Enter site</button>
+      </form>
+
+      <div class="curtain-error" id="curtain-error"></div>
+      <div class="curtain-note">Temporary preview access: beny / 666</div>
+    </div>
+  </div>
   <header class="site-header">
     <div class="container nav">
       <a class="brand" href="#top">
@@ -971,6 +1076,69 @@
 
   <script>
     const API_BASE = "https://api.creatorrr.com";
+
+    const PREVIEW_USER = "beny";
+    const PREVIEW_PASSWORD = "666";
+    const LS_PREVIEW_GATE = "creatorrr.preview.unlocked.v1";
+
+    const curtainForm = document.getElementById("curtain-form");
+    const curtainUser = document.getElementById("curtain-user");
+    const curtainPass = document.getElementById("curtain-pass");
+    const curtainError = document.getElementById("curtain-error");
+
+    function safeSessionStorageGet(key) {
+      try {
+        const value = window.sessionStorage.getItem(key);
+        return value && value.trim() ? value : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function safeSessionStorageSet(key, value) {
+      try {
+        window.sessionStorage.setItem(key, value);
+      } catch {}
+    }
+
+    function setCurtainError(text) {
+      curtainError.textContent = text || "";
+      curtainError.style.display = text ? "block" : "none";
+    }
+
+    function unlockPreview() {
+      document.body.classList.remove("gate-locked");
+      setCurtainError("");
+      safeSessionStorageSet(LS_PREVIEW_GATE, "unlocked");
+    }
+
+    function isPreviewUnlocked() {
+      return safeSessionStorageGet(LS_PREVIEW_GATE) === "unlocked";
+    }
+
+    function bootstrapPreviewGate() {
+      if (isPreviewUnlocked()) {
+        document.body.classList.remove("gate-locked");
+        return;
+      }
+
+      document.body.classList.add("gate-locked");
+      window.setTimeout(() => curtainUser.focus(), 0);
+
+      curtainForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const user = String(curtainUser.value || "").trim();
+        const password = String(curtainPass.value || "");
+
+        if (user === PREVIEW_USER && password === PREVIEW_PASSWORD) {
+          unlockPreview();
+          return;
+        }
+
+        setCurtainError("Wrong credentials. Please try again.");
+      });
+    }
+
     const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
 
     const loggedOutActions = document.getElementById("nav-actions-logged-out");
@@ -1064,6 +1232,7 @@
 
     logoutBtn.addEventListener("click", logoutNow);
 
+    bootstrapPreviewGate();
     document.getElementById("year").textContent = new Date().getFullYear();
     checkHeaderAuthState();
   </script>
