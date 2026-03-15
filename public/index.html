@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contentorrr | Fast asset generation, tagging, and media-library building</title>
+  <meta
+    name="description"
+    content="Contentorrr is a desktop app for creators who turn one source video into clips, trailers, screenshots, metadata, and a searchable media library."
+  />
+  <style>
+    :root {
+      --bg: #060606;
+      --bg-soft: #0d0d0d;
+      --card: rgba(255, 255, 255, 0.04);
+      --card-strong: rgba(255, 255, 255, 0.06);
+      --text: #f5f5f5;
+      --muted: rgba(245, 245, 245, 0.74);
+      --muted-2: rgba(245, 245, 245, 0.56);
+      --line: rgba(247, 213, 106, 0.18);
+      --line-soft: rgba(255, 255, 255, 0.08);
+      --gold-1: #f7d56a;
+      --gold-2: #b8892a;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+      --radius-xl: 28px;
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --radius-sm: 14px;
+      --max: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1000px 600px at 82% -10%, rgba(247, 213, 106, 0.08), transparent 60%),
+        radial-gradient(900px 520px at 8% 0%, rgba(184, 137, 42, 0.08), transparent 55%),
+        linear-gradient(180deg, #050505 0%, #080808 35%, #050505 100%);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+
+    .container {
+      width: min(calc(100% - 32px), var(--max));
+      margin: 0 auto;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+      background: rgba(6, 6, 6, 0.74);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .nav {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 16px;
+      min-height: 74px;
+    }
+
+    .nav-auth-pending {
+      visibility: hidden;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      min-width: 0;
+    }
+
+    .brand img {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      object-fit: contain;
+      flex: 0 0 auto;
+    }
+
+    .brand-copy {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.04;
+      min-width: 0;
+    }
+
+    .brand-copy small {
+      font-size: 11px;
+      color: var(--muted-2);
+      font-weight: 650;
+      letter-spacing: 0.28px;
+      text-transform: uppercase;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 550;
+      flex-wrap: wrap;
+      justify-self: center;
+    }
+
+    .nav-links a:hover,
+    .footer-links a:hover {
+      color: var(--text);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      position: absolute;
+      top: 0;
+      right: 0;
+    }
+
+    .nav-action-slot {
+      position: relative;
+      min-width: 290px;
+      min-height: 46px;
+      justify-self: end;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 14px;
+      font-weight: 760;
+      transition: transform 0.18s ease, opacity 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary {
+      color: #0b0b0b;
+      background: linear-gradient(180deg, var(--gold-1), var(--gold-2));
+      box-shadow: 0 14px 30px rgba(184, 137, 42, 0.20);
+    }
+
+    .btn-secondary {
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.16);
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+    }
+
+    .hero,
+    section {
+      padding: 34px 0;
+    }
+
+    .hero {
+      padding-top: 74px;
+      padding-bottom: 28px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.02fr 0.98fr;
+      gap: 30px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      display: block;
+      margin-bottom: 10px;
+      color: rgba(247, 213, 106, 0.95);
+      font-size: 12px;
+      font-weight: 760;
+      letter-spacing: 0.22px;
+      text-transform: uppercase;
+    }
+
+    .hero h1 {
+      margin: 0 0 14px;
+      font-size: clamp(34px, 5.8vw, 60px);
+      line-height: 0.98;
+      letter-spacing: -1.8px;
+      white-space: nowrap;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 60ch;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.55;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .hero-note {
+      margin-top: 16px;
+      color: var(--muted-2);
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 1.5;
+    }
+
+    .product-chip {
+      margin-top: 18px;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      max-width: 100%;
+    }
+
+    .product-chip img {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+      border-radius: 8px;
+      flex: 0 0 auto;
+    }
+
+    .feature,
+    .step,
+    .price-card,
+    .download-card,
+    .mini-card,
+    .demo-card {
+      background: linear-gradient(180deg, var(--card-strong), var(--card));
+      border: 1px solid var(--line-soft);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius-lg);
+    }
+
+    .mini-grid,
+    .pricing-grid,
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .mini-card,
+    .price-card,
+    .download-card,
+    .demo-card {
+      padding: 24px;
+    }
+
+    .mini-card strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .mini-card span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .section-head {
+      margin-bottom: 20px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.03;
+      letter-spacing: -1.1px;
+    }
+
+    .section-head p {
+      margin: 8px 0 0;
+      max-width: 64ch;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    .demo-card {
+      overflow: hidden;
+      padding: 0;
+    }
+
+    .demo-card .demo-top {
+      padding: 22px 24px 0;
+    }
+
+    .demo-card .demo-top h2 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.03;
+      letter-spacing: -1.1px;
+      text-align: center;
+    }
+
+    .hero-video {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)),
+        radial-gradient(circle at 50% 50%, rgba(247, 213, 106, 0.08), transparent 58%),
+        #101010;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px 24px 24px;
+    }
+
+    .video-frame {
+      width: 100%;
+      height: 100%;
+      min-height: 360px;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015));
+    }
+
+    .video-frame iframe {
+      width: 100%;
+      height: 100%;
+      min-height: 360px;
+      border: 0;
+      display: block;
+    }
+
+    .step {
+      padding: 22px;
+      min-height: 178px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .step-number {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: rgba(247, 213, 106, 0.10);
+      border: 1px solid var(--line);
+      color: rgba(247, 213, 106, 0.98);
+      font-weight: 850;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    .step h3,
+    .price-card h3,
+    .download-card h3 {
+      margin: 0 0 8px;
+      font-size: 20px;
+      letter-spacing: -0.4px;
+    }
+
+    .step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.56;
+    }
+
+    .step::after {
+      content: "";
+      position: absolute;
+      inset: auto -28% -28% auto;
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(247, 213, 106, 0.09), transparent 65%);
+      pointer-events: none;
+    }
+
+    .pricing-grid {
+      align-items: stretch;
+    }
+
+    .price-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+    }
+
+    .pricing-badge {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(247, 213, 106, 0.12);
+      border: 1px solid var(--line);
+      color: rgba(247, 213, 106, 0.98);
+      font-size: 12px;
+      font-weight: 760;
+      line-height: 1;
+    }
+
+    .pricing-subtitle {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+      max-width: 34ch;
+    }
+
+    .price {
+      margin: 18px 0 6px;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .price strong {
+      font-size: 46px;
+      letter-spacing: -1.2px;
+      line-height: 1;
+    }
+
+    .price span {
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 650;
+    }
+
+    .price-note {
+      margin: 0 0 22px;
+      color: var(--muted-2);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .notice-box {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(247, 213, 106, 0.08);
+      border: 1px solid var(--line);
+      color: rgba(245,245,245,0.9);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .platform-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .platform-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .platform-row strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 3px;
+    }
+
+    .platform-row span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .download-list {
+      display: grid;
+      gap: 10px;
+      margin: 18px 0 22px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .download-list div::before,
+    .pricing-features div::before {
+      content: "• ";
+      color: rgba(247, 213, 106, 0.95);
+    }
+
+    .site-footer {
+      padding: 38px 0 54px;
+      color: var(--muted);
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px 18px;
+      justify-content: flex-end;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .pricing-grid--pricing {
+      grid-template-columns: 0.95fr 1.05fr;
+    }
+
+    .price-card-featured {
+      border-color: rgba(247, 213, 106, 0.34);
+      box-shadow:
+        0 24px 70px rgba(0, 0, 0, 0.45),
+        0 0 0 1px rgba(247, 213, 106, 0.08) inset;
+    }
+
+    .pricing-features {
+      display: grid;
+      gap: 10px;
+      margin: 18px 0 24px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .pricing-actions {
+      display: grid;
+      gap: 10px;
+      margin-top: auto;
+    }
+
+    .pricing-link {
+      color: var(--muted-2);
+      font-size: 13px;
+      font-weight: 650;
+      text-align: center;
+    }
+
+    .pricing-link:hover {
+      color: var(--text);
+    }
+
+    .muted { color: var(--muted); }
+    .muted-2 { color: var(--muted-2); }
+
+    @media (max-width: 1100px) {
+      .hero-grid,
+      .mini-grid,
+      .pricing-grid,
+      .download-grid,
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .workflow {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .footer-links {
+        justify-content: flex-start;
+      }
+
+      .hero h1 {
+        white-space: normal;
+      }
+    }
+
+    @media (max-width: 780px) {
+      .nav {
+        display: flex;
+        min-height: auto;
+        padding: 14px 0;
+        flex-wrap: wrap;
+      }
+
+      .nav-auth-pending {
+        visibility: hidden;
+      }
+
+      .nav-links {
+        order: 3;
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 2px;
+        justify-self: auto;
+      }
+
+      .nav-action-slot {
+        position: static;
+        min-width: 0;
+        min-height: 0;
+        width: 100%;
+      }
+
+      .workflow {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding-top: 48px;
+      }
+
+      .hero p,
+      .section-head p {
+        font-size: 16px;
+      }
+
+      .btn {
+        width: 100%;
+      }
+
+      .hero-actions,
+      .nav-actions {
+        width: 100%;
+      }
+
+      .nav-actions {
+        position: static;
+        width: 100%;
+      }
+
+      .product-chip,
+      .hero h1 {
+        width: 100%;
+      }
+
+      .platform-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .video-frame,
+      .video-frame iframe {
+        min-height: 240px;
+      }
+
+      .pricing-badge {
+        position: static;
+        align-self: flex-start;
+        margin-bottom: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <a class="brand" href="#top">
+        <img src="./creatorrr-logo_only_32x32.png" alt="Creatorrr logo" onerror="this.src='./creatorrr-logo.png'">
+        <span class="brand-copy">
+          <span>Creatorrr</span>
+          <small>From creators, for creators</small>
+        </span>
+      </a>
+
+      <nav class="nav-links">
+        <a href="#demo">Demo</a>
+        <a href="#workflow">Workflow</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#download">Download</a>
+      </nav>
+
+      <div class="nav-action-slot nav-auth-pending" id="nav-action-slot">
+        <div class="nav-actions" id="nav-actions-logged-out" style="display:none;">
+          <a class="btn btn-secondary" href="./get-started.html?intent=login">Log in</a>
+          <a class="btn btn-primary" href="./get-started.html?intent=trial">Start 3 day free trial</a>
+        </div>
+
+        <div class="nav-actions" id="nav-actions-logged-in" style="display:none;">
+          <a class="btn btn-secondary" href="./get-started.html?intent=login">Account</a>
+          <button class="btn btn-primary" type="button" id="landing-logout-btn">Log out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <span class="eyebrow">First app: Contentorrr by creatorrr.com</span>
+
+          <h1>Fast. Complete. Organized.</h1>
+
+          <p>
+            Turn full videos into clips, trailers, and screenshots fast while tagging them. Your media library builds itself in parallel, searchable, filterable, and exportable.
+          </p>
+
+          <div class="product-chip">
+            <img src="./64x64.png" alt="Contentorrr logo" onerror="this.src='./contentorrr-logo.png'">
+            <div>
+              <strong style="display:block;font-size:14px;">Contentorrr</strong>
+              <span class="muted" style="font-size:13px;">Desktop workflow tool for efficient content production</span>
+            </div>
+          </div>
+
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="./get-started.html?intent=trial">Start 3 day free trial</a>
+            <a class="btn btn-secondary" href="#demo">Watch the demo</a>
+          </div>
+
+          <div class="hero-note">
+            Download the installer freely, create an account or log in, and activate your 3 day trial or paid access.
+          </div>
+        </div>
+
+        <div class="mini-grid">
+          <article class="mini-card">
+            <strong>Full video → content set</strong>
+            <span>Start from a full video and turn it into a structured content set with clips, trailers, and screenshots.</span>
+          </article>
+
+          <article class="mini-card">
+            <strong>Assets in seconds</strong>
+            <span>Generate clips, trailers, screenshots, watermark variants, and metadata in one fast workflow.</span>
+          </article>
+
+          <article class="mini-card">
+            <strong>Full media library</strong>
+            <span>Automatically built in the background: a searchable, sortable, and exportable media library.</span>
+          </article>
+
+          <article class="mini-card">
+            <strong>CSV ready export</strong>
+            <span>Export filtered or full library data as CSV for uploads, tracking, bots, or automation.</span>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="workflow">
+      <div class="container">
+        <div class="section-head">
+          <h2>How it works</h2>
+        </div>
+
+        <div class="workflow">
+          <article class="step">
+            <div class="step-number">1</div>
+            <h3>Import</h3>
+            <p>Create a content set from a source video and keep it aligned with local files.</p>
+          </article>
+
+          <article class="step">
+            <div class="step-number">2</div>
+            <h3>Generate</h3>
+            <p>Create clips, trailers, screenshots, and watermark variants for different use cases.</p>
+          </article>
+
+          <article class="step">
+            <div class="step-number">3</div>
+            <h3>Structure</h3>
+            <p>Add titles, tags, platforms, performers, monetization, and related metadata.</p>
+          </article>
+
+          <article class="step">
+            <div class="step-number">4</div>
+            <h3>Export</h3>
+            <p>Search, filter, and export structured rows to CSV for downstream workflows.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo">
+      <div class="container">
+        <article class="demo-card">
+          <div class="demo-top">
+            <h2>Demo: See the workflow in action</h2>
+          </div>
+          <div class="hero-video">
+            <div class="video-frame">
+              <iframe
+                title="Contentorrr demo video"
+                src="https://www.youtube.com/embed/VIDEO_ID"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen
+              ></iframe>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="pricing">
+      <div class="container">
+        <div class="section-head">
+          <h2>Pricing</h2>
+          <p>Start free, buy directly if you are ready, and save 33% with yearly billing.</p>
+        </div>
+
+        <div class="notice-box" style="margin-bottom:20px;">
+          <strong style="display:block; margin-bottom:4px;">3 day free trial</strong>
+          Download the installer, create an account, and unlock the full workflow free for 3 days on your own machine.
+          <div style="margin-top:12px;">
+            <a class="btn btn-secondary" href="./get-started.html?intent=trial">Start 3 day free trial</a>
+          </div>
+        </div>
+
+        <div class="pricing-grid pricing-grid--pricing">
+          <article class="price-card">
+            <h3>Monthly</h3>
+            <p class="pricing-subtitle">Best for flexibility and low commitment.</p>
+
+            <div class="price">
+              <strong>$29.90</strong>
+              <span>/ month</span>
+            </div>
+
+            <p class="price-note">Full access to Contentorrr, billed monthly.</p>
+
+            <div class="pricing-features">
+              <div>Full Contentorrr access</div>
+              <div>Windows and macOS</div>
+              <div>Local workflow on your machine</div>
+              <div>Cancel anytime</div>
+            </div>
+
+            <div class="pricing-actions">
+              <a class="btn btn-secondary" href="./get-started.html?intent=monthly">Get monthly access</a>
+              <a class="pricing-link" href="./get-started.html?intent=trial">or start the 3 day free trial</a>
+            </div>
+          </article>
+
+          <article class="price-card price-card-featured">
+            <div class="pricing-badge">Best value</div>
+            <h3>Yearly</h3>
+            <p class="pricing-subtitle">Best for creators who use the workflow continuously.</p>
+
+            <div class="price">
+              <strong>$239</strong>
+              <span>/ year</span>
+            </div>
+
+            <p class="price-note">Equivalent to about $19.92/month. Save 33% compared to monthly billing.</p>
+
+            <div class="pricing-features">
+              <div>Full Contentorrr access</div>
+              <div>Windows and macOS</div>
+              <div>Local workflow on your machine</div>
+              <div>Lower effective monthly cost</div>
+            </div>
+
+            <div class="pricing-actions">
+              <a class="btn btn-primary" href="./get-started.html?intent=yearly">Get yearly access</a>
+              <a class="pricing-link" href="./get-started.html?intent=trial">or start the 3 day free trial</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="download">
+      <div class="container">
+        <div class="section-head">
+          <h2>Download Contentorrr</h2>
+          <p>The installer is free. Access is activated inside the app with your account.</p>
+        </div>
+
+        <div class="download-grid">
+          <article class="download-card">
+            <h3>Desktop app</h3>
+
+            <div class="notice-box" style="margin-top:0; margin-bottom:18px;">
+              Download first. Then create an account or log in inside the app to start your 3 day trial or use paid access.
+            </div>
+
+            <div class="platform-list">
+              <div class="platform-row">
+                <div>
+                  <strong>Windows</strong>
+                  <span>Installer for Windows 11 and later</span>
+                </div>
+                <a class="btn btn-primary" href="./Contentorrr-Setup-v0.9.9.exe">Download .exe</a>
+              </div>
+
+              <div class="platform-row">
+                <div>
+                  <strong>macOS</strong>
+                  <span>Installer package for macOS builds</span>
+                </div>
+                <a class="btn btn-primary" href="./Contentorrr-v0.9.9.dmg">Download .dmg</a>
+              </div>
+            </div>
+          </article>
+
+          <article class="download-card">
+            <h3>What happens after download</h3>
+            <div class="download-list">
+              <div>Open the installer and launch Contentorrr</div>
+              <div>Create an account or log in</div>
+              <div>Your 3 day trial or paid access activates inside the app</div>
+              <div>Use the full local workflow on your machine</div>
+            </div>
+
+            <div class="hero-actions" style="margin-top:20px;">
+              <a class="btn btn-secondary" href="mailto:ben@creatorrr.com?subject=Contentorrr%20Feedback">Send feedback</a>
+              <a class="btn btn-primary" href="./contentorrr_v1.0.pdf">Download PDF guide</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <div class="brand" style="margin-bottom:12px;">
+          <img src="./creatorrr-logo_only_32x32.png" alt="Creatorrr logo" onerror="this.src='./creatorrr-logo.png'">
+          <span class="brand-copy">
+            <span>Creatorrr</span>
+            <small>From creators, for creators</small>
+          </span>
+        </div>
+        <div class="muted" style="max-width:58ch;font-size:14px;line-height:1.6;">
+          Creatorrr builds tools for creators. Contentorrr is the first app, focused on turning one source video into clips, trailers, screenshots, metadata, and a structured media library.
+        </div>
+        <div class="muted-2" style="margin-top:14px;font-size:13px;">© <span id="year"></span> Creatorrr</div>
+      </div>
+
+      <div class="footer-links">
+        <a href="./contentorrr_v1.0.pdf">Contentorrr guide</a>
+        <a href="./privacy.html">Privacy Policy</a>
+        <a href="./terms.html">Terms of Use</a>
+        <a href="./refunds.html">Refund Policy</a>
+        <a href="./changelog.html">Changelog</a>
+        <a href="mailto:ben@creatorrr.com">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const API_BASE = "https://api.creatorrr.com";
+    const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
+
+    const loggedOutActions = document.getElementById("nav-actions-logged-out");
+    const loggedInActions = document.getElementById("nav-actions-logged-in");
+    const logoutBtn = document.getElementById("landing-logout-btn");
+
+    const navActionSlot = document.getElementById("nav-action-slot");
+
+    function safeLocalStorageGet(key) {
+      try {
+        const v = window.localStorage.getItem(key);
+        return v && v.trim() ? v : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function safeLocalStorageRemove(key) {
+      try {
+        window.localStorage.removeItem(key);
+      } catch {}
+    }
+
+    function getWebToken() {
+      return safeLocalStorageGet(LS_WEB_TOKEN);
+    }
+
+    function setLoggedInHeader(isLoggedIn) {
+      loggedOutActions.style.display = isLoggedIn ? "none" : "flex";
+      loggedInActions.style.display = isLoggedIn ? "flex" : "none";
+      navActionSlot.classList.remove("nav-auth-pending");
+    }
+
+    async function safeReadJson(res) {
+      const text = await res.text().catch(() => "");
+      if (!text) return {};
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { raw: text };
+      }
+    }
+
+    async function checkHeaderAuthState() {
+      const token = getWebToken();
+      if (!token) {
+        setLoggedInHeader(false);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/account/me`, {
+          method: "GET",
+          headers: {
+            authorization: `Bearer ${token}`
+          }
+        });
+
+        if (!res.ok) {
+          safeLocalStorageRemove(LS_WEB_TOKEN);
+          setLoggedInHeader(false);
+          return;
+        }
+
+        await safeReadJson(res);
+        setLoggedInHeader(true);
+      } catch (_) {
+        setLoggedInHeader(false);
+      }
+    }
+
+    async function logoutNow() {
+      const token = getWebToken();
+
+      try {
+        if (token) {
+          await fetch(`${API_BASE}/auth/logout`, {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${token}`
+            }
+          });
+        }
+      } catch (_) {
+      }
+
+      safeLocalStorageRemove(LS_WEB_TOKEN);
+      setLoggedInHeader(false);
+      window.location.href = "./index.html";
+    }
+
+    logoutBtn.addEventListener("click", logoutNow);
+
+    document.getElementById("year").textContent = new Date().getFullYear();
+    checkHeaderAuthState();
+  </script>
+</body>
+</html>

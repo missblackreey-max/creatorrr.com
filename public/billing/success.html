@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contentorrr | Access confirmed</title>
+  <meta
+    name="description"
+    content="Your Contentorrr access has been confirmed. Download the app and sign in with your account."
+  />
+  <style>
+    :root {
+      --bg: #060606;
+      --bg-soft: #0d0d0d;
+      --card: rgba(255, 255, 255, 0.04);
+      --card-strong: rgba(255, 255, 255, 0.06);
+      --text: #f5f5f5;
+      --muted: rgba(245, 245, 245, 0.74);
+      --muted-2: rgba(245, 245, 245, 0.56);
+      --line: rgba(247, 213, 106, 0.18);
+      --line-soft: rgba(255, 255, 255, 0.08);
+      --gold-1: #f7d56a;
+      --gold-2: #b8892a;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --max: 1080px;
+      --success: rgba(90, 200, 120, 0.18);
+      --success-line: rgba(90, 200, 120, 0.28);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1000px 600px at 82% -10%, rgba(247, 213, 106, 0.08), transparent 60%),
+        radial-gradient(900px 520px at 8% 0%, rgba(184, 137, 42, 0.08), transparent 55%),
+        linear-gradient(180deg, #050505 0%, #080808 35%, #050505 100%);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .container {
+      width: min(calc(100% - 32px), var(--max));
+      margin: 0 auto;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+      background: rgba(6, 6, 6, 0.74);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 74px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      min-width: 0;
+    }
+
+    .brand img {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      object-fit: contain;
+      flex: 0 0 auto;
+    }
+
+    .brand-copy {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.04;
+      min-width: 0;
+    }
+
+    .brand-copy small {
+      font-size: 11px;
+      color: var(--muted-2);
+      font-weight: 650;
+      letter-spacing: 0.28px;
+      text-transform: uppercase;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 14px;
+      font-weight: 760;
+      transition: transform 0.18s ease, opacity 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary {
+      color: #0b0b0b;
+      background: linear-gradient(180deg, var(--gold-1), var(--gold-2));
+      box-shadow: 0 14px 30px rgba(184, 137, 42, 0.20);
+    }
+
+    .btn-secondary {
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.16);
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+    }
+
+    .btn[disabled] {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    main {
+      padding: 48px 0 64px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .card {
+      background: linear-gradient(180deg, var(--card-strong), var(--card));
+      border: 1px solid var(--line-soft);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 10px;
+      color: rgba(247, 213, 106, 0.95);
+      font-size: 12px;
+      font-weight: 760;
+      letter-spacing: 0.22px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(34px, 5vw, 54px);
+      line-height: 0.98;
+      letter-spacing: -1.5px;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 24px;
+      line-height: 1.04;
+      letter-spacing: -0.7px;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.58;
+      font-size: 15px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+      margin-top: 20px;
+    }
+
+    .success-box {
+      padding: 18px;
+      border-radius: 18px;
+      background: var(--success);
+      border: 1px solid var(--success-line);
+      color: #daf7de;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .info-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .info-item {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .info-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .info-item span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .status-box,
+    .error-box {
+      display: none;
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .status-box {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text);
+    }
+
+    .error-box {
+      background: rgba(255, 90, 90, 0.08);
+      border: 1px solid rgba(255, 90, 90, 0.20);
+      color: #ffd6d6;
+    }
+
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .platform-card {
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .platform-card strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 16px;
+    }
+
+    .platform-card span {
+      display: block;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .footer-note {
+      margin-top: 16px;
+      color: var(--muted-2);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 920px) {
+      .grid,
+      .download-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .nav {
+        min-height: auto;
+        padding: 14px 0;
+        flex-wrap: wrap;
+      }
+
+      .nav-actions {
+        width: 100%;
+      }
+
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <a class="brand" href="../index.html">
+        <img src="../creatorrr-logo_only_32x32.png" alt="Creatorrr logo" onerror="this.src='../creatorrr-logo.png'">
+        <span class="brand-copy">
+          <span>Creatorrr</span>
+          <small>From creators, for creators</small>
+        </span>
+      </a>
+
+      <div class="nav-actions">
+        <a class="btn btn-secondary" href="../get-started.html?mode=login&intent=login">Account</a>
+        <a class="btn btn-secondary" href="../index.html#pricing">Pricing</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container grid">
+      <section class="card">
+        <span class="eyebrow">Contentorrr access</span>
+        <h1>Access confirmed</h1>
+        <p>
+          Your checkout completed successfully. Download Contentorrr and sign in with the same account you just used.
+        </p>
+
+        <div class="stack">
+          <div class="success-box">
+            Payment or trial activation is complete. If the app is already installed, just open it and log in with the same email and password.
+          </div>
+
+          <div class="info-list">
+            <div class="info-item">
+              <strong>Same credentials everywhere</strong>
+              <span>Your website account and app account are the same account.</span>
+            </div>
+            <div class="info-item">
+              <strong>Trial or paid access is tied to your account</strong>
+              <span>Sign in inside the app and the entitlement check should pick it up automatically.</span>
+            </div>
+            <div class="info-item">
+              <strong>Need the installer first?</strong>
+              <span>Use the download buttons on the right, then log in inside Contentorrr.</span>
+            </div>
+          </div>
+
+          <div class="status-box" id="status-box"></div>
+          <div class="error-box" id="error-box"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Download Contentorrr</h2>
+        <p>
+          Install the app on your machine, then sign in with the same account.
+        </p>
+
+        <div class="download-grid">
+          <div class="platform-card">
+            <strong>Windows</strong>
+            <span>Installer for Windows 11 and later</span>
+            <a class="btn btn-primary" href="../Contentorrr-Setup-v0.9.9.exe">Download .exe</a>
+          </div>
+
+          <div class="platform-card">
+            <strong>macOS</strong>
+            <span>Installer package for macOS builds</span>
+            <a class="btn btn-primary" href="../Contentorrr-v0.9.9.dmg">Download .dmg</a>
+          </div>
+        </div>
+
+        <div class="footer-note">
+          Already installed? Open Contentorrr and log in now.
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const API_BASE = "https://api.creatorrr.com";
+    const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
+
+    const statusBox = document.getElementById("status-box");
+    const errorBox = document.getElementById("error-box");
+
+    function setStatus(text) {
+      statusBox.textContent = text;
+      statusBox.style.display = text ? "block" : "none";
+    }
+
+    function setError(text) {
+      errorBox.textContent = text;
+      errorBox.style.display = text ? "block" : "none";
+    }
+
+    function safeLocalStorageGet(key) {
+      try {
+        const v = window.localStorage.getItem(key);
+        return v && v.trim() ? v : null;
+      } catch {
+        return null;
+      }
+    }
+
+    async function safeReadJson(res) {
+      const text = await res.text().catch(() => "");
+      if (!text) return {};
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { raw: text };
+      }
+    }
+
+    async function verifyAccessInBrowser() {
+      const token = safeLocalStorageGet(LS_WEB_TOKEN);
+      if (!token) return;
+
+      try {
+        setStatus("Checking account access...");
+        const res = await fetch(`${API_BASE}/license/me`, {
+          method: "GET",
+          headers: {
+            authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await safeReadJson(res);
+
+        if (!res.ok) {
+          setStatus("");
+          return;
+        }
+
+        if (data?.entitled) {
+          if (data?.in_trial) {
+            setStatus("Your trial access is active. You can now sign in inside the app.");
+          } else {
+            setStatus("Your paid access is active. You can now sign in inside the app.");
+          }
+        } else {
+          setStatus("Checkout finished, but browser license state is not active yet. If Stripe just returned you, wait a few seconds and try opening the app.");
+        }
+      } catch {
+        setStatus("");
+      }
+    }
+
+    const sessionId = new URLSearchParams(window.location.search).get("session_id");
+    if (!sessionId) {
+      setError("No Stripe session ID was provided in the URL. The download links still work.");
+    }
+
+    verifyAccessInBrowser();
+  </script>
+</body>
+</html>

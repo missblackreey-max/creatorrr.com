@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Get started with Contentorrr</title>
+  <meta
+    name="description"
+    content="Create your Contentorrr account, log in, start your 3 day free trial, or buy monthly or yearly access."
+  />
+  <style>
+    :root {
+      --bg: #060606;
+      --bg-soft: #0d0d0d;
+      --card: rgba(255, 255, 255, 0.04);
+      --card-strong: rgba(255, 255, 255, 0.06);
+      --text: #f5f5f5;
+      --muted: rgba(245, 245, 245, 0.74);
+      --muted-2: rgba(245, 245, 245, 0.56);
+      --line: rgba(247, 213, 106, 0.18);
+      --line-soft: rgba(255, 255, 255, 0.08);
+      --gold-1: #f7d56a;
+      --gold-2: #b8892a;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+      --radius-xl: 28px;
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --radius-sm: 14px;
+      --max: 1120px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1000px 600px at 82% -10%, rgba(247, 213, 106, 0.08), transparent 60%),
+        radial-gradient(900px 520px at 8% 0%, rgba(184, 137, 42, 0.08), transparent 55%),
+        linear-gradient(180deg, #050505 0%, #080808 35%, #050505 100%);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+
+    .container {
+      width: min(calc(100% - 32px), var(--max));
+      margin: 0 auto;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+      background: rgba(6, 6, 6, 0.74);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .nav {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 16px;
+      min-height: 74px;
+    }
+
+    .nav-auth-pending {
+      visibility: hidden;
+    }
+
+    .initially-hidden {
+      display: none !important;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      min-width: 0;
+    }
+
+    .brand img {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      object-fit: contain;
+      flex: 0 0 auto;
+    }
+
+    .brand-copy {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.04;
+      min-width: 0;
+    }
+
+    .brand-copy small {
+      font-size: 11px;
+      color: var(--muted-2);
+      font-weight: 650;
+      letter-spacing: 0.28px;
+      text-transform: uppercase;
+    }
+
+    .nav-action-slot {
+    position: relative;
+    min-width: 320px;
+    min-height: 46px;
+    justify-self: end;
+    }
+
+    .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    position: absolute;
+    top: 0;
+    right: 0;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 14px;
+      font-weight: 760;
+      transition: transform 0.18s ease, opacity 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary {
+      color: #0b0b0b;
+      background: linear-gradient(180deg, var(--gold-1), var(--gold-2));
+      box-shadow: 0 14px 30px rgba(184, 137, 42, 0.20);
+    }
+
+    .btn-secondary {
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.16);
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+    }
+
+    .btn[disabled] {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    main {
+      padding: 48px 0 64px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.02fr 0.98fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .card {
+      background: linear-gradient(180deg, var(--card-strong), var(--card));
+      border: 1px solid var(--line-soft);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius-lg);
+    }
+
+    .hero-card,
+    .auth-card,
+    .download-card {
+      padding: 28px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 10px;
+      color: rgba(247, 213, 106, 0.95);
+      font-size: 12px;
+      font-weight: 760;
+      letter-spacing: 0.22px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(34px, 5.2vw, 56px);
+      line-height: 0.98;
+      letter-spacing: -1.6px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 26px;
+      line-height: 1.04;
+      letter-spacing: -0.8px;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      letter-spacing: -0.3px;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.58;
+      font-size: 15px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .intent-box {
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(247, 213, 106, 0.08);
+      border: 1px solid var(--line);
+    }
+
+    .intent-box .label {
+      display: inline-block;
+      margin-bottom: 8px;
+      font-size: 12px;
+      font-weight: 760;
+      color: rgba(247, 213, 106, 0.98);
+      text-transform: uppercase;
+      letter-spacing: 0.18px;
+    }
+
+    .intent-title {
+      margin: 0 0 6px;
+      font-size: 22px;
+      line-height: 1.1;
+      letter-spacing: -0.5px;
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .summary-item {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .summary-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .summary-item span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .tabs {
+      display: inline-grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      width: 100%;
+      margin-bottom: 18px;
+      padding: 6px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .tab {
+      min-height: 42px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 760;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      color: #0b0b0b;
+      background: linear-gradient(180deg, var(--gold-1), var(--gold-2));
+    }
+
+    .form-panel { display: none; }
+    .form-panel.active { display: block; }
+
+    label {
+      display: block;
+      margin-bottom: 12px;
+      font-size: 13px;
+      font-weight: 650;
+      color: var(--text);
+    }
+
+    input {
+      width: 100%;
+      margin-top: 6px;
+      min-height: 48px;
+      padding: 0 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: rgba(247, 213, 106, 0.42);
+      box-shadow: 0 0 0 3px rgba(247, 213, 106, 0.08);
+    }
+
+    .form-actions {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .form-note {
+      margin-top: 12px;
+      color: var(--muted-2);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .tiny-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .text-link {
+      color: var(--muted-2);
+      font-size: 13px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .text-link:hover {
+      color: var(--text);
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 18px 0;
+      color: var(--muted-2);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.18px;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: rgba(255,255,255,0.08);
+    }
+
+    .status-box,
+    .error-box,
+    .success-box {
+      display: none;
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .status-box {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text);
+    }
+
+    .error-box {
+      background: rgba(255, 90, 90, 0.08);
+      border: 1px solid rgba(255, 90, 90, 0.20);
+      color: #ffd6d6;
+    }
+
+    .success-box {
+      background: rgba(90, 200, 120, 0.09);
+      border: 1px solid rgba(90, 200, 120, 0.20);
+      color: #daf7de;
+    }
+
+    .account-box {
+      display: none;
+      margin-top: 18px;
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .account-grid {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .account-item {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .account-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .account-item span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .action-grid {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .platform-card {
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .platform-card strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 16px;
+    }
+
+    .platform-card span {
+      display: block;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .footer-note {
+      margin-top: 16px;
+      color: var(--muted-2);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 920px) {
+      .grid,
+      .download-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .nav {
+      display: flex;
+      min-height: auto;
+      padding: 14px 0;
+      flex-wrap: wrap;
+      }
+
+      .nav-action-slot {
+      position: static;
+      min-width: 0;
+      min-height: 0;
+      width: 100%;
+      }
+
+      .nav-actions {
+      position: static;
+      width: 100%;
+      }
+
+      .btn {
+        width: 100%;
+      }
+
+      .tiny-row {
+        flex-direction: column;
+      }
+
+      .tabs {
+        grid-template-columns: 1fr;
+        border-radius: 18px;
+      }
+
+      .tab {
+        border-radius: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <a class="brand" href="./index.html">
+        <img src="./creatorrr-logo_only_32x32.png" alt="Creatorrr logo" onerror="this.src='./creatorrr-logo.png'">
+        <span class="brand-copy">
+          <span>Creatorrr</span>
+          <small>From creators, for creators</small>
+        </span>
+      </a>
+
+        <div class="nav-action-slot nav-auth-pending" id="nav-action-slot">
+            <div class="nav-actions" id="nav-logged-out" style="display:none;">
+                <a class="btn btn-secondary" href="./index.html#pricing">Back to pricing</a>
+            </div>
+
+            <div class="nav-actions" id="nav-logged-in" style="display:none;">
+                <button class="btn btn-secondary" type="button" id="nav-manage-subscription">Manage subscription</button>
+                <button class="btn btn-secondary" type="button" id="nav-logout">Log out</button>
+            </div>
+        </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container grid">
+      <section class="card hero-card">
+        <span class="eyebrow">Contentorrr access</span>
+        <h1 id="hero-title">Get started with Contentorrr</h1>
+        <p id="hero-copy">
+          Create your account or log in, then continue with the option you selected.
+        </p>
+
+        <div class="stack" style="margin-top:22px;">
+          <div class="intent-box">
+            <span class="label">Selected option</span>
+            <div class="intent-title" id="intent-title">Start 3 day free trial</div>
+            <p id="intent-copy">
+              Create your account or log in, then continue to secure checkout.
+            </p>
+          </div>
+
+          <div class="summary-list">
+            <div class="summary-item">
+              <strong>One account for website and app</strong>
+              <span>The same email and password work on the site and inside Contentorrr.</span>
+            </div>
+            <div class="summary-item">
+              <strong>Local desktop workflow</strong>
+              <span>Your workflow runs on your machine after you sign in and activate access.</span>
+            </div>
+            <div class="summary-item">
+              <strong>Windows and macOS</strong>
+              <span>Install after signup or checkout, or download now if you already have access.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card auth-card">
+        <div id="auth-section" class="initially-hidden">
+          <h2 id="auth-title">Create account or log in</h2>
+          <p id="auth-copy">Use email and password. Google login is not wired yet, so the button stays disabled.</p>
+
+          <div class="tabs" role="tablist" aria-label="Authentication mode">
+            <button class="tab active" id="tab-signup" type="button">Create account</button>
+            <button class="tab" id="tab-login" type="button">Log in</button>
+            <button class="tab" id="tab-forgot" type="button">Reset password</button>
+          </div>
+
+          <div class="form-panel active" id="panel-signup">
+            <label>
+              Email
+              <input id="signup-email" type="email" autocomplete="email" />
+            </label>
+            <label>
+              Password
+              <input id="signup-password" type="password" autocomplete="new-password" minlength="8" />
+            </label>
+
+            <div class="form-actions">
+              <button class="btn btn-primary" id="signup-continue" type="button">Create account and continue</button>
+            </div>
+
+            <div class="form-note">
+              Minimum password length: 8 characters.
+            </div>
+          </div>
+
+          <div class="form-panel" id="panel-login">
+            <label>
+              Email
+              <input id="login-email" type="email" autocomplete="email" />
+            </label>
+            <label>
+              Password
+              <input id="login-password" type="password" autocomplete="current-password" />
+            </label>
+
+            <div class="form-actions">
+              <button class="btn btn-primary" id="login-continue" type="button">Log in and continue</button>
+            </div>
+
+            <div class="tiny-row">
+              <span class="text-link" id="forgot-password-link">Forgot password?</span>
+              <span class="text-link" id="switch-to-signup-link">Need an account?</span>
+            </div>
+          </div>
+
+          <div class="form-panel" id="panel-forgot">
+            <label>
+              Email
+              <input id="forgot-email" type="email" autocomplete="email" />
+            </label>
+
+            <div class="form-actions">
+              <button class="btn btn-primary" id="forgot-continue" type="button">Prepare reset link</button>
+              <a class="btn btn-secondary" href="./reset-password.html">Open reset page</a>
+            </div>
+
+            <div class="form-note">
+              For now, this returns a dev reset link directly on the page instead of sending email.
+            </div>
+          </div>
+
+          <div class="divider">Later</div>
+
+          <button class="btn btn-secondary" type="button" disabled>Continue with Google later</button>
+        </div>
+
+        <div class="account-box initially-hidden" id="account-section">
+          <h2>Account</h2>
+          <p id="account-copy">You are logged in and can continue with your selected option.</p>
+
+          <div class="account-grid" id="account-grid"></div>
+
+          <div class="action-grid" id="account-actions"></div>
+        </div>
+
+        <div class="status-box" id="status-box"></div>
+        <div class="error-box" id="error-box"></div>
+        <div class="success-box" id="success-box"></div>
+      </section>
+    </div>
+
+    <div class="container" style="margin-top:24px;">
+      <section class="card download-card">
+        <h2>Download Contentorrr</h2>
+        <p>
+          Already have access or just want the installer ready? Download below. You will still need to sign in inside the app.
+        </p>
+
+        <div class="download-grid">
+          <div class="platform-card">
+            <strong>Windows</strong>
+            <span>Installer for Windows 11 and later</span>
+            <a class="btn btn-primary" href="./Contentorrr-Setup-v0.9.9.exe">Download .exe</a>
+          </div>
+
+          <div class="platform-card">
+            <strong>macOS</strong>
+            <span>Installer package for macOS builds</span>
+            <a class="btn btn-primary" href="./Contentorrr-v0.9.9.dmg">Download .dmg</a>
+          </div>
+        </div>
+
+        <div class="footer-note">
+          Already installed? Just sign in inside the app with the same account.
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const API_BASE = "https://api.creatorrr.com";
+    const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
+    const LS_WEB_DEVICE_ID = "creatorrr.web.device.id.v1";
+
+    const params = new URLSearchParams(window.location.search);
+    const intent = (params.get("intent") || "trial").trim().toLowerCase();
+    const checkoutState = (params.get("checkout") || "").trim().toLowerCase();
+
+    const tabSignup = document.getElementById("tab-signup");
+    const tabLogin = document.getElementById("tab-login");
+    const tabForgot = document.getElementById("tab-forgot");
+
+    const panelSignup = document.getElementById("panel-signup");
+    const panelLogin = document.getElementById("panel-login");
+    const panelForgot = document.getElementById("panel-forgot");
+
+    const heroTitle = document.getElementById("hero-title");
+    const heroCopy = document.getElementById("hero-copy");
+    const intentTitle = document.getElementById("intent-title");
+    const intentCopy = document.getElementById("intent-copy");
+    const authTitle = document.getElementById("auth-title");
+    const authCopy = document.getElementById("auth-copy");
+
+    const statusBox = document.getElementById("status-box");
+    const errorBox = document.getElementById("error-box");
+    const successBox = document.getElementById("success-box");
+
+    const signupEmail = document.getElementById("signup-email");
+    const signupPassword = document.getElementById("signup-password");
+    const loginEmail = document.getElementById("login-email");
+    const loginPassword = document.getElementById("login-password");
+    const forgotEmail = document.getElementById("forgot-email");
+
+    const signupContinue = document.getElementById("signup-continue");
+    const loginContinue = document.getElementById("login-continue");
+    const forgotContinue = document.getElementById("forgot-continue");
+
+    const authSection = document.getElementById("auth-section");
+    const accountSection = document.getElementById("account-section");
+    const accountGrid = document.getElementById("account-grid");
+    const accountActions = document.getElementById("account-actions");
+    const accountCopy = document.getElementById("account-copy");
+
+    const navLoggedOut = document.getElementById("nav-logged-out");
+    const navLoggedIn = document.getElementById("nav-logged-in");
+    const navLogout = document.getElementById("nav-logout");
+    const navManageSubscription = document.getElementById("nav-manage-subscription");
+
+    const forgotPasswordLink = document.getElementById("forgot-password-link");
+    const switchToSignupLink = document.getElementById("switch-to-signup-link");
+
+    const navActionSlot = document.getElementById("nav-action-slot");
+
+    let currentAccount = null;
+
+    function showTab(mode) {
+      const signupActive = mode === "signup";
+      const loginActive = mode === "login";
+      const forgotActive = mode === "forgot";
+
+      tabSignup.classList.toggle("active", signupActive);
+      tabLogin.classList.toggle("active", loginActive);
+      tabForgot.classList.toggle("active", forgotActive);
+
+      panelSignup.classList.toggle("active", signupActive);
+      panelLogin.classList.toggle("active", loginActive);
+      panelForgot.classList.toggle("active", forgotActive);
+    }
+
+    tabSignup.addEventListener("click", () => showTab("signup"));
+    tabLogin.addEventListener("click", () => showTab("login"));
+    tabForgot.addEventListener("click", () => showTab("forgot"));
+    switchToSignupLink.addEventListener("click", () => showTab("signup"));
+    forgotPasswordLink.addEventListener("click", () => showTab("forgot"));
+
+    function setStatus(text) {
+      statusBox.textContent = text;
+      statusBox.style.display = text ? "block" : "none";
+    }
+
+    function setError(text) {
+      errorBox.textContent = text;
+      errorBox.style.display = text ? "block" : "none";
+    }
+
+    function setSuccess(text) {
+      successBox.innerHTML = text ? text : "";
+      successBox.style.display = text ? "block" : "none";
+    }
+
+    function clearMessages() {
+      setStatus("");
+      setError("");
+      setSuccess("");
+    }
+
+    function setBusy(isBusy) {
+      signupContinue.disabled = isBusy;
+      loginContinue.disabled = isBusy;
+      forgotContinue.disabled = isBusy;
+      navLogout.disabled = isBusy;
+      navManageSubscription.disabled = isBusy;
+    }
+
+    function safeLocalStorageGet(key) {
+      try {
+        const v = window.localStorage.getItem(key);
+        return v && v.trim() ? v : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function safeLocalStorageSet(key, value) {
+      try {
+        window.localStorage.setItem(key, value);
+      } catch {}
+    }
+
+    function safeLocalStorageRemove(key) {
+      try {
+        window.localStorage.removeItem(key);
+      } catch {}
+    }
+
+    function getWebToken() {
+      return safeLocalStorageGet(LS_WEB_TOKEN);
+    }
+
+    function setWebToken(token) {
+      safeLocalStorageSet(LS_WEB_TOKEN, token);
+    }
+
+    function clearWebToken() {
+      safeLocalStorageRemove(LS_WEB_TOKEN);
+    }
+
+    function randomUuidV4() {
+      if (typeof crypto !== "undefined" && "randomUUID" in crypto && typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID();
+      }
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    }
+
+    function getOrCreateDeviceId() {
+      const existing = safeLocalStorageGet(LS_WEB_DEVICE_ID);
+      if (existing) return existing;
+      const did = randomUuidV4();
+      safeLocalStorageSet(LS_WEB_DEVICE_ID, did);
+      return did;
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    async function safeReadJson(res) {
+      const text = await res.text().catch(() => "");
+      if (!text) return {};
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { raw: text };
+      }
+    }
+
+    async function apiPost(path, body, token) {
+      const headers = { "content-type": "application/json" };
+      if (token) headers.authorization = `Bearer ${token}`;
+
+      const res = await fetch(`${API_BASE}${path}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      const data = await safeReadJson(res);
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || `Request failed: ${res.status}`);
+      }
+      return data;
+    }
+
+    async function apiGet(path, token) {
+      const headers = {};
+      if (token) headers.authorization = `Bearer ${token}`;
+
+      const res = await fetch(`${API_BASE}${path}`, {
+        method: "GET",
+        headers
+      });
+
+      const data = await safeReadJson(res);
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || `Request failed: ${res.status}`);
+      }
+      return data;
+    }
+
+    async function registerAndLogin(email, password) {
+      const deviceId = getOrCreateDeviceId();
+      await apiPost("/auth/register", { email, password });
+      const data = await apiPost("/auth/login", { email, password, deviceId });
+
+      const token =
+        data?.token ||
+        data?.jwt ||
+        data?.access_token ||
+        (data?.ok && data?.token) ||
+        null;
+
+      if (!token || typeof token !== "string") {
+        throw new Error("Login succeeded but token was not returned.");
+      }
+
+      setWebToken(token);
+      return token;
+    }
+
+    async function loginOnly(email, password) {
+      const deviceId = getOrCreateDeviceId();
+      const data = await apiPost("/auth/login", { email, password, deviceId });
+
+      const token =
+        data?.token ||
+        data?.jwt ||
+        data?.access_token ||
+        (data?.ok && data?.token) ||
+        null;
+
+      if (!token || typeof token !== "string") {
+        throw new Error("Login succeeded but token was not returned.");
+      }
+
+      setWebToken(token);
+      return token;
+    }
+
+    async function fetchAccount() {
+      const token = getWebToken();
+      if (!token) return null;
+      try {
+        return await apiGet("/account/me", token);
+      } catch (_) {
+        clearWebToken();
+        return null;
+      }
+    }
+
+    function setHeaderLoggedIn(isLoggedIn) {
+        navLoggedOut.style.display = isLoggedIn ? "none" : "flex";
+        navLoggedIn.style.display = isLoggedIn ? "flex" : "none";
+        navActionSlot.classList.remove("nav-auth-pending");
+    }
+
+    function showAuthSection() {
+        authSection.classList.remove("initially-hidden");
+        accountSection.classList.add("initially-hidden");
+        authSection.style.display = "block";
+        accountSection.style.display = "none";
+        setHeaderLoggedIn(false);
+    }
+
+    function showAccountSection() {
+        accountSection.classList.remove("initially-hidden");
+        authSection.classList.add("initially-hidden");
+        authSection.style.display = "none";
+        accountSection.style.display = "block";
+        setHeaderLoggedIn(true);
+    }
+
+    function buildAccessSummary(license) {
+      if (!license) return "No active access";
+
+      if (license.entitled && license.in_trial) {
+        return `Trial active until ${license.trial_end_at || license.entitled_until || "-"}`;
+      }
+
+      if (license.entitled) {
+        if (license.cancel_at_period_end) {
+          return `Paid access active, ends ${license.current_period_end || license.entitled_until || "-"}`;
+        }
+        return `Paid access active${license.current_period_end ? ` until ${license.current_period_end}` : ""}`;
+      }
+
+      if (license.plan && license.plan !== "none") {
+        return `${license.plan} / ${license.status}`;
+      }
+
+      return "No active access";
+    }
+
+    function renderAccount(account) {
+      currentAccount = account;
+      showAccountSection();
+
+      const user = account?.user || {};
+      const license = account?.license || {};
+
+      const verifiedText = user.email_verified ? "Verified" : "Not verified";
+      const accessText = buildAccessSummary(license);
+
+      accountGrid.innerHTML = `
+        <div class="account-item">
+          <strong>Email</strong>
+          <span>${escapeHtml(user.email || "-")}</span>
+        </div>
+        <div class="account-item">
+          <strong>Email status</strong>
+          <span>${escapeHtml(verifiedText)}</span>
+        </div>
+        <div class="account-item">
+          <strong>Current access</strong>
+          <span>${escapeHtml(accessText)}</span>
+        </div>
+        <div class="account-item">
+          <strong>Plan / status</strong>
+          <span>${escapeHtml((license.plan || "none") + " / " + (license.status || "none"))}</span>
+        </div>
+      `;
+
+      if (intent === "trial") {
+        accountCopy.textContent = license.entitled
+          ? "You are already signed in. Your access is active."
+          : "You are signed in. Start the 3 day free trial when ready.";
+      } else if (intent === "monthly") {
+        accountCopy.textContent = license.entitled
+          ? "You are already signed in. Your access is active."
+          : "You are signed in. Continue to monthly checkout when ready.";
+      } else if (intent === "yearly") {
+        accountCopy.textContent = license.entitled
+          ? "You are already signed in. Your access is active."
+          : "You are signed in. Continue to yearly checkout when ready.";
+      } else {
+        accountCopy.textContent = "You are logged in. Use the same account inside the app.";
+      }
+
+      const actions = [];
+
+      if (!license.entitled && intent === "trial") {
+        actions.push(`<button class="btn btn-primary" type="button" id="action-trial">Start 3 day free trial</button>`);
+        actions.push(`<button class="btn btn-secondary" type="button" id="action-monthly">Get monthly access instead</button>`);
+        actions.push(`<button class="btn btn-secondary" type="button" id="action-yearly">Get yearly access instead</button>`);
+      } else if (!license.entitled && intent === "monthly") {
+        actions.push(`<button class="btn btn-primary" type="button" id="action-monthly">Continue to monthly checkout</button>`);
+        actions.push(`<button class="btn btn-secondary" type="button" id="action-trial">Start 3 day free trial instead</button>`);
+        actions.push(`<button class="btn btn-secondary" type="button" id="action-yearly">Get yearly access instead</button>`);
+      } else if (!license.entitled && intent === "yearly") {
+        actions.push(`<button class="btn btn-primary" type="button" id="action-yearly">Continue to yearly checkout</button>`);
+        actions.push(`<button class="btn btn-secondary" type="button" id="action-trial">Start 3 day free trial instead</button>`);
+        actions.push(`<button class="btn btn-secondary" type="button" id="action-monthly">Get monthly access instead</button>`);
+      } else if (!license.entitled) {
+        actions.push(`<button class="btn btn-primary" type="button" id="action-trial">Start 3 day free trial</button>`);
+        actions.push(`<button class="btn btn-secondary" type="button" id="action-monthly">Get monthly access</button>`);
+        actions.push(`<button class="btn btn-secondary" type="button" id="action-yearly">Get yearly access</button>`);
+      }
+
+      if (license.plan === "pro" || license.entitled || license.status === "active" || license.status === "trialing" || license.status === "canceling") {
+        actions.push(`<button class="btn btn-secondary" type="button" id="action-portal">Manage subscription</button>`);
+      }
+
+      actions.push(`<button class="btn btn-secondary" type="button" id="action-logout">Log out</button>`);
+
+      accountActions.innerHTML = actions.join("");
+
+      const trialBtn = document.getElementById("action-trial");
+      const monthlyBtn = document.getElementById("action-monthly");
+      const yearlyBtn = document.getElementById("action-yearly");
+      const portalBtn = document.getElementById("action-portal");
+      const logoutBtn = document.getElementById("action-logout");
+
+      if (trialBtn) trialBtn.addEventListener("click", () => continueCheckout("month", true));
+      if (monthlyBtn) monthlyBtn.addEventListener("click", () => continueCheckout("month", false));
+      if (yearlyBtn) yearlyBtn.addEventListener("click", () => continueCheckout("year", false));
+      if (portalBtn) portalBtn.addEventListener("click", openPortal);
+      if (logoutBtn) logoutBtn.addEventListener("click", logoutNow);
+    }
+
+    async function continueCheckout(interval, withTrial) {
+      clearMessages();
+      setBusy(true);
+      try {
+        const token = getWebToken();
+        if (!token) throw new Error("You are not logged in.");
+
+        setStatus("Preparing secure checkout...");
+        const data = await apiPost("/stripe/checkout", { interval, withTrial }, token);
+
+        if (!data?.url) {
+          throw new Error("Checkout URL missing.");
+        }
+
+        window.location.href = data.url;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not open checkout.");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function openPortal() {
+      clearMessages();
+      setBusy(true);
+      try {
+        const token = getWebToken();
+        if (!token) throw new Error("You are not logged in.");
+
+        setStatus("Opening billing portal...");
+        const data = await apiPost("/stripe/portal", {}, token);
+
+        if (!data?.url) {
+          throw new Error("Portal URL missing.");
+        }
+
+        window.location.href = data.url;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not open billing portal.");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function logoutNow() {
+      clearMessages();
+      setBusy(true);
+      try {
+        const token = getWebToken();
+        if (token) {
+          await apiPost("/auth/logout", {}, token);
+        }
+      } catch (_) {
+      } finally {
+        clearWebToken();
+        currentAccount = null;
+        setBusy(false);
+        showAuthSection();
+        showTab("login");
+        setSuccess("Logged out.");
+      }
+    }
+
+    async function startForgotPassword() {
+      clearMessages();
+      setBusy(true);
+      try {
+        const email = String(forgotEmail.value || "").trim();
+        if (!email) throw new Error("Email required.");
+
+        setStatus("Preparing password reset...");
+        const data = await apiPost("/auth/forgot-password", { email });
+
+        const resetUrl = data?.dev_reset_url || "";
+        if (resetUrl) {
+          const safeUrl = escapeHtml(resetUrl);
+          setSuccess(`Password reset prepared.<br><br><a class="text-link" href="${safeUrl}">${safeUrl}</a>`);
+        } else {
+          setSuccess("Password reset prepared.");
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not start password reset.");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function continueFlow() {
+      const account = await fetchAccount();
+      if (account) {
+        renderAccount(account);
+      }
+
+      if (intent === "login") {
+        setSuccess("Logged in successfully. You can now download the app below and sign in inside Contentorrr.");
+        return;
+      }
+
+      if (intent === "trial") {
+        await continueCheckout("month", true);
+        return;
+      }
+
+      if (intent === "monthly") {
+        await continueCheckout("month", false);
+        return;
+      }
+
+      if (intent === "yearly") {
+        await continueCheckout("year", false);
+        return;
+      }
+
+      setSuccess("Account ready. You can now download the app below and sign in inside Contentorrr.");
+    }
+
+    function applyIntentUi() {
+      if (intent === "trial") {
+        heroTitle.textContent = "Start your 3 day free trial";
+        heroCopy.textContent = "Create your account or log in, then continue to secure checkout to activate your 3 day trial.";
+        intentTitle.textContent = "Start 3 day free trial";
+        intentCopy.textContent = "Secure checkout is used to activate the trial cleanly and tie it to your account.";
+        authTitle.textContent = "Create account or log in";
+        authCopy.textContent = "Use email and password. Google login is not wired yet, so the button stays disabled.";
+      } else if (intent === "monthly") {
+        heroTitle.textContent = "Get monthly access";
+        heroCopy.textContent = "Create your account or log in, then continue to monthly checkout.";
+        intentTitle.textContent = "Monthly plan";
+        intentCopy.textContent = "$29.90 per month. Immediate paid access after checkout.";
+        authTitle.textContent = "Create account or log in";
+        authCopy.textContent = "Use email and password, then continue directly to monthly checkout.";
+      } else if (intent === "yearly") {
+        heroTitle.textContent = "Get yearly access";
+        heroCopy.textContent = "Create your account or log in, then continue to yearly checkout.";
+        intentTitle.textContent = "Yearly plan";
+        intentCopy.textContent = "$239 per year. Lower effective monthly cost and immediate paid access after checkout.";
+        authTitle.textContent = "Create account or log in";
+        authCopy.textContent = "Use email and password, then continue directly to yearly checkout.";
+      } else {
+        heroTitle.textContent = "Sign in to Contentorrr";
+        heroCopy.textContent = "Create your account or log in, then download the app and sign in inside Contentorrr.";
+        intentTitle.textContent = "Account access";
+        intentCopy.textContent = "Use the same credentials on the website and inside the desktop app.";
+        authTitle.textContent = "Create account or log in";
+        authCopy.textContent = "Use email and password. Google login is not wired yet, so the button stays disabled.";
+      }
+    }
+
+    signupContinue.addEventListener("click", async () => {
+      clearMessages();
+      setBusy(true);
+      try {
+        const email = String(signupEmail.value || "").trim();
+        const password = String(signupPassword.value || "");
+        if (!email || !password) throw new Error("Email and password required.");
+        if (password.length < 8) throw new Error("Password must be at least 8 characters.");
+
+        setStatus("Creating account...");
+        await registerAndLogin(email, password);
+        await continueFlow();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not create account.");
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    loginContinue.addEventListener("click", async () => {
+      clearMessages();
+      setBusy(true);
+      try {
+        const email = String(loginEmail.value || "").trim();
+        const password = String(loginPassword.value || "");
+        if (!email || !password) throw new Error("Email and password required.");
+
+        setStatus("Logging in...");
+        await loginOnly(email, password);
+        await continueFlow();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not log in.");
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    forgotContinue.addEventListener("click", startForgotPassword);
+    navLogout.addEventListener("click", logoutNow);
+    navManageSubscription.addEventListener("click", openPortal);
+
+    async function bootstrap() {
+    applyIntentUi();
+
+        if (intent === "login") {
+            showTab("login");
+        } else {
+            showTab("signup");
+        }
+
+        if (checkoutState === "canceled") {
+            setError("Checkout was canceled. You can try again anytime.");
+        }
+
+        const existingToken = getWebToken();
+        if (!existingToken) {
+            showAuthSection();
+            return;
+        }
+
+        const account = await fetchAccount();
+        if (!account) {
+            showAuthSection();
+            return;
+        }
+
+        renderAccount(account);
+
+        if (intent === "login") {
+            setSuccess("You are already logged in in this browser. You can download the app below and sign in inside Contentorrr.");
+        }
+    }
+
+    bootstrap();
+  </script>
+</body>
+</html>
