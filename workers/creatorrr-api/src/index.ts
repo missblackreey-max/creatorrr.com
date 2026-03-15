@@ -196,7 +196,7 @@ function escapeHtml(v: string): string {
 
 async function sendPasswordResetEmail(env: Env, toEmail: string, resetUrl: string): Promise<boolean> {
   const apiKey = String(env.RESEND_API_KEY || "").trim();
-  const fromEmail = String(env.RESEND_FROM_EMAIL || "").trim();
+  const fromEmail = String(env.RESEND_FROM_EMAIL || "noreply@mail.creatorrr.com").trim();
   const fromName = String(env.RESEND_FROM_NAME || "Creatorrr").trim() || "Creatorrr";
   if (!apiKey || !fromEmail) return false;
 
