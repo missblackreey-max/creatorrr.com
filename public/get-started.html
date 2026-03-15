@@ -279,7 +279,7 @@
 
     .tabs {
       display: inline-grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: 8px;
       width: 100%;
       margin-bottom: 18px;
@@ -339,6 +339,14 @@
       margin-top: 16px;
     }
 
+    .forgot-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
     .form-note {
       margin-top: 12px;
       color: var(--muted-2);
@@ -359,6 +367,10 @@
       font-size: 13px;
       font-weight: 650;
       cursor: pointer;
+      background: transparent;
+      border: 0;
+      padding: 0;
+      font-family: inherit;
     }
 
     .text-link:hover {
@@ -513,10 +525,18 @@
       .nav-actions {
       position: static;
       width: 100%;
+      justify-content: flex-end;
       }
 
       .btn {
         width: 100%;
+      }
+
+      .nav-actions .btn {
+        width: auto;
+        min-height: 38px;
+        padding: 0 14px;
+        font-size: 13px;
       }
 
       .tiny-row {
@@ -601,62 +621,74 @@
           <div class="tabs" role="tablist" aria-label="Authentication mode">
             <button class="tab active" id="tab-signup" type="button">Create account</button>
             <button class="tab" id="tab-login" type="button">Log in</button>
-            <button class="tab" id="tab-forgot" type="button">Reset password</button>
           </div>
 
           <div class="form-panel active" id="panel-signup">
-            <label>
-              Email
-              <input id="signup-email" type="email" autocomplete="email" />
-            </label>
-            <label>
-              Password
-              <input id="signup-password" type="password" autocomplete="new-password" minlength="8" />
-            </label>
+            <form id="signup-form" autocomplete="on">
+              <label>
+                Email
+                <input id="signup-email" name="email" type="email" autocomplete="email" required />
+              </label>
+              <label>
+                Set password
+                <input id="signup-password" name="new-password" type="password" autocomplete="new-password" minlength="8" required />
+              </label>
+              <label>
+                Repeat password
+                <input id="signup-password-confirm" name="new-password-confirm" type="password" autocomplete="new-password" minlength="8" required />
+              </label>
 
-            <div class="form-actions">
-              <button class="btn btn-primary" id="signup-continue" type="button">Create account and continue</button>
-            </div>
+              <div class="form-actions">
+                <button class="btn btn-primary" id="signup-continue" type="submit">Create account and continue</button>
+              </div>
 
-            <div class="form-note">
-              Minimum password length: 8 characters.
-            </div>
+              <div class="form-note">
+                Minimum password length: 8 characters.
+              </div>
+            </form>
           </div>
 
           <div class="form-panel" id="panel-login">
-            <label>
-              Email
-              <input id="login-email" type="email" autocomplete="email" />
-            </label>
-            <label>
-              Password
-              <input id="login-password" type="password" autocomplete="current-password" />
-            </label>
+            <form id="login-form" autocomplete="on">
+              <label>
+                Email
+                <input id="login-email" name="email" type="email" autocomplete="email" required />
+              </label>
+              <label>
+                Password
+                <input id="login-password" name="password" type="password" autocomplete="current-password" required />
+              </label>
 
-            <div class="form-actions">
-              <button class="btn btn-primary" id="login-continue" type="button">Log in and continue</button>
-            </div>
+              <div class="form-actions">
+                <button class="btn btn-primary" id="login-continue" type="submit">Log in and continue</button>
+              </div>
 
-            <div class="tiny-row">
-              <span class="text-link" id="forgot-password-link">Forgot password?</span>
-              <span class="text-link" id="switch-to-signup-link">Need an account?</span>
-            </div>
+              <div class="tiny-row">
+                <button class="text-link" id="forgot-password-link" type="button">Forgot password?</button>
+                <button class="text-link" id="switch-to-signup-link" type="button">Need an account?</button>
+              </div>
+            </form>
           </div>
 
           <div class="form-panel" id="panel-forgot">
-            <label>
-              Email
-              <input id="forgot-email" type="email" autocomplete="email" />
-            </label>
+            <form id="forgot-form" autocomplete="on">
+              <label>
+                Email
+                <input id="forgot-email" name="email" type="email" autocomplete="email" required />
+              </label>
 
-            <div class="form-actions">
-              <button class="btn btn-primary" id="forgot-continue" type="button">Prepare reset link</button>
-              <a class="btn btn-secondary" href="./reset-password.html">Open reset page</a>
-            </div>
+              <div class="form-actions">
+                <button class="btn btn-primary" id="forgot-continue" type="submit">Send reset link</button>
+              </div>
 
-            <div class="form-note">
-              For now, this returns a dev reset link directly on the page instead of sending email.
-            </div>
+              <div class="form-note">
+                Enter the email address tied to your account. If it exists, you will receive a reset link.
+              </div>
+
+              <div class="forgot-actions">
+                <button class="text-link" id="back-to-login-link" type="button">Back to login</button>
+              </div>
+            </form>
           </div>
 
           <div class="divider">Later</div>
@@ -718,11 +750,13 @@
 
     const tabSignup = document.getElementById("tab-signup");
     const tabLogin = document.getElementById("tab-login");
-    const tabForgot = document.getElementById("tab-forgot");
 
     const panelSignup = document.getElementById("panel-signup");
     const panelLogin = document.getElementById("panel-login");
     const panelForgot = document.getElementById("panel-forgot");
+    const signupForm = document.getElementById("signup-form");
+    const loginForm = document.getElementById("login-form");
+    const forgotForm = document.getElementById("forgot-form");
 
     const heroTitle = document.getElementById("hero-title");
     const heroCopy = document.getElementById("hero-copy");
@@ -737,6 +771,7 @@
 
     const signupEmail = document.getElementById("signup-email");
     const signupPassword = document.getElementById("signup-password");
+    const signupPasswordConfirm = document.getElementById("signup-password-confirm");
     const loginEmail = document.getElementById("login-email");
     const loginPassword = document.getElementById("login-password");
     const forgotEmail = document.getElementById("forgot-email");
@@ -758,6 +793,7 @@
 
     const forgotPasswordLink = document.getElementById("forgot-password-link");
     const switchToSignupLink = document.getElementById("switch-to-signup-link");
+    const backToLoginLink = document.getElementById("back-to-login-link");
 
     const navActionSlot = document.getElementById("nav-action-slot");
 
@@ -770,7 +806,6 @@
 
       tabSignup.classList.toggle("active", signupActive);
       tabLogin.classList.toggle("active", loginActive);
-      tabForgot.classList.toggle("active", forgotActive);
 
       panelSignup.classList.toggle("active", signupActive);
       panelLogin.classList.toggle("active", loginActive);
@@ -779,9 +814,9 @@
 
     tabSignup.addEventListener("click", () => showTab("signup"));
     tabLogin.addEventListener("click", () => showTab("login"));
-    tabForgot.addEventListener("click", () => showTab("forgot"));
     switchToSignupLink.addEventListener("click", () => showTab("signup"));
     forgotPasswordLink.addEventListener("click", () => showTab("forgot"));
+    backToLoginLink.addEventListener("click", () => showTab("login"));
 
     function setStatus(text) {
       statusBox.textContent = text;
@@ -1166,15 +1201,14 @@
         const email = String(forgotEmail.value || "").trim();
         if (!email) throw new Error("Email required.");
 
-        setStatus("Preparing password reset...");
+        setStatus("Sending password reset link...");
         const data = await apiPost("/auth/forgot-password", { email });
-
-        const resetUrl = data?.dev_reset_url || "";
+        const resetUrl = String(data?.reset_url || "").trim();
         if (resetUrl) {
           const safeUrl = escapeHtml(resetUrl);
-          setSuccess(`Password reset prepared.<br><br><a class="text-link" href="${safeUrl}">${safeUrl}</a>`);
+          setSuccess(`We could not send email yet, so use this reset link directly:<br><br><a class="text-link" href="${safeUrl}">${safeUrl}</a>`);
         } else {
-          setSuccess("Password reset prepared.");
+          setSuccess("If that email exists, we sent a reset link. Check your inbox and spam folder.");
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not start password reset.");
@@ -1244,14 +1278,17 @@
       }
     }
 
-    signupContinue.addEventListener("click", async () => {
+    signupForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
       clearMessages();
       setBusy(true);
       try {
         const email = String(signupEmail.value || "").trim();
         const password = String(signupPassword.value || "");
+        const passwordConfirm = String(signupPasswordConfirm.value || "");
         if (!email || !password) throw new Error("Email and password required.");
         if (password.length < 8) throw new Error("Password must be at least 8 characters.");
+        if (password !== passwordConfirm) throw new Error("Passwords do not match.");
 
         setStatus("Creating account...");
         await registerAndLogin(email, password);
@@ -1263,7 +1300,8 @@
       }
     });
 
-    loginContinue.addEventListener("click", async () => {
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
       clearMessages();
       setBusy(true);
       try {
@@ -1281,7 +1319,10 @@
       }
     });
 
-    forgotContinue.addEventListener("click", startForgotPassword);
+    forgotForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      startForgotPassword();
+    });
     navLogout.addEventListener("click", logoutNow);
     navManageSubscription.addEventListener("click", openPortal);
 

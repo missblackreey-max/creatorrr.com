@@ -7,6 +7,9 @@ export interface Env {
   STRIPE_WEBHOOK_SECRET: string;
   SITE_URL: string;
   STRIPE_PORTAL_RETURN_URL?: string;
+  RESEND_API_KEY?: string;
+  RESEND_FROM_EMAIL?: string;
+  RESEND_FROM_NAME?: string;
 }
 
 // -------------------- CORS --------------------
@@ -180,6 +183,43 @@ function parseIsoMs(v: unknown): number | null {
 
 function normalizeSiteUrl(v: string): string {
   return (v || "").trim().replace(/\/+$/, "");
+}
+
+function escapeHtml(v: string): string {
+  return v
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+async function sendPasswordResetEmail(env: Env, toEmail: string, resetUrl: string): Promise<boolean> {
+  const apiKey = String(env.RESEND_API_KEY || "").trim();
+  const fromEmail = String(env.RESEND_FROM_EMAIL || "noreply@mail.creatorrr.com").trim();
+  const fromName = String(env.RESEND_FROM_NAME || "Creatorrr").trim() || "Creatorrr";
+  if (!apiKey || !fromEmail) return false;
+
+  const safeUrl = escapeHtml(resetUrl);
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      from: `${fromName} <${fromEmail}>`,
+      to: [toEmail],
+      subject: "Reset your Creatorrr password",
+      html: [
+        "<p>You requested a password reset for your Creatorrr account.</p>",
+        `<p><a href=\"${safeUrl}\">Reset your password</a></p>`,
+        "<p>This link expires in 30 minutes. If you did not request this, you can ignore this email.</p>",
+      ].join(""),
+    }),
+  });
+
+  return response.ok;
 }
 
 function unixToIso(v: unknown): string | null {
@@ -1096,11 +1136,13 @@ export default {
 
       const siteUrl = normalizeSiteUrl(env.SITE_URL);
       const resetUrl = `${siteUrl}/reset-password.html?token=${encodeURIComponent(rawToken)}`;
+      const mailed = await sendPasswordResetEmail(env, user.email, resetUrl).catch(() => false);
 
       return json(req, {
         ok: true,
         sent: true,
-        dev_reset_url: resetUrl,
+        delivery: mailed ? "email" : "link",
+        reset_url: mailed ? undefined : resetUrl,
         expires_at: expiresAt,
       });
     }
