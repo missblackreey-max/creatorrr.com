@@ -54,4 +54,5 @@ describe('creatorrr-api worker', () => {
 		expect(response.status).toBe(400);
 		expect(await response.json()).toMatchObject({ ok: false, error: 'invalid_input' });
 	});
+
 });

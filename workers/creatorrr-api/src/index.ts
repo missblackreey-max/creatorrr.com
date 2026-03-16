@@ -271,7 +271,7 @@ async function issueEmailVerification(
   env: Env,
   userId: string,
   email: string,
-): Promise<{ delivery: "email" | "link"; verify_url?: string; expires_at: string }> {
+): Promise<{ sent: boolean; expires_at: string }> {
   const rawToken = makeOpaqueToken();
   const tokenHash = await sha256Hex(rawToken);
   const expiresAt = addMinutesIso(60 * 24);
@@ -296,8 +296,7 @@ async function issueEmailVerification(
   const mailed = await sendEmailVerificationEmail(env, email, verifyUrl).catch(() => false);
 
   return {
-    delivery: mailed ? "email" : "link",
-    verify_url: mailed ? undefined : verifyUrl,
+    sent: mailed,
     expires_at: expiresAt,
   };
 }
@@ -1503,7 +1502,7 @@ export default {
         ok: true,
         userId,
         email,
-        email_verification: emailVerification,
+        email_verification_sent: emailVerification.sent,
       });
     }
 
@@ -1580,11 +1579,10 @@ export default {
         return json(req, { ok: true, sent: true });
       }
 
-      const emailVerification = await issueEmailVerification(env, user.id, user.email);
+      await issueEmailVerification(env, user.id, user.email);
       return json(req, {
         ok: true,
         sent: true,
-        email_verification: emailVerification,
       });
     }
 
