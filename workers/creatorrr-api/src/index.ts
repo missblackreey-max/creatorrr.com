@@ -304,7 +304,7 @@ async function issueEmailVerification(
     .bind(userId, tokenHash, expiresAt, now)
     .run();
 
-  const siteUrl = normalizeSiteUrl(env.SITE_URL);
+  const siteUrl = safeSiteUrl(env);
   const verifyUrl = `${siteUrl}/verify-email.html?token=${encodeURIComponent(rawToken)}`;
   const mailed = await sendEmailVerificationEmail(env, email, verifyUrl).catch(() => false);
 
@@ -1613,10 +1613,11 @@ export default {
         return json(req, { ok: true, sent: true });
       }
 
-      await issueEmailVerification(env, user.id, user.email);
+      const result = await issueEmailVerification(env, user.id, user.email);
       return json(req, {
         ok: true,
-        sent: true,
+        sent: result.sent,
+        expires_at: result.expires_at,
       });
     }
 
