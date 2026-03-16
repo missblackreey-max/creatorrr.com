@@ -10,6 +10,8 @@ export interface Env {
   RESEND_API_KEY?: string;
   RESEND_FROM_EMAIL?: string;
   RESEND_FROM_NAME?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
 }
 
 // -------------------- CORS --------------------
@@ -175,6 +177,13 @@ function normalizeDeviceId(deviceId: string) {
   return v;
 }
 
+function normalizeClientNonce(v: string) {
+  const s = (v || "").trim();
+  if (!s) return "";
+  if (s.length > 120) return "";
+  return s;
+}
+
 function parseIsoMs(v: unknown): number | null {
   if (typeof v !== "string" || !v.trim()) return null;
   const ms = Date.parse(v);
@@ -183,6 +192,10 @@ function parseIsoMs(v: unknown): number | null {
 
 function normalizeSiteUrl(v: string): string {
   return (v || "").trim().replace(/\/+$/, "");
+}
+
+function safeSiteUrl(env: Env): string {
+  return normalizeSiteUrl(env.SITE_URL || "https://creatorrr.com") || "https://creatorrr.com";
 }
 
 function escapeHtml(v: string): string {
@@ -278,6 +291,11 @@ function makeOpaqueToken() {
   return b64url(bytes.buffer);
 }
 
+function makeOpaqueSecret() {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return b64url(bytes.buffer);
+}
+
 function addMinutesIso(minutes: number): string {
   return new Date(Date.now() + minutes * 60_000).toISOString();
 }
@@ -286,6 +304,105 @@ function isExpiredIso(v: string | null | undefined): boolean {
   if (!v) return true;
   const ms = Date.parse(v);
   return !Number.isFinite(ms) || ms <= Date.now();
+}
+
+function redirect(req: Request, to: string, status = 302): Response {
+  return redirectWithHeaders(req, to, status);
+}
+
+function redirectWithHeaders(
+  req: Request,
+  to: string,
+  status = 302,
+  extraHeaders?: Record<string, string>,
+): Response {
+  const headers = new Headers({
+    location: to,
+  });
+  if (extraHeaders) {
+    for (const [k, v] of Object.entries(extraHeaders)) headers.set(k, v);
+  }
+  return withCors(
+    req,
+    new Response(null, {
+      status,
+      headers,
+    }),
+  );
+}
+
+function getCookieValue(req: Request, name: string): string {
+  const cookie = req.headers.get("cookie") || "";
+  if (!cookie) return "";
+  const parts = cookie.split(";");
+  for (const p of parts) {
+    const s = p.trim();
+    if (!s) continue;
+    const idx = s.indexOf("=");
+    if (idx <= 0) continue;
+    const k = s.slice(0, idx).trim();
+    if (k !== name) continue;
+    return s.slice(idx + 1).trim();
+  }
+  return "";
+}
+
+type GoogleIdTokenInfo = {
+  sub: string;
+  email?: string;
+  email_verified?: string;
+};
+
+async function getGoogleIdTokenInfo(idToken: string): Promise<GoogleIdTokenInfo | null> {
+  const res = await fetch(
+    `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+  );
+  if (!res.ok) return null;
+  const obj = (await res.json()) as Record<string, any>;
+  const sub = String(obj.sub || "").trim();
+  if (!sub) return null;
+  return {
+    sub,
+    email: typeof obj.email === "string" ? obj.email : undefined,
+    email_verified: typeof obj.email_verified === "string" ? obj.email_verified : undefined,
+  };
+}
+
+async function getUserIdByGoogleSub(env: Env, sub: string): Promise<string | null> {
+  const row = await env.creatorrr_db
+    .prepare("SELECT user_id FROM user_identities WHERE provider='google' AND provider_user_id=?1")
+    .bind(sub)
+    .first<{ user_id?: string }>();
+  const id = String(row?.user_id || "").trim();
+  return id || null;
+}
+
+async function issueWebToken(env: Env, userId: string, deviceId: string) {
+  const allow = await ensureDeviceAllowed(env, userId, deviceId);
+  if (!allow.ok) return { ok: false as const, reason: allow.reason || "device_not_allowed" };
+
+  const tv = await currentDeviceTokenVersion(env, userId, deviceId);
+  if (tv === null) return { ok: false as const, reason: "device_not_registered" };
+
+  const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7;
+  const token = await jwtSign(env.JWT_SECRET, {
+    sub: userId,
+    exp,
+    did: deviceId,
+    tv,
+  });
+
+  return { ok: true as const, token, exp };
+}
+
+function oauthRedirectToSite(env: Env, intent: string, extras?: Record<string, string>) {
+  const site = safeSiteUrl(env);
+  const query = new URLSearchParams();
+  query.set("intent", intent || "trial");
+  if (extras) {
+    for (const [k, v] of Object.entries(extras)) query.set(k, v);
+  }
+  return `${site}/get-started.html?${query.toString()}`;
 }
 
 // -------------------- Types --------------------
@@ -1024,6 +1141,235 @@ export default {
         const message = err instanceof Error ? err.message : "webhook_processing_failed";
         return bad(req, "webhook_processing_failed", 500, { message, eventType });
       }
+    }
+
+    // ---------- AUTH GOOGLE START ----------
+    if (req.method === "GET" && url.pathname === "/auth/google/start") {
+      const clientId = String(env.GOOGLE_CLIENT_ID || "").trim();
+      const clientSecret = String(env.GOOGLE_CLIENT_SECRET || "").trim();
+      if (!clientId || !clientSecret) return bad(req, "google_oauth_not_configured", 500);
+
+      const deviceId = normalizeDeviceId(String(url.searchParams.get("deviceId") || ""));
+      if (!deviceId) return bad(req, "missing_device_id", 400);
+
+      const intentRaw = String(url.searchParams.get("intent") || "trial").trim().toLowerCase();
+      const intent = ["trial", "monthly", "yearly", "login"].includes(intentRaw) ? intentRaw : "trial";
+      const clientNonce = normalizeClientNonce(String(url.searchParams.get("clientNonce") || ""));
+      if (!clientNonce) return bad(req, "missing_client_nonce", 400);
+
+      const state = makeOpaqueToken();
+      const browserNonce = makeOpaqueToken();
+      const browserNonceHash = await sha256Hex(browserNonce);
+      const now = nowIso();
+      const expires = addMinutesIso(10);
+
+      await env.creatorrr_db
+        .prepare(
+          `INSERT INTO oauth_states (
+            state,
+            provider,
+            device_id,
+            intent,
+            created_at,
+            expires_at,
+            browser_nonce_hash,
+            client_nonce
+          ) VALUES (?1, 'google', ?2, ?3, ?4, ?5, ?6, ?7)`,
+        )
+        .bind(state, deviceId, intent, now, expires, browserNonceHash, clientNonce)
+        .run();
+
+      const redirectUri = `${url.origin}/auth/google/callback`;
+      const gp = new URLSearchParams();
+      gp.set("client_id", clientId);
+      gp.set("redirect_uri", redirectUri);
+      gp.set("response_type", "code");
+      gp.set("scope", "openid email profile");
+      gp.set("state", state);
+      gp.set("access_type", "online");
+      gp.set("include_granted_scopes", "true");
+      gp.set("prompt", "select_account");
+
+      return redirectWithHeaders(req, `https://accounts.google.com/o/oauth2/v2/auth?${gp.toString()}`, 302, {
+        "set-cookie": `creatorrr_google_oauth_nonce=${browserNonce}; Path=/auth/google/callback; Max-Age=600; HttpOnly; Secure; SameSite=Lax`,
+      });
+    }
+
+    // ---------- AUTH GOOGLE CALLBACK ----------
+    if (req.method === "GET" && url.pathname === "/auth/google/callback") {
+      const clientId = String(env.GOOGLE_CLIENT_ID || "").trim();
+      const clientSecret = String(env.GOOGLE_CLIENT_SECRET || "").trim();
+      if (!clientId || !clientSecret) {
+        return redirect(req, oauthRedirectToSite(env, "login", { oauth_error: "google_oauth_not_configured" }));
+      }
+
+      const oauthErr = String(url.searchParams.get("error") || "").trim();
+      if (oauthErr) {
+        return redirect(req, oauthRedirectToSite(env, "login", { oauth_error: oauthErr }));
+      }
+
+      const state = String(url.searchParams.get("state") || "").trim();
+      const code = String(url.searchParams.get("code") || "").trim();
+      if (!state || !code) {
+        return redirect(req, oauthRedirectToSite(env, "login", { oauth_error: "invalid_oauth_callback" }));
+      }
+
+      const saved = await env.creatorrr_db
+        .prepare(
+          `SELECT state, provider, device_id, intent, expires_at, browser_nonce_hash, client_nonce
+           FROM oauth_states
+           WHERE state=?1 AND provider='google'`,
+        )
+        .bind(state)
+        .first<{
+          state: string;
+          provider: string;
+          device_id: string;
+          intent: string;
+          expires_at: string;
+          browser_nonce_hash?: string | null;
+          client_nonce?: string | null;
+        }>();
+
+      await env.creatorrr_db
+        .prepare("DELETE FROM oauth_states WHERE state=?1")
+        .bind(state)
+        .run();
+
+      const cookieNonce = getCookieValue(req, "creatorrr_google_oauth_nonce");
+      const cookieNonceHash = cookieNonce ? await sha256Hex(cookieNonce) : "";
+
+      if (
+        !saved ||
+        isExpiredIso(saved.expires_at) ||
+        !saved.browser_nonce_hash ||
+        cookieNonceHash !== saved.browser_nonce_hash
+      ) {
+        return redirect(req, oauthRedirectToSite(env, "login", { oauth_error: "oauth_state_expired" }));
+      }
+
+      const deviceId = normalizeDeviceId(String(saved.device_id || ""));
+      const intent = String(saved.intent || "trial").trim().toLowerCase();
+      if (!deviceId) {
+        return redirect(req, oauthRedirectToSite(env, "login", { oauth_error: "missing_device_id" }));
+      }
+
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: `${url.origin}/auth/google/callback`,
+          grant_type: "authorization_code",
+        }).toString(),
+      });
+
+      if (!tokenRes.ok) {
+        return redirect(req, oauthRedirectToSite(env, intent, { oauth_error: "google_token_exchange_failed" }));
+      }
+
+      const tokenData = (await tokenRes.json()) as Record<string, any>;
+      const idToken = String(tokenData.id_token || "").trim();
+      if (!idToken) {
+        return redirect(req, oauthRedirectToSite(env, intent, { oauth_error: "google_id_token_missing" }));
+      }
+
+      const idInfo = await getGoogleIdTokenInfo(idToken);
+      if (!idInfo) {
+        return redirect(req, oauthRedirectToSite(env, intent, { oauth_error: "google_id_token_invalid" }));
+      }
+
+      const email = normalizeEmail(String(idInfo.email || ""));
+      if (!email) {
+        return redirect(req, oauthRedirectToSite(env, intent, { oauth_error: "google_email_missing" }));
+      }
+
+      let userId = await getUserIdByGoogleSub(env, idInfo.sub);
+
+      if (!userId) {
+        const existing = await getUserByEmail(env, email);
+        if (existing) {
+          return redirectWithHeaders(
+            req,
+            oauthRedirectToSite(env, intent, {
+              oauth_error: "email_already_exists_use_password",
+              oauth_client_nonce: String(saved.client_nonce || ""),
+            }),
+            302,
+            {
+              "set-cookie": "creatorrr_google_oauth_nonce=; Path=/auth/google/callback; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+            },
+          );
+        }
+
+        userId = uuid();
+        const now = isoNow();
+        const salt = makeSalt();
+        const hash = await pbkdf2(makeOpaqueSecret(), salt);
+        const emailVerifiedAt = idInfo.email_verified === "true" ? now : null;
+
+        await env.creatorrr_db.batch([
+          env.creatorrr_db
+            .prepare(
+              `INSERT INTO users (
+                id,
+                email,
+                pass_salt,
+                pass_hash,
+                created_at,
+                updated_at,
+                email_verified_at,
+                password_reset_token_hash,
+                password_reset_expires_at,
+                email_verify_token_hash,
+                email_verify_expires_at
+              ) VALUES (?1,?2,?3,?4,?5,?5,?6,NULL,NULL,NULL,NULL)`,
+            )
+            .bind(userId, email, salt, hash, now, emailVerifiedAt),
+          env.creatorrr_db
+            .prepare(
+              `INSERT INTO licenses (
+                user_id,
+                plan,
+                status,
+                notes,
+                created_at,
+                updated_at,
+                billing_interval,
+                trial_start_at,
+                trial_end_at,
+                cancel_at_period_end
+              ) VALUES (?1,'none','none','registered_no_license',?2,?2,NULL,NULL,NULL,0)`,
+            )
+            .bind(userId, now),
+          env.creatorrr_db
+            .prepare(
+              `INSERT INTO user_identities (
+                user_id,
+                provider,
+                provider_user_id,
+                provider_email,
+                created_at,
+                updated_at
+              ) VALUES (?1, 'google', ?2, ?3, ?4, ?4)`,
+            )
+            .bind(userId, idInfo.sub, email, now),
+        ]);
+      }
+
+      const issued = await issueWebToken(env, userId, deviceId);
+      if (!issued.ok) {
+        return redirect(req, oauthRedirectToSite(env, intent, { oauth_error: issued.reason }));
+      }
+
+      const target = `${oauthRedirectToSite(env, intent, {
+        oauth_client_nonce: String(saved.client_nonce || ""),
+      })}#web_token=${encodeURIComponent(issued.token)}`;
+      return redirectWithHeaders(req, target, 302, {
+        "set-cookie": "creatorrr_google_oauth_nonce=; Path=/auth/google/callback; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+      });
     }
 
     // ---------- AUTH REGISTER ----------

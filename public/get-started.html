@@ -635,7 +635,7 @@
       <section class="card auth-card">
         <div id="auth-section" class="initially-hidden">
           <h2 id="auth-title">Create account or log in</h2>
-          <p id="auth-copy">Use email and password. Google login is not wired yet, so the button stays disabled.</p>
+          <p id="auth-copy">Use email and password, or continue with Google for faster sign in.</p>
 
           <div class="tabs" role="tablist" aria-label="Authentication mode">
             <button class="tab active" id="tab-signup" type="button">Create account</button>
@@ -712,7 +712,7 @@
 
           <div class="divider">Later</div>
 
-          <button class="btn btn-secondary" type="button" disabled>Continue with Google later</button>
+          <button class="btn btn-secondary" id="google-continue" type="button">Continue with Google</button>
         </div>
 
         <div class="account-box initially-hidden" id="account-section">
@@ -762,6 +762,7 @@
     const API_BASE = "https://api.creatorrr.com";
     const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
     const LS_WEB_DEVICE_ID = "creatorrr.web.device.id.v1";
+    const LS_WEB_OAUTH_NONCE = "creatorrr.web.oauth.google.nonce.v1";
 
     const params = new URLSearchParams(window.location.search);
     const intent = (params.get("intent") || "trial").trim().toLowerCase();
@@ -813,6 +814,7 @@
     const forgotPasswordLink = document.getElementById("forgot-password-link");
     const switchToSignupLink = document.getElementById("switch-to-signup-link");
     const backToLoginLink = document.getElementById("back-to-login-link");
+    const googleContinue = document.getElementById("google-continue");
 
     const navActionSlot = document.getElementById("nav-action-slot");
 
@@ -862,6 +864,7 @@
       signupContinue.disabled = isBusy;
       loginContinue.disabled = isBusy;
       forgotContinue.disabled = isBusy;
+      googleContinue.disabled = isBusy;
       navLogout.disabled = isBusy;
       navManageSubscription.disabled = isBusy;
     }
@@ -917,6 +920,38 @@
       const did = randomUuidV4();
       safeLocalStorageSet(LS_WEB_DEVICE_ID, did);
       return did;
+    }
+
+    function parseHashParams() {
+      const raw = (window.location.hash || "").replace(/^#/, "").trim();
+      if (!raw) return new URLSearchParams();
+      return new URLSearchParams(raw);
+    }
+
+    function consumeOAuthResultFromHash() {
+      const hashParams = parseHashParams();
+      const token = String(hashParams.get("web_token") || "").trim();
+      const expectedNonce = String(safeLocalStorageGet(LS_WEB_OAUTH_NONCE) || "").trim();
+      const actualNonce = String(params.get("oauth_client_nonce") || "").trim();
+
+      if (!token) return { ok: true, consumed: false };
+
+      if (!expectedNonce || !actualNonce || expectedNonce !== actualNonce) {
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+        safeLocalStorageRemove(LS_WEB_OAUTH_NONCE);
+        return { ok: false, consumed: false, error: "Unexpected Google login response. Please try again." };
+      }
+
+      if (token) {
+        setWebToken(token);
+        safeLocalStorageRemove(LS_WEB_OAUTH_NONCE);
+        const cleanParams = new URLSearchParams(window.location.search);
+        cleanParams.delete("oauth_client_nonce");
+        cleanParams.delete("oauth_error");
+        const qs = cleanParams.toString();
+        history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+      }
+      return { ok: true, consumed: true };
     }
 
     function escapeHtml(str) {
@@ -1270,6 +1305,15 @@
       setSuccess("Account ready. You can now download the app below and sign in inside Contentorrr.");
     }
 
+    function beginGoogleAuth() {
+      clearMessages();
+      const deviceId = getOrCreateDeviceId();
+      const clientNonce = randomUuidV4();
+      safeLocalStorageSet(LS_WEB_OAUTH_NONCE, clientNonce);
+      const target = `${API_BASE}/auth/google/start?intent=${encodeURIComponent(intent)}&deviceId=${encodeURIComponent(deviceId)}&clientNonce=${encodeURIComponent(clientNonce)}`;
+      window.location.href = target;
+    }
+
     function applyIntentUi() {
       if (intent === "trial") {
         heroTitle.textContent = "Start your 3 day free trial";
@@ -1277,7 +1321,7 @@
         intentTitle.textContent = "Start 3 day free trial";
         intentCopy.textContent = "Secure checkout is used to activate the trial cleanly and tie it to your account.";
         authTitle.textContent = "Create account or log in";
-        authCopy.textContent = "Use email and password. Google login is not wired yet, so the button stays disabled.";
+        authCopy.textContent = "Use email and password, or continue with Google for faster sign in.";
       } else if (intent === "monthly") {
         heroTitle.textContent = "Get monthly access";
         heroCopy.textContent = "Create your account or log in, then continue to monthly checkout.";
@@ -1298,7 +1342,7 @@
         intentTitle.textContent = "Account access";
         intentCopy.textContent = "Use the same credentials on the website and inside the desktop app.";
         authTitle.textContent = "Create account or log in";
-        authCopy.textContent = "Use email and password. Google login is not wired yet, so the button stays disabled.";
+        authCopy.textContent = "Use email and password, or continue with Google for faster sign in.";
       }
     }
 
@@ -1347,11 +1391,17 @@
       event.preventDefault();
       startForgotPassword();
     });
+    googleContinue.addEventListener("click", beginGoogleAuth);
     navLogout.addEventListener("click", logoutNow);
     navManageSubscription.addEventListener("click", openPortal);
 
     async function bootstrap() {
+    const oauthConsume = consumeOAuthResultFromHash();
     applyIntentUi();
+
+        if (oauthConsume && oauthConsume.ok === false) {
+            setError(oauthConsume.error || "Google login could not be verified. Please try again.");
+        }
 
         if (intent === "login") {
             showTab("login");
@@ -1361,6 +1411,18 @@
 
         if (checkoutState === "canceled") {
             setError("Checkout was canceled. You can try again anytime.");
+        }
+
+        const oauthError = String(params.get("oauth_error") || "").trim();
+        if (oauthError) {
+            const map = {
+                email_already_exists_use_password: "This email already has a password account. Please log in with email and password.",
+                oauth_state_expired: "Google login expired. Please try again.",
+                google_token_exchange_failed: "Google login could not be completed. Please try again.",
+                access_denied: "Google login was canceled.",
+            };
+            const message = map[oauthError] || "Google login failed. Please try again.";
+            setError(message);
         }
 
         const existingToken = getWebToken();
