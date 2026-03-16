@@ -641,6 +641,7 @@ function makeAccountView(user: UserRow, lic: LicenseRow | null) {
       entitled_until: entitlement.entitled_until,
       in_trial: entitlement.in_trial,
       cancel_at_period_end: entitlement.cancel_at_period_end,
+      can_manage_subscription: Boolean(lic?.stripe_customer_id || lic?.stripe_subscription_id),
       billing_interval: lic?.billing_interval || null,
       current_period_end: lic?.current_period_end || null,
       trial_end_at: lic?.trial_end_at || null,
@@ -695,6 +696,58 @@ async function stripePostForm<T>(env: Env, path: string, form: URLSearchParams):
   }
 
   return data as T;
+}
+
+async function stripeGetJson<T>(env: Env, path: string): Promise<T> {
+  const res = await fetch(`https://api.stripe.com${path}`, {
+    method: "GET",
+    headers: {
+      authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
+    },
+  });
+
+  const text = await res.text();
+  let data: any = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    throw new Error(`stripe_invalid_json:${res.status}:${text}`);
+  }
+
+  if (!res.ok) {
+    const msg = data?.error?.message || data?.error?.code || `stripe_error_${res.status}`;
+    throw new Error(msg);
+  }
+
+  return data as T;
+}
+
+async function recoverStripeCustomerId(env: Env, userId: string, lic: LicenseRow | null): Promise<string | null> {
+  const customerId = String(lic?.stripe_customer_id || "").trim();
+  if (customerId) return customerId;
+
+  const subscriptionId = String(lic?.stripe_subscription_id || "").trim();
+  if (!subscriptionId) return null;
+
+  const subscription = await stripeGetJson<StripeSubscriptionLike>(
+    env,
+    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+  );
+
+  const recoveredCustomerId = String(subscription?.customer || "").trim();
+  if (!recoveredCustomerId) return null;
+
+  await env.creatorrr_db
+    .prepare(`
+      UPDATE licenses
+      SET stripe_customer_id=?1, updated_at=?2
+      WHERE user_id=?3
+    `)
+    .bind(recoveredCustomerId, nowIso(), userId)
+    .run();
+
+  return recoveredCustomerId;
 }
 
 async function createStripeCheckoutSession(
@@ -1297,10 +1350,12 @@ export default {
       if (!auth.ok) return auth.response;
 
       const lic = await getLicenseRow(env, auth.ctx.userId);
-      const customerId = String(lic?.stripe_customer_id || "").trim();
+      const customerId = await recoverStripeCustomerId(env, auth.ctx.userId, lic);
 
       if (!customerId) {
-        return bad(req, "no_stripe_customer", 400);
+        return bad(req, "no_stripe_customer", 400, {
+          message: "No Stripe subscription found for this account yet. Start a plan first, then use Manage subscription.",
+        });
       }
 
       try {

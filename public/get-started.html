@@ -1129,7 +1129,7 @@
         actions.push(`<button class="btn btn-secondary" type="button" id="action-yearly">Get yearly access</button>`);
       }
 
-      if (license.plan === "pro" || license.entitled || license.status === "active" || license.status === "trialing" || license.status === "canceling") {
+      if (license.can_manage_subscription) {
         actions.push(`<button class="btn btn-secondary" type="button" id="action-portal">Manage subscription</button>`);
       }
 
@@ -1188,7 +1188,12 @@
 
         window.location.href = data.url;
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not open billing portal.");
+        const message = err instanceof Error ? err.message : "Could not open billing portal.";
+        if (message.includes("no_stripe_customer")) {
+          setError("No subscription found yet for this account. Start a plan first, then manage or cancel it in the billing portal.");
+        } else {
+          setError(message);
+        }
       } finally {
         setBusy(false);
       }
