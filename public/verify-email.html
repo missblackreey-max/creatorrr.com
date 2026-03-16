@@ -26,12 +26,25 @@
 
   <script>
     const API_BASE = "https://api.creatorrr.com";
+    const VERIFIED_SESSION_KEY = "creatorrr.web.verify_email.success.v1";
     const statusEl = document.getElementById("status");
     const params = new URLSearchParams(window.location.search);
     const token = String(params.get("token") || "").trim();
 
+    if (token) {
+      const cleanParams = new URLSearchParams(window.location.search);
+      cleanParams.delete("token");
+      const qs = cleanParams.toString();
+      history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+    }
+
     async function verify() {
       if (!token) {
+        if (sessionStorage.getItem(VERIFIED_SESSION_KEY) === "1") {
+          statusEl.className = "ok";
+          statusEl.textContent = "Your email has already been verified. You can now log in.";
+          return;
+        }
         statusEl.className = "err";
         statusEl.textContent = "This verification link is invalid. Please request a new email from the login screen.";
         return;
@@ -50,6 +63,7 @@
           throw new Error(err);
         }
 
+        sessionStorage.setItem(VERIFIED_SESSION_KEY, "1");
         statusEl.className = "ok";
         statusEl.textContent = "Your email has been verified. You can now log in.";
       } catch (err) {

@@ -277,6 +277,19 @@ async function issueEmailVerification(
   const expiresAt = addMinutesIso(60 * 24);
   const now = nowIso();
 
+  const previous = await env.creatorrr_db
+    .prepare(
+      `
+        SELECT
+          email_verify_token_hash,
+          email_verify_expires_at
+        FROM users
+        WHERE id=?1
+      `,
+    )
+    .bind(userId)
+    .first<{ email_verify_token_hash?: string | null; email_verify_expires_at?: string | null }>();
+
   await env.creatorrr_db
     .prepare(
       `
@@ -295,9 +308,30 @@ async function issueEmailVerification(
   const verifyUrl = `${siteUrl}/verify-email.html?token=${encodeURIComponent(rawToken)}`;
   const mailed = await sendEmailVerificationEmail(env, email, verifyUrl).catch(() => false);
 
+  if (!mailed) {
+    await env.creatorrr_db
+      .prepare(
+        `
+          UPDATE users
+          SET
+            email_verify_token_hash=?2,
+            email_verify_expires_at=?3,
+            updated_at=?4
+          WHERE id=?1
+        `,
+      )
+      .bind(
+        userId,
+        previous?.email_verify_token_hash || null,
+        previous?.email_verify_expires_at || null,
+        nowIso(),
+      )
+      .run();
+  }
+
   return {
     sent: mailed,
-    expires_at: expiresAt,
+    expires_at: mailed ? expiresAt : String(previous?.email_verify_expires_at || expiresAt),
   };
 }
 

@@ -1084,7 +1084,10 @@
 
       const data = await safeReadJson(res);
       if (!res.ok) {
-        throw new Error(data?.error || data?.message || `Request failed: ${res.status}`);
+        const err = new Error(data?.error || data?.message || `Request failed: ${res.status}`);
+        err.status = res.status;
+        err.payload = data;
+        throw err;
       }
       return data;
     }
@@ -1555,8 +1558,13 @@
         await continueAfterAuth();
       } catch (err) {
         const message = err instanceof Error ? err.message : "Could not log in.";
+        const emailVerificationSent = !!(err && typeof err === "object" && err.payload && err.payload.email_verification_sent);
         if (message.includes("email_not_verified")) {
-          setError("Your email is not verified yet. We sent a fresh verification email—check your inbox and spam folder.");
+          if (emailVerificationSent) {
+            setError("Your email is not verified yet. We sent a fresh verification email—check your inbox and spam folder.");
+          } else {
+            setError("Your email is not verified yet, and we could not send a new verification email right now. Please try again in a moment or use your previous verification link.");
+          }
         } else {
           setError(message);
         }
