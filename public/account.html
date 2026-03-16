@@ -1205,12 +1205,13 @@
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return String(value);
 
-      return new Intl.DateTimeFormat("en-US", {
+      return new Intl.DateTimeFormat(undefined, {
         month: "short",
         day: "numeric",
         year: "numeric",
         hour: "2-digit",
-        minute: "2-digit"
+        minute: "2-digit",
+        timeZoneName: "short"
       }).format(date);
     }
 
@@ -1275,7 +1276,7 @@
           <span>${escapeHtml(currentPlanName(license))}</span>
         </div>
         <div class="account-item">
-          <strong>Access until</strong>
+          <strong>Access until (local time)</strong>
           <span>${escapeHtml(expiryText(license))}</span>
         </div>
       `;
