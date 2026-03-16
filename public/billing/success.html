@@ -347,27 +347,12 @@
         <span class="eyebrow">Contentorrr access</span>
         <h1>Access confirmed</h1>
         <p>
-          Your checkout completed successfully. Download Contentorrr and sign in with the same account you just used.
+          Thank you for your purchase! 
         </p>
 
         <div class="stack">
           <div class="success-box">
-            Payment or trial activation is complete. If the app is already installed, just open it and log in with the same email and password.
-          </div>
-
-          <div class="info-list">
-            <div class="info-item">
-              <strong>Same credentials everywhere</strong>
-              <span>Your website account and app account are the same account.</span>
-            </div>
-            <div class="info-item">
-              <strong>Trial or paid access is tied to your account</strong>
-              <span>Sign in inside the app and the entitlement check should pick it up automatically.</span>
-            </div>
-            <div class="info-item">
-              <strong>Need the installer first?</strong>
-              <span>Use the download buttons on the right, then log in inside Contentorrr.</span>
-            </div>
+            Your purchase is complete and the access is now active. Download and instsall Contentorrr (Windows or Mac) and sign in.
           </div>
 
           <div class="status-box" id="status-box"></div>
@@ -460,7 +445,7 @@
 
         if (data?.entitled) {
           if (data?.in_trial) {
-            setStatus("Your trial access is active. You can now sign in inside the app.");
+            setStatus("Your 3 day trial access is active. You can now sign in inside the app.");
           } else {
             setStatus("Your paid access is active. You can now sign in inside the app.");
           }
