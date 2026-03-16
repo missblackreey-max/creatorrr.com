@@ -116,6 +116,15 @@
       justify-self: center;
     }
 
+    .nav-link-highlight {
+      color: var(--text);
+      font-weight: 720;
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(247, 213, 106, 0.34);
+      background: linear-gradient(180deg, rgba(247, 213, 106, 0.18), rgba(247, 213, 106, 0.06));
+    }
+
     .nav-links a:hover,
     .footer-links a:hover {
       color: var(--text);
@@ -610,6 +619,7 @@
         min-height: auto;
         padding: 14px 0;
         flex-wrap: wrap;
+        justify-content: space-between;
       }
 
       .nav-auth-pending {
@@ -628,7 +638,8 @@
         position: static;
         min-width: 0;
         min-height: 0;
-        width: 100%;
+        width: auto;
+        margin-left: auto;
       }
 
       .workflow {
@@ -657,12 +668,12 @@
 
       .hero-actions,
       .nav-actions {
-        width: 100%;
+        width: auto;
       }
 
       .nav-actions {
         position: static;
-        width: 100%;
+        width: auto;
         justify-content: flex-end;
       }
 
@@ -806,13 +817,12 @@
         <a href="#demo">Demo</a>
         <a href="#workflow">Workflow</a>
         <a href="#pricing">Pricing</a>
-        <a href="#download">Download</a>
+        <a class="nav-link-highlight" href="./get-started.html?intent=trial">3 day free trial</a>
       </nav>
 
       <div class="nav-action-slot nav-auth-pending" id="nav-action-slot">
         <div class="nav-actions" id="nav-actions-logged-out" style="display:none;">
           <a class="btn btn-secondary" href="./get-started.html?intent=login">Log in</a>
-          <a class="btn btn-primary" href="./get-started.html?intent=trial">Start 3 day free trial</a>
         </div>
 
         <div class="nav-actions" id="nav-actions-logged-in" style="display:none;">
@@ -849,7 +859,7 @@
           </div>
 
           <div class="hero-note">
-            Download the installer freely, create an account or log in, and activate your 3 day trial or paid access.
+            Access requires an active 3 day free trial, monthly plan, or yearly plan.
           </div>
         </div>
 
@@ -999,57 +1009,6 @@
       </div>
     </section>
 
-    <section id="download">
-      <div class="container">
-        <div class="section-head">
-          <h2>Download Contentorrr</h2>
-          <p>The installer is free. Access is activated inside the app with your account.</p>
-        </div>
-
-        <div class="download-grid">
-          <article class="download-card">
-            <h3>Desktop app</h3>
-
-            <div class="notice-box" style="margin-top:0; margin-bottom:18px;">
-              Download first. Then create an account or log in inside the app to start your 3 day trial or use paid access.
-            </div>
-
-            <div class="platform-list">
-              <div class="platform-row">
-                <div>
-                  <strong>Windows</strong>
-                  <span>Installer for Windows 11 and later</span>
-                </div>
-                <a class="btn btn-primary" href="./Contentorrr-Setup-v0.9.9.exe">Download .exe</a>
-              </div>
-
-              <div class="platform-row">
-                <div>
-                  <strong>macOS</strong>
-                  <span>Installer package for macOS builds</span>
-                </div>
-                <a class="btn btn-primary" href="./Contentorrr-v0.9.9.dmg">Download .dmg</a>
-              </div>
-            </div>
-          </article>
-
-          <article class="download-card">
-            <h3>What happens after download</h3>
-            <div class="download-list">
-              <div>Open the installer and launch Contentorrr</div>
-              <div>Create an account or log in</div>
-              <div>Your 3 day trial or paid access activates inside the app</div>
-              <div>Use the full local workflow on your machine</div>
-            </div>
-
-            <div class="hero-actions" style="margin-top:20px;">
-              <a class="btn btn-secondary" href="mailto:ben@creatorrr.com?subject=Contentorrr%20Feedback">Send feedback</a>
-              <a class="btn btn-primary" href="./contentorrr_v1.0.pdf">Download PDF guide</a>
-            </div>
-          </article>
-        </div>
-      </div>
-    </section>
   </main>
 
   <footer class="site-footer">
