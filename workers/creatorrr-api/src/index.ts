@@ -177,6 +177,13 @@ function normalizeDeviceId(deviceId: string) {
   return v;
 }
 
+function normalizeClientNonce(v: string) {
+  const s = (v || "").trim();
+  if (!s) return "";
+  if (s.length > 120) return "";
+  return s;
+}
+
 function parseIsoMs(v: unknown): number | null {
   if (typeof v !== "string" || !v.trim()) return null;
   const ms = Date.parse(v);
@@ -300,15 +307,44 @@ function isExpiredIso(v: string | null | undefined): boolean {
 }
 
 function redirect(req: Request, to: string, status = 302): Response {
+  return redirectWithHeaders(req, to, status);
+}
+
+function redirectWithHeaders(
+  req: Request,
+  to: string,
+  status = 302,
+  extraHeaders?: Record<string, string>,
+): Response {
+  const headers = new Headers({
+    location: to,
+  });
+  if (extraHeaders) {
+    for (const [k, v] of Object.entries(extraHeaders)) headers.set(k, v);
+  }
   return withCors(
     req,
     new Response(null, {
       status,
-      headers: {
-        location: to,
-      },
+      headers,
     }),
   );
+}
+
+function getCookieValue(req: Request, name: string): string {
+  const cookie = req.headers.get("cookie") || "";
+  if (!cookie) return "";
+  const parts = cookie.split(";");
+  for (const p of parts) {
+    const s = p.trim();
+    if (!s) continue;
+    const idx = s.indexOf("=");
+    if (idx <= 0) continue;
+    const k = s.slice(0, idx).trim();
+    if (k !== name) continue;
+    return s.slice(idx + 1).trim();
+  }
+  return "";
 }
 
 type GoogleIdTokenInfo = {
@@ -1065,17 +1101,29 @@ export default {
 
       const intentRaw = String(url.searchParams.get("intent") || "trial").trim().toLowerCase();
       const intent = ["trial", "monthly", "yearly", "login"].includes(intentRaw) ? intentRaw : "trial";
+      const clientNonce = normalizeClientNonce(String(url.searchParams.get("clientNonce") || ""));
+      if (!clientNonce) return bad(req, "missing_client_nonce", 400);
 
       const state = makeOpaqueToken();
+      const browserNonce = makeOpaqueToken();
+      const browserNonceHash = await sha256Hex(browserNonce);
       const now = nowIso();
       const expires = addMinutesIso(10);
 
       await env.creatorrr_db
         .prepare(
-          `INSERT INTO oauth_states (state, provider, device_id, intent, created_at, expires_at)
-           VALUES (?1, 'google', ?2, ?3, ?4, ?5)`,
+          `INSERT INTO oauth_states (
+            state,
+            provider,
+            device_id,
+            intent,
+            created_at,
+            expires_at,
+            browser_nonce_hash,
+            client_nonce
+          ) VALUES (?1, 'google', ?2, ?3, ?4, ?5, ?6, ?7)`,
         )
-        .bind(state, deviceId, intent, now, expires)
+        .bind(state, deviceId, intent, now, expires, browserNonceHash, clientNonce)
         .run();
 
       const redirectUri = `${url.origin}/auth/google/callback`;
@@ -1089,7 +1137,9 @@ export default {
       gp.set("include_granted_scopes", "true");
       gp.set("prompt", "select_account");
 
-      return redirect(req, `https://accounts.google.com/o/oauth2/v2/auth?${gp.toString()}`);
+      return redirectWithHeaders(req, `https://accounts.google.com/o/oauth2/v2/auth?${gp.toString()}`, 302, {
+        "set-cookie": `creatorrr_google_oauth_nonce=${browserNonce}; Path=/auth/google/callback; Max-Age=600; HttpOnly; Secure; SameSite=Lax`,
+      });
     }
 
     // ---------- AUTH GOOGLE CALLBACK ----------
@@ -1113,19 +1163,35 @@ export default {
 
       const saved = await env.creatorrr_db
         .prepare(
-          `SELECT state, provider, device_id, intent, expires_at
+          `SELECT state, provider, device_id, intent, expires_at, browser_nonce_hash, client_nonce
            FROM oauth_states
            WHERE state=?1 AND provider='google'`,
         )
         .bind(state)
-        .first<{ state: string; provider: string; device_id: string; intent: string; expires_at: string }>();
+        .first<{
+          state: string;
+          provider: string;
+          device_id: string;
+          intent: string;
+          expires_at: string;
+          browser_nonce_hash?: string | null;
+          client_nonce?: string | null;
+        }>();
 
       await env.creatorrr_db
         .prepare("DELETE FROM oauth_states WHERE state=?1")
         .bind(state)
         .run();
 
-      if (!saved || isExpiredIso(saved.expires_at)) {
+      const cookieNonce = getCookieValue(req, "creatorrr_google_oauth_nonce");
+      const cookieNonceHash = cookieNonce ? await sha256Hex(cookieNonce) : "";
+
+      if (
+        !saved ||
+        isExpiredIso(saved.expires_at) ||
+        !saved.browser_nonce_hash ||
+        cookieNonceHash !== saved.browser_nonce_hash
+      ) {
         return redirect(req, oauthRedirectToSite(env, "login", { oauth_error: "oauth_state_expired" }));
       }
 
@@ -1172,7 +1238,17 @@ export default {
       if (!userId) {
         const existing = await getUserByEmail(env, email);
         if (existing) {
-          return redirect(req, oauthRedirectToSite(env, intent, { oauth_error: "email_already_exists_use_password" }));
+          return redirectWithHeaders(
+            req,
+            oauthRedirectToSite(env, intent, {
+              oauth_error: "email_already_exists_use_password",
+              oauth_client_nonce: String(saved.client_nonce || ""),
+            }),
+            302,
+            {
+              "set-cookie": "creatorrr_google_oauth_nonce=; Path=/auth/google/callback; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+            },
+          );
         }
 
         userId = uuid();
@@ -1235,8 +1311,12 @@ export default {
         return redirect(req, oauthRedirectToSite(env, intent, { oauth_error: issued.reason }));
       }
 
-      const target = `${oauthRedirectToSite(env, intent)}#web_token=${encodeURIComponent(issued.token)}`;
-      return redirect(req, target);
+      const target = `${oauthRedirectToSite(env, intent, {
+        oauth_client_nonce: String(saved.client_nonce || ""),
+      })}#web_token=${encodeURIComponent(issued.token)}`;
+      return redirectWithHeaders(req, target, 302, {
+        "set-cookie": "creatorrr_google_oauth_nonce=; Path=/auth/google/callback; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+      });
     }
 
     // ---------- AUTH REGISTER ----------

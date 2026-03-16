@@ -762,6 +762,7 @@
     const API_BASE = "https://api.creatorrr.com";
     const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
     const LS_WEB_DEVICE_ID = "creatorrr.web.device.id.v1";
+    const LS_WEB_OAUTH_NONCE = "creatorrr.web.oauth.google.nonce.v1";
 
     const params = new URLSearchParams(window.location.search);
     const intent = (params.get("intent") || "trial").trim().toLowerCase();
@@ -930,10 +931,27 @@
     function consumeOAuthResultFromHash() {
       const hashParams = parseHashParams();
       const token = String(hashParams.get("web_token") || "").trim();
+      const expectedNonce = String(safeLocalStorageGet(LS_WEB_OAUTH_NONCE) || "").trim();
+      const actualNonce = String(params.get("oauth_client_nonce") || "").trim();
+
+      if (!token) return { ok: true, consumed: false };
+
+      if (!expectedNonce || !actualNonce || expectedNonce !== actualNonce) {
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+        safeLocalStorageRemove(LS_WEB_OAUTH_NONCE);
+        return { ok: false, consumed: false, error: "Unexpected Google login response. Please try again." };
+      }
+
       if (token) {
         setWebToken(token);
-        history.replaceState(null, "", window.location.pathname + window.location.search);
+        safeLocalStorageRemove(LS_WEB_OAUTH_NONCE);
+        const cleanParams = new URLSearchParams(window.location.search);
+        cleanParams.delete("oauth_client_nonce");
+        cleanParams.delete("oauth_error");
+        const qs = cleanParams.toString();
+        history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
       }
+      return { ok: true, consumed: true };
     }
 
     function escapeHtml(str) {
@@ -1285,7 +1303,9 @@
     function beginGoogleAuth() {
       clearMessages();
       const deviceId = getOrCreateDeviceId();
-      const target = `${API_BASE}/auth/google/start?intent=${encodeURIComponent(intent)}&deviceId=${encodeURIComponent(deviceId)}`;
+      const clientNonce = randomUuidV4();
+      safeLocalStorageSet(LS_WEB_OAUTH_NONCE, clientNonce);
+      const target = `${API_BASE}/auth/google/start?intent=${encodeURIComponent(intent)}&deviceId=${encodeURIComponent(deviceId)}&clientNonce=${encodeURIComponent(clientNonce)}`;
       window.location.href = target;
     }
 
@@ -1371,8 +1391,12 @@
     navManageSubscription.addEventListener("click", openPortal);
 
     async function bootstrap() {
-    consumeOAuthResultFromHash();
+    const oauthConsume = consumeOAuthResultFromHash();
     applyIntentUi();
+
+        if (oauthConsume && oauthConsume.ok === false) {
+            setError(oauthConsume.error || "Google login could not be verified. Please try again.");
+        }
 
         if (intent === "login") {
             showTab("login");
