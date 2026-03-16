@@ -292,7 +292,7 @@ async function issueEmailVerification(
     .run();
 
   const siteUrl = normalizeSiteUrl(env.SITE_URL);
-  const verifyUrl = `${siteUrl}/account.html?intent=login&verify_token=${encodeURIComponent(rawToken)}`;
+  const verifyUrl = `${siteUrl}/verify-email.html?token=${encodeURIComponent(rawToken)}`;
   const mailed = await sendEmailVerificationEmail(env, email, verifyUrl).catch(() => false);
 
   return {
@@ -1604,6 +1604,13 @@ export default {
 
       const hash = await pbkdf2(password, user.pass_salt);
       if (hash !== user.pass_hash) return bad(req, "invalid_credentials", 401);
+
+      if (!user.email_verified_at) {
+        const emailVerification = await issueEmailVerification(env, user.id, user.email);
+        return bad(req, "email_not_verified", 403, {
+          email_verification_sent: emailVerification.sent,
+        });
+      }
 
       const allow = await ensureDeviceAllowed(env, user.id, deviceId);
       if (!allow.ok) return bad(req, allow.reason || "device_not_allowed", 403);

@@ -1106,23 +1106,12 @@
     }
 
     async function registerAndLogin(email, password) {
-      const deviceId = getOrCreateDeviceId();
       await apiPost("/auth/register", { email, password });
-      const data = await apiPost("/auth/login", { email, password, deviceId });
-
-      const token =
-        data?.token ||
-        data?.jwt ||
-        data?.access_token ||
-        (data?.ok && data?.token) ||
-        null;
-
-      if (!token || typeof token !== "string") {
-        throw new Error("Login succeeded but token was not returned.");
-      }
-
-      setWebToken(token);
-      return token;
+      setSuccess("Account created. Please check your inbox and verify your email before logging in.");
+      showTab("login");
+      loginEmail.value = email;
+      loginPassword.value = "";
+      return null;
     }
 
     async function loginOnly(email, password) {
@@ -1565,7 +1554,12 @@
         await loginOnly(email, password);
         await continueAfterAuth();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not log in.");
+        const message = err instanceof Error ? err.message : "Could not log in.";
+        if (message.includes("email_not_verified")) {
+          setError("Your email is not verified yet. We sent a fresh verification email—check your inbox and spam folder.");
+        } else {
+          setError(message);
+        }
       } finally {
         setBusy(false);
       }
