@@ -106,6 +106,7 @@
     .header-actions {
       display: flex;
       align-items: center;
+      justify-content: flex-end;
       gap: 10px;
       flex-wrap: wrap;
     }
@@ -124,6 +125,25 @@
       cursor: pointer;
       white-space: nowrap;
       font-family: inherit;
+    }
+
+    .btn.header-chip {
+      min-height: 36px;
+      padding: 0 12px;
+      font-size: 14px;
+      font-weight: 720;
+    }
+
+    .header-actions .btn.header-chip {
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #f4f4f6;
+      background: linear-gradient(180deg, rgba(18, 20, 24, 0.95), rgba(9, 10, 12, 0.92));
+      box-shadow: 0 7px 18px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(247, 213, 106, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    }
+
+    .header-actions .btn.header-chip:hover {
+      border-color: rgba(247, 213, 106, 0.48);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.44), 0 0 0 1px rgba(247, 213, 106, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.26);
     }
 
     .btn:hover { transform: translateY(-1px); }
@@ -609,6 +629,12 @@
         font-size: 13px;
       }
 
+      .header-actions .btn.header-chip {
+        min-height: 36px;
+        padding: 0 12px;
+        font-size: 14px;
+      }
+
       .tabs {
         grid-template-columns: 1fr;
         border-radius: 18px;
@@ -650,8 +676,8 @@
       </a>
 
       <div class="header-actions">
-        <a class="btn btn-secondary" href="./index.html">Go back</a>
-        <button class="btn btn-secondary initially-hidden" id="header-logout" type="button">Log out</button>
+        <a class="btn btn-secondary header-chip" href="./index.html">Go back</a>
+        <button class="btn btn-secondary header-chip initially-hidden" id="header-logout" type="button">Log out</button>
       </div>
     </div>
   </header>
@@ -1175,12 +1201,13 @@
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return String(value);
 
-      return new Intl.DateTimeFormat("en-US", {
+      return new Intl.DateTimeFormat(undefined, {
         month: "short",
         day: "numeric",
         year: "numeric",
         hour: "2-digit",
-        minute: "2-digit"
+        minute: "2-digit",
+        timeZoneName: "short"
       }).format(date);
     }
 
@@ -1245,7 +1272,7 @@
           <span>${escapeHtml(currentPlanName(license))}</span>
         </div>
         <div class="account-item">
-          <strong>Access until</strong>
+          <strong>Access until (local time)</strong>
           <span>${escapeHtml(expiryText(license))}</span>
         </div>
       `;
