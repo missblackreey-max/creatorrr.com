@@ -157,13 +157,13 @@
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
-      position: absolute;
-      top: 0;
-      right: 0;
+      justify-content: flex-end;
     }
 
     .nav-action-slot {
-      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
       min-width: 290px;
       min-height: 46px;
       justify-self: end;
@@ -189,6 +189,19 @@
       padding: 0 12px;
       font-size: 14px;
       font-weight: 720;
+    }
+
+    .nav-actions .btn.header-chip {
+      min-height: 36px;
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #f4f4f6;
+      background: linear-gradient(180deg, rgba(18, 20, 24, 0.95), rgba(9, 10, 12, 0.92));
+      box-shadow: 0 7px 18px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(247, 213, 106, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    }
+
+    .nav-actions .btn.header-chip:hover {
+      border-color: rgba(247, 213, 106, 0.48);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.44), 0 0 0 1px rgba(247, 213, 106, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.26);
     }
 
     .btn:hover { transform: translateY(-1px); }
@@ -666,7 +679,7 @@
       .nav-action-slot {
         position: static;
         min-width: 0;
-        min-height: 0;
+        min-height: 36px;
         width: auto;
         margin-left: auto;
       }
@@ -707,7 +720,6 @@
       }
 
       .nav-actions {
-        position: static;
         width: auto;
         justify-content: flex-end;
       }
