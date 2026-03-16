@@ -28,4 +28,30 @@ describe('creatorrr-api worker', () => {
 		expect(response.headers.get('access-control-allow-origin')).toBe('https://creatorrr.com');
 		expect(response.headers.get('access-control-allow-methods')).toContain('POST');
 	});
+
+	it('rejects verify-email requests without a token', async () => {
+		const response = await SELF.fetch('https://example.com/auth/verify-email', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+			},
+			body: JSON.stringify({ token: '' }),
+		});
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toMatchObject({ ok: false, error: 'invalid_input' });
+	});
+
+	it('rejects resend-verification requests without an email', async () => {
+		const response = await SELF.fetch('https://example.com/auth/resend-verification', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+			},
+			body: JSON.stringify({ email: '' }),
+		});
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toMatchObject({ ok: false, error: 'invalid_input' });
+	});
 });
