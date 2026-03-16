@@ -508,8 +508,9 @@
       margin-top: 18px;
       padding: 18px;
       border-radius: 18px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(247, 213, 106, 0.10), rgba(255,255,255,0.03));
+      border: 1px solid rgba(247, 213, 106, 0.35);
+      box-shadow: 0 14px 34px rgba(184, 137, 42, 0.16);
     }
 
     .account-grid {
@@ -657,7 +658,7 @@
             </div>
 
             <div class="nav-actions" id="nav-logged-in" style="display:none;">
-                <button class="btn btn-secondary header-chip" type="button" id="nav-manage-subscription">Manage subscription</button>
+                <button class="btn btn-secondary header-chip" type="button" id="nav-manage-subscription">Renew / cancel</button>
                 <button class="btn btn-secondary header-chip" type="button" id="nav-logout">Log out</button>
             </div>
         </div>
@@ -700,6 +701,10 @@
                 <span class="price">Start free</span>
                 <span class="meta">Try first, then choose paid</span>
               </button>
+            </div>
+
+            <div style="margin-top:14px;">
+              <button class="btn btn-primary" id="plan-checkout-btn" type="button">Continue to checkout</button>
             </div>
           </div>
 
@@ -884,6 +889,7 @@
     const offerMonthly = document.getElementById("offer-monthly");
     const offerYearly = document.getElementById("offer-yearly");
     const offerTrial = document.getElementById("offer-trial");
+    const planCheckoutBtn = document.getElementById("plan-checkout-btn");
 
     const statusBox = document.getElementById("status-box");
     const errorBox = document.getElementById("error-box");
@@ -1187,9 +1193,9 @@
 
       if (license.entitled) {
         if (license.cancel_at_period_end) {
-          return `Paid access active, ends ${license.current_period_end || license.entitled_until || "-"}`;
+          return `Access active, ends ${license.current_period_end || license.entitled_until || "-"}`;
         }
-        return `Paid access active${license.current_period_end ? ` until ${license.current_period_end}` : ""}`;
+        return `Access active${license.current_period_end ? ` until ${license.current_period_end}` : ""}`;
       }
 
       if (license.plan && license.plan !== "none") {
@@ -1197,6 +1203,29 @@
       }
 
       return "No active access";
+    }
+
+    function currentPlanName(license) {
+      if (license?.in_trial) return "3-day trial";
+      if (license?.billing_interval === "month") return "Monthly";
+      if (license?.billing_interval === "year") return "Yearly";
+      return "None";
+    }
+
+    function expiryText(license) {
+      if (!license) return "-";
+      return license.entitled_until || license.current_period_end || license.trial_end_at || "-";
+    }
+
+    function checkoutConfigForIntent() {
+      if (intent === "trial") return { interval: "month", withTrial: true, label: "Start 3 day trial" };
+      if (intent === "monthly") return { interval: "month", withTrial: false, label: "Get monthly access" };
+      return { interval: "year", withTrial: false, label: "Get yearly access" };
+    }
+
+    function renderPlanCheckoutButton() {
+      const cfg = checkoutConfigForIntent();
+      planCheckoutBtn.textContent = cfg.label;
     }
 
     function renderAccount(account) {
@@ -1208,6 +1237,8 @@
 
       const verifiedText = user.email_verified ? "Verified" : "Not verified";
       const accessText = buildAccessSummary(license);
+      const planName = currentPlanName(license);
+      const expiresAt = expiryText(license);
 
       accountGrid.innerHTML = `
         <div class="account-item">
@@ -1215,54 +1246,47 @@
           <span>${escapeHtml(user.email || "-")}</span>
         </div>
         <div class="account-item">
-          <strong>Email status</strong>
+          <strong>Verification status</strong>
           <span>${escapeHtml(verifiedText)}</span>
         </div>
         <div class="account-item">
-          <strong>Current access</strong>
-          <span>${escapeHtml(accessText)}</span>
+          <strong>Current plan</strong>
+          <span>${escapeHtml(planName)}</span>
         </div>
         <div class="account-item">
-          <strong>Plan / status</strong>
-          <span>${escapeHtml((license.plan || "none") + " / " + (license.status || "none"))}</span>
+          <strong>Expiry</strong>
+          <span>${escapeHtml(expiresAt)}</span>
         </div>
       `;
 
-      if (intent === "trial") {
-        accountCopy.textContent = license.entitled
-          ? "You are already signed in. Your access is active."
-          : "You are signed in. Continue when ready.";
-      } else if (intent === "monthly") {
-        accountCopy.textContent = license.entitled
-          ? "You are already signed in. Your access is active."
-          : "You are signed in. Continue when ready.";
-      } else if (intent === "yearly") {
-        accountCopy.textContent = license.entitled
-          ? "You are already signed in. Your access is active."
-          : "You are signed in. Continue when ready.";
-      } else {
-        accountCopy.textContent = "You are logged in. Use the same account inside the app.";
-      }
+      accountCopy.textContent = license.entitled
+        ? `You're signed in. ${accessText}.`
+        : "You're signed in. Complete checkout to activate access.";
 
       const actions = [];
 
-      if (!license.entitled && intent === "trial") {
-        actions.push(`<button class="btn btn-primary" type="button" id="action-trial">Start 3 day trial</button>`);
-        actions.push(`<button class="btn btn-secondary" type="button" id="action-yearly">Get yearly access (best value)</button>`);
-        actions.push(`<button class="btn btn-secondary" type="button" id="action-monthly">Get monthly access</button>`);
-      } else if (!license.entitled && intent === "monthly") {
-        actions.push(`<button class="btn btn-primary" type="button" id="action-monthly">Continue to monthly checkout</button>`);
-        actions.push(`<button class="btn btn-secondary" type="button" id="action-yearly">Get yearly access (best value)</button>`);
-      } else if (!license.entitled && intent === "yearly") {
-        actions.push(`<button class="btn btn-primary" type="button" id="action-yearly">Continue to yearly checkout</button>`);
-        actions.push(`<button class="btn btn-secondary" type="button" id="action-monthly">Get monthly access</button>`);
-      } else if (!license.entitled) {
-        actions.push(`<button class="btn btn-primary" type="button" id="action-yearly">Get yearly access (best value)</button>`);
-        actions.push(`<button class="btn btn-secondary" type="button" id="action-monthly">Get monthly access</button>`);
+      if (!license.entitled) {
+        if (intent === "trial") {
+          actions.push(`<button class="btn btn-primary" type="button" id="action-trial">Start 3 day trial</button>`);
+          actions.push(`<button class="btn btn-secondary" type="button" id="action-yearly">Upgrade now to yearly (best value)</button>`);
+          actions.push(`<button class="btn btn-secondary" type="button" id="action-monthly">Upgrade now to monthly</button>`);
+        } else if (intent === "monthly") {
+          actions.push(`<button class="btn btn-primary" type="button" id="action-monthly">Get monthly access</button>`);
+          actions.push(`<button class="btn btn-secondary" type="button" id="action-yearly">Get yearly access (best value)</button>`);
+        } else {
+          actions.push(`<button class="btn btn-primary" type="button" id="action-yearly">Get yearly access (best value)</button>`);
+          actions.push(`<button class="btn btn-secondary" type="button" id="action-monthly">Get monthly access</button>`);
+        }
+      } else if (license.in_trial) {
+        actions.push(`<button class="btn btn-primary" type="button" id="action-yearly">Upgrade now to yearly</button>`);
+        actions.push(`<button class="btn btn-secondary" type="button" id="action-monthly">Upgrade now to monthly</button>`);
+      } else if (license.billing_interval === "month") {
+        actions.push(`<button class="btn btn-primary" type="button" id="action-yearly">Upgrade to yearly (save 33%)</button>`);
       }
 
       if (license.can_manage_subscription) {
-        actions.push(`<button class="btn btn-secondary" type="button" id="action-portal">Manage subscription</button>`);
+        const billingLabel = license.cancel_at_period_end ? "Renew subscription" : "Cancel subscription";
+        actions.push(`<button class="btn btn-secondary" type="button" id="action-portal">${billingLabel}</button>`);
       }
 
       actions.push(`<button class="btn btn-secondary" type="button" id="action-logout">Log out</button>`);
@@ -1380,11 +1404,11 @@
       }
 
       if (intent === "login") {
-        setSuccess("Logged in successfully. You can now download the app below and sign in inside Contentorrr.");
+        setSuccess("Signed in. Continue with checkout above or use the account section below.");
         return;
       }
 
-      setSuccess("Account ready. Choose your checkout option in the account box.");
+      setSuccess("Account ready. Use the checkout button above or the account actions below.");
     }
 
     function beginGoogleAuth() {
@@ -1408,6 +1432,7 @@
       }
 
       applyIntentUi();
+      renderPlanCheckoutButton();
     }
 
     function applyIntentUi() {
@@ -1415,21 +1440,21 @@
         heroTitle.textContent = "Try Contentorrr first";
         heroCopy.textContent = "Create account or log in, then activate your trial with secure checkout.";
         intentTitle.textContent = "Start 3 day free trial";
-        intentCopy.textContent = "Trial is available, but yearly is usually the better long-term value.";
+        intentCopy.textContent = "Try before buy! Full functionality except a little creatorrr.com watermark in all exports.";
         authTitle.textContent = "Create account or log in";
         authCopy.textContent = "Create account or log in to continue with your selected plan.";
       } else if (intent === "monthly") {
         heroTitle.textContent = "Get monthly access";
         heroCopy.textContent = "Create account or log in, then continue to monthly checkout.";
         intentTitle.textContent = "Monthly plan";
-        intentCopy.textContent = "$29.90 per month. Immediate paid access after checkout.";
+        intentCopy.textContent = "$29.90 per month. Immediate access after checkout.";
         authTitle.textContent = "Create account or log in";
         authCopy.textContent = "Create account or log in to continue with your selected plan.";
       } else if (intent === "yearly") {
         heroTitle.textContent = "Get yearly access";
         heroCopy.textContent = "Most SaaS products highlight annual billing as best value. Same here.";
         intentTitle.textContent = "Yearly plan";
-        intentCopy.textContent = "$239 per year. Lower effective monthly cost and immediate paid access after checkout.";
+        intentCopy.textContent = "$239 per year (= $19.92/month). 33% off for more loyalty.";
         authTitle.textContent = "Create account or log in";
         authCopy.textContent = "Create account or log in to continue with your selected plan.";
       } else {
@@ -1473,7 +1498,7 @@
         const password = String(loginPassword.value || "");
         if (!email || !password) throw new Error("Email and password required.");
 
-        setStatus("Logging in...");
+        setStatus("Signing you in...");
         await loginOnly(email, password);
         await continueFlow();
       } catch (err) {
@@ -1491,6 +1516,20 @@
     offerMonthly.addEventListener("click", () => setIntent("monthly"));
     offerYearly.addEventListener("click", () => setIntent("yearly"));
     offerTrial.addEventListener("click", () => setIntent("trial"));
+
+    planCheckoutBtn.addEventListener("click", async () => {
+      clearMessages();
+      const token = getWebToken();
+      if (!token) {
+        showAuthSection();
+        showTab("signup");
+        setStatus("Create account or log in first, then checkout.");
+        return;
+      }
+
+      const cfg = checkoutConfigForIntent();
+      await continueCheckout(cfg.interval, cfg.withTrial);
+    });
 
     googleContinue.addEventListener("click", beginGoogleAuth);
     navLogout.addEventListener("click", logoutNow);
