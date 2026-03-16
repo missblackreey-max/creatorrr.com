@@ -852,7 +852,6 @@
 
     const params = new URLSearchParams(window.location.search);
     const checkoutState = String(params.get("checkout") || "").trim().toLowerCase();
-    const verifyTokenParam = String(params.get("verify_token") || "").trim();
     const modeParam = String(params.get("mode") || "").trim().toLowerCase();
     const preselectParam = String(params.get("plan") || params.get("intent") || "").trim().toLowerCase();
 
@@ -1084,7 +1083,10 @@
 
       const data = await safeReadJson(res);
       if (!res.ok) {
-        throw new Error(data?.error || data?.message || `Request failed: ${res.status}`);
+        const err = new Error(data?.error || data?.message || `Request failed: ${res.status}`);
+        err.status = res.status;
+        err.payload = data;
+        throw err;
       }
       return data;
     }
@@ -1105,24 +1107,18 @@
       return data;
     }
 
-    async function registerAndLogin(email, password) {
-      const deviceId = getOrCreateDeviceId();
-      await apiPost("/auth/register", { email, password });
-      const data = await apiPost("/auth/login", { email, password, deviceId });
-
-      const token =
-        data?.token ||
-        data?.jwt ||
-        data?.access_token ||
-        (data?.ok && data?.token) ||
-        null;
-
-      if (!token || typeof token !== "string") {
-        throw new Error("Login succeeded but token was not returned.");
+    async function registerOnly(email, password) {
+      const data = await apiPost("/auth/register", { email, password });
+      const verificationSent = !!data?.email_verification_sent;
+      if (verificationSent) {
+        setSuccess("Account created. Please check your inbox and verify your email before logging in.");
+      } else {
+        setSuccess("Account created, but we could not send the verification email right now. Please try logging in again to resend verification.");
       }
-
-      setWebToken(token);
-      return token;
+      showTab("login");
+      loginEmail.value = email;
+      loginPassword.value = "";
+      return data;
     }
 
     async function loginOnly(email, password) {
@@ -1492,31 +1488,6 @@
       setSuccess("Signed in successfully.");
     }
 
-    async function verifyEmailFromLinkIfPresent() {
-      if (!verifyTokenParam) return false;
-
-      setStatus("Verifying your email...");
-
-      const cleanParams = new URLSearchParams(window.location.search);
-      cleanParams.delete("verify_token");
-      const qs = cleanParams.toString();
-      history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
-
-      try {
-        await apiPost("/auth/verify-email", { token: verifyTokenParam });
-        setSuccess("Email verified successfully. You can now log in.");
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Email verification failed.";
-        if (msg.includes("invalid_or_expired_verify_token")) {
-          setError("This verification link is invalid or expired. Log in and request a new verification email if needed.");
-        } else {
-          setError(msg);
-        }
-      }
-
-      return true;
-    }
-
     function beginGoogleAuth() {
       clearMessages();
       const deviceId = getOrCreateDeviceId();
@@ -1542,8 +1513,7 @@
         if (password !== passwordConfirm) throw new Error("Passwords do not match.");
 
         setStatus("Creating account...");
-        await registerAndLogin(email, password);
-        await continueAfterAuth();
+        await registerOnly(email, password);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not create account.");
       } finally {
@@ -1565,7 +1535,17 @@
         await loginOnly(email, password);
         await continueAfterAuth();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not log in.");
+        const message = err instanceof Error ? err.message : "Could not log in.";
+        const emailVerificationSent = !!(err && typeof err === "object" && err.payload && err.payload.email_verification_sent);
+        if (message.includes("email_not_verified")) {
+          if (emailVerificationSent) {
+            setError("Your email is not verified yet. We sent a fresh verification email—check your inbox and spam folder.");
+          } else {
+            setError("Your email is not verified yet, and we could not send a new verification email right now. Please try again in a moment or use your previous verification link.");
+          }
+        } else {
+          setError(message);
+        }
       } finally {
         setBusy(false);
       }
@@ -1580,7 +1560,6 @@
     headerLogout.addEventListener("click", logoutNow);
 
     async function bootstrap() {
-      const verifyHandled = await verifyEmailFromLinkIfPresent();
       const oauthConsume = consumeOAuthResultFromHash();
 
       if (oauthConsume && oauthConsume.ok === false) {
@@ -1627,8 +1606,6 @@
 
       if (oauthConsume?.consumed) {
         setSuccess("Signed in with Google.");
-      } else if (verifyHandled) {
-        showTab("login");
       }
     }
 
