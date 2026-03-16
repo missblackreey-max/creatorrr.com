@@ -156,6 +156,17 @@
       background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
     }
 
+    .header-chip {
+      min-height: auto;
+      color: var(--text);
+      font-weight: 720;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 14px;
+      border-color: rgba(247, 213, 106, 0.34);
+      background: linear-gradient(180deg, rgba(247, 213, 106, 0.18), rgba(247, 213, 106, 0.06));
+    }
+
     .btn[disabled] {
       opacity: 0.55;
       cursor: not-allowed;
@@ -539,6 +550,12 @@
         font-size: 13px;
       }
 
+      .nav-actions .header-chip {
+        min-height: auto;
+        padding: 7px 12px;
+        font-size: 14px;
+      }
+
       .tiny-row {
         flex-direction: column;
       }
@@ -567,12 +584,12 @@
 
         <div class="nav-action-slot nav-auth-pending" id="nav-action-slot">
             <div class="nav-actions" id="nav-logged-out" style="display:none;">
-                <a class="btn btn-secondary" href="./index.html#pricing">Back to pricing</a>
+                <a class="btn btn-secondary header-chip" href="./index.html#pricing">Back to pricing</a>
             </div>
 
             <div class="nav-actions" id="nav-logged-in" style="display:none;">
-                <button class="btn btn-secondary" type="button" id="nav-manage-subscription">Manage subscription</button>
-                <button class="btn btn-secondary" type="button" id="nav-logout">Log out</button>
+                <button class="btn btn-secondary header-chip" type="button" id="nav-manage-subscription">Manage subscription</button>
+                <button class="btn btn-secondary header-chip" type="button" id="nav-logout">Log out</button>
             </div>
         </div>
     </div>

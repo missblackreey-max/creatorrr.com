@@ -116,12 +116,23 @@
       justify-self: center;
     }
 
-    .nav-link-highlight {
+    .nav-link-highlight,
+    .header-chip {
+      min-height: auto;
       color: var(--text);
       font-weight: 720;
       padding: 7px 12px;
       border-radius: 999px;
+      font-size: 14px;
+    }
+
+    .nav-link-highlight {
       border: 1px solid rgba(247, 213, 106, 0.34);
+      background: linear-gradient(180deg, rgba(247, 213, 106, 0.18), rgba(247, 213, 106, 0.06));
+    }
+
+    .header-chip {
+      border-color: rgba(247, 213, 106, 0.34);
       background: linear-gradient(180deg, rgba(247, 213, 106, 0.18), rgba(247, 213, 106, 0.06));
     }
 
@@ -666,6 +677,12 @@
         font-size: 13px;
       }
 
+      .nav-actions .header-chip {
+        min-height: auto;
+        padding: 7px 12px;
+        font-size: 14px;
+      }
+
       .hero-actions,
       .nav-actions {
         width: auto;
@@ -822,12 +839,12 @@
 
       <div class="nav-action-slot nav-auth-pending" id="nav-action-slot">
         <div class="nav-actions" id="nav-actions-logged-out" style="display:none;">
-          <a class="btn btn-secondary" href="./get-started.html?intent=login">Log in</a>
+          <a class="btn btn-secondary header-chip" href="./get-started.html?intent=login">Log in</a>
         </div>
 
         <div class="nav-actions" id="nav-actions-logged-in" style="display:none;">
-          <a class="btn btn-secondary" href="./get-started.html?intent=login">Account</a>
-          <button class="btn btn-primary" type="button" id="landing-logout-btn">Log out</button>
+          <a class="btn btn-secondary header-chip" href="./get-started.html?intent=login">Account</a>
+          <button class="btn btn-primary header-chip" type="button" id="landing-logout-btn">Log out</button>
         </div>
       </div>
     </div>
