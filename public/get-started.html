@@ -1321,8 +1321,7 @@
       const deviceId = getOrCreateDeviceId();
       const clientNonce = randomUuidV4();
       safeLocalStorageSet(LS_WEB_OAUTH_NONCE, clientNonce);
-      const target = `${API_BASE}/auth/google?intent=${encodeURIComponent(intent)}&deviceId=${encodeURIComponent(deviceId)}&clientNonce=${encodeURIComponent(clientNonce)}`;
-      window.location.href = target;
+      const target = `${API_BASE}/auth/google/start?intent=${encodeURIComponent(intent)}&deviceId=${encodeURIComponent(deviceId)}&clientNonce=${encodeURIComponent(clientNonce)}`;      window.location.href = target;
     }
 
     function applyIntentUi() {
