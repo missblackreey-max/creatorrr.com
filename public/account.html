@@ -1136,8 +1136,11 @@
     async function registerOnly(email, password) {
       const data = await apiPost("/auth/register", { email, password });
       const verificationSent = !!data?.email_verification_sent;
+      const emailDeliveryConfigured = !!data?.email_delivery_configured;
       if (verificationSent) {
         setSuccess("Account created. Please check your inbox and verify your email before logging in.");
+      } else if (!emailDeliveryConfigured) {
+        setSuccess("Account created, but email delivery is not configured on this server yet. Set RESEND_API_KEY and RESEND_FROM_EMAIL in the Worker environment, then try logging in to resend verification.");
       } else {
         setSuccess("Account created, but we could not send the verification email right now. Please try logging in again to resend verification.");
       }
@@ -1564,9 +1567,12 @@
       } catch (err) {
         const message = err instanceof Error ? err.message : "Could not log in.";
         const emailVerificationSent = !!(err && typeof err === "object" && err.payload && err.payload.email_verification_sent);
+        const emailDeliveryConfigured = !!(err && typeof err === "object" && err.payload && err.payload.email_delivery_configured);
         if (message.includes("email_not_verified")) {
           if (emailVerificationSent) {
             setError("Your email is not verified yet. We sent a fresh verification email—check your inbox and spam folder.");
+          } else if (!emailDeliveryConfigured) {
+            setError("Your email is not verified yet, and email delivery is not configured on this server. Set RESEND_API_KEY and RESEND_FROM_EMAIL in the Worker environment, then try again.");
           } else {
             setError("Your email is not verified yet, and we could not send a new verification email right now. Please try again in a moment or use your previous verification link.");
           }

@@ -267,6 +267,10 @@ async function sendEmailVerificationEmail(
   return response.ok;
 }
 
+function isEmailDeliveryConfigured(env: Env): boolean {
+  return Boolean(String(env.RESEND_API_KEY || "").trim() && String(env.RESEND_FROM_EMAIL || "").trim());
+}
+
 async function issueEmailVerification(
   env: Env,
   userId: string,
@@ -775,6 +779,16 @@ async function requireAuth(
     .prepare("UPDATE user_devices SET last_seen_at=?3 WHERE user_id=?1 AND device_id=?2")
     .bind(userId, deviceId, nowIso())
     .run();
+
+  const user = await env.creatorrr_db
+    .prepare("SELECT email_verified_at FROM users WHERE id=?1")
+    .bind(userId)
+    .first<{ email_verified_at?: string | null }>();
+
+  if (!user) return { ok: false, response: bad(req, "user_not_found", 404) };
+  if (!user.email_verified_at) {
+    return { ok: false, response: bad(req, "email_not_verified", 403) };
+  }
 
   return {
     ok: true,
@@ -1537,6 +1551,7 @@ export default {
         userId,
         email,
         email_verification_sent: emailVerification.sent,
+        email_delivery_configured: isEmailDeliveryConfigured(env),
       });
     }
 
@@ -1618,6 +1633,7 @@ export default {
         ok: true,
         sent: result.sent,
         expires_at: result.expires_at,
+        email_delivery_configured: isEmailDeliveryConfigured(env),
       });
     }
 
@@ -1644,6 +1660,7 @@ export default {
         const emailVerification = await issueEmailVerification(env, user.id, user.email);
         return bad(req, "email_not_verified", 403, {
           email_verification_sent: emailVerification.sent,
+          email_delivery_configured: isEmailDeliveryConfigured(env),
         });
       }
 
