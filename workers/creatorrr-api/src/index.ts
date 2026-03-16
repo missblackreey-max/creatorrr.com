@@ -402,7 +402,7 @@ function oauthRedirectToSite(env: Env, intent: string, extras?: Record<string, s
   if (extras) {
     for (const [k, v] of Object.entries(extras)) query.set(k, v);
   }
-  return `${site}/get-started.html?${query.toString()}`;
+  return `${site}/account.html?${query.toString()}`;
 }
 
 // -------------------- Types --------------------
@@ -879,7 +879,7 @@ async function createStripeCheckoutSession(
 
   const siteUrl = normalizeSiteUrl(env.SITE_URL);
   const successUrl = `${siteUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`;
-  const cancelUrl = `${siteUrl}/get-started.html?intent=${interval === "year" ? "yearly" : "monthly"}&checkout=canceled`;
+  const cancelUrl = `${siteUrl}/account.html?intent=${interval === "year" ? "yearly" : "monthly"}&checkout=canceled`;
 
   const form = new URLSearchParams();
   form.set("mode", "subscription");
@@ -919,7 +919,7 @@ async function createStripePortalSession(
   customerId: string,
 ): Promise<StripePortalSessionResponse> {
   const siteUrl = normalizeSiteUrl(env.SITE_URL);
-  const returnUrl = normalizeSiteUrl(env.STRIPE_PORTAL_RETURN_URL || "") || `${siteUrl}/get-started.html?intent=login`;
+  const returnUrl = normalizeSiteUrl(env.STRIPE_PORTAL_RETURN_URL || "") || `${siteUrl}/account.html?intent=login`;
 
   const form = new URLSearchParams();
   form.set("customer", customerId);
