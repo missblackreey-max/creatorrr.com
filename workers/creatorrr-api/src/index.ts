@@ -1144,7 +1144,7 @@ export default {
     }
 
     // ---------- AUTH GOOGLE START ----------
-    if (req.method === "GET" && url.pathname === "/auth/google/start") {
+    if (req.method === "GET" && (url.pathname === "/auth/google/start" || url.pathname === "/auth/google")) {
       const clientId = String(env.GOOGLE_CLIENT_ID || "").trim();
       const clientSecret = String(env.GOOGLE_CLIENT_SECRET || "").trim();
       if (!clientId || !clientSecret) return bad(req, "google_oauth_not_configured", 500);

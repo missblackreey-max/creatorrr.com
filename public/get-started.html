@@ -163,6 +163,18 @@
       background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
     }
 
+    .btn-google {
+      gap: 10px;
+      font-weight: 700;
+    }
+
+    .btn-google svg {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+      display: block;
+    }
+
     .header-chip {
       border-color: rgba(247, 213, 106, 0.34);
       background: linear-gradient(180deg, rgba(247, 213, 106, 0.18), rgba(247, 213, 106, 0.06));
@@ -390,24 +402,15 @@
       color: var(--text);
     }
 
-    .divider {
+    .oauth-action {
+      margin-top: 18px;
       display: flex;
-      align-items: center;
-      gap: 10px;
-      margin: 18px 0;
-      color: var(--muted-2);
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.18px;
+      justify-content: center;
     }
 
-    .divider::before,
-    .divider::after {
-      content: "";
-      flex: 1;
-      height: 1px;
-      background: rgba(255,255,255,0.08);
+    .oauth-action .btn-google {
+      width: auto;
+      min-width: 240px;
     }
 
     .status-box,
@@ -710,9 +713,17 @@
             </form>
           </div>
 
-          <div class="divider">Later</div>
-
-          <button class="btn btn-secondary" id="google-continue" type="button">Continue with Google</button>
+          <div class="oauth-action">
+            <button class="btn btn-secondary btn-google" id="google-continue" type="button" aria-label="Continue with Google">
+              <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+                <path fill="#FFC107" d="M43.61 20.08H42V20H24v8h11.3C33.65 32.66 29.2 36 24 36c-6.62 0-12-5.38-12-12s5.38-12 12-12c3.06 0 5.84 1.15 7.95 3.05l5.66-5.66C34.14 6.05 29.37 4 24 4 12.95 4 4 12.95 4 24s8.95 20 20 20 20-8.95 20-20c0-1.34-.14-2.65-.39-3.92z"/>
+                <path fill="#FF3D00" d="M6.31 14.69l6.57 4.82C14.66 15.11 18.96 12 24 12c3.06 0 5.84 1.15 7.95 3.05l5.66-5.66C34.14 6.05 29.37 4 24 4 16.32 4 9.66 8.34 6.31 14.69z"/>
+                <path fill="#4CAF50" d="M24 44c5.2 0 9.94-1.99 13.52-5.22l-6.24-5.27C29.2 36 26.72 37 24 37c-5.18 0-9.62-3.32-11.28-7.95l-6.53 5.03C9.5 39.56 16.19 44 24 44z"/>
+                <path fill="#1976D2" d="M43.61 20.08H42V20H24v8h11.3c-.8 2.58-2.44 4.77-4.68 6.22l6.24 5.27C39.17 36.46 44 31 44 24c0-1.34-.14-2.65-.39-3.92z"/>
+              </svg>
+              <span>Continue with Google</span>
+            </button>
+          </div>
         </div>
 
         <div class="account-box initially-hidden" id="account-section">
@@ -1310,7 +1321,7 @@
       const deviceId = getOrCreateDeviceId();
       const clientNonce = randomUuidV4();
       safeLocalStorageSet(LS_WEB_OAUTH_NONCE, clientNonce);
-      const target = `${API_BASE}/auth/google/start?intent=${encodeURIComponent(intent)}&deviceId=${encodeURIComponent(deviceId)}&clientNonce=${encodeURIComponent(clientNonce)}`;
+      const target = `${API_BASE}/auth/google?intent=${encodeURIComponent(intent)}&deviceId=${encodeURIComponent(deviceId)}&clientNonce=${encodeURIComponent(clientNonce)}`;
       window.location.href = target;
     }
 
@@ -1420,6 +1431,8 @@
                 oauth_state_expired: "Google login expired. Please try again.",
                 google_token_exchange_failed: "Google login could not be completed. Please try again.",
                 access_denied: "Google login was canceled.",
+                not_found: "Google login is temporarily unavailable. Please use email/password for now while we fix this.",
+                '{"ok":false,"error":"not_found"}': "Google login is temporarily unavailable. Please use email/password for now while we fix this.",
             };
             const message = map[oauthError] || "Google login failed. Please try again.";
             setError(message);
