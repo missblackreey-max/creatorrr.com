@@ -235,6 +235,72 @@ async function sendPasswordResetEmail(env: Env, toEmail: string, resetUrl: strin
   return response.ok;
 }
 
+async function sendEmailVerificationEmail(
+  env: Env,
+  toEmail: string,
+  verificationUrl: string,
+): Promise<boolean> {
+  const apiKey = String(env.RESEND_API_KEY || "").trim();
+  const fromEmail = String(env.RESEND_FROM_EMAIL || "noreply@mail.creatorrr.com").trim();
+  const fromName = String(env.RESEND_FROM_NAME || "Creatorrr").trim() || "Creatorrr";
+  if (!apiKey || !fromEmail) return false;
+
+  const safeUrl = escapeHtml(verificationUrl);
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      from: `${fromName} <${fromEmail}>`,
+      to: [toEmail],
+      subject: "Verify your Creatorrr email",
+      html: [
+        "<p>Thanks for creating your Creatorrr account.</p>",
+        `<p><a href=\"${safeUrl}\">Verify your email address</a></p>`,
+        "<p>This link expires in 24 hours. If you did not create this account, you can ignore this email.</p>",
+      ].join(""),
+    }),
+  });
+
+  return response.ok;
+}
+
+async function issueEmailVerification(
+  env: Env,
+  userId: string,
+  email: string,
+): Promise<{ sent: boolean; expires_at: string }> {
+  const rawToken = makeOpaqueToken();
+  const tokenHash = await sha256Hex(rawToken);
+  const expiresAt = addMinutesIso(60 * 24);
+  const now = nowIso();
+
+  await env.creatorrr_db
+    .prepare(
+      `
+        UPDATE users
+        SET
+          email_verify_token_hash=?2,
+          email_verify_expires_at=?3,
+          updated_at=?4
+        WHERE id=?1
+      `,
+    )
+    .bind(userId, tokenHash, expiresAt, now)
+    .run();
+
+  const siteUrl = normalizeSiteUrl(env.SITE_URL);
+  const verifyUrl = `${siteUrl}/account.html?intent=login&verify_token=${encodeURIComponent(rawToken)}`;
+  const mailed = await sendEmailVerificationEmail(env, email, verifyUrl).catch(() => false);
+
+  return {
+    sent: mailed,
+    expires_at: expiresAt,
+  };
+}
+
 function unixToIso(v: unknown): string | null {
   if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) return null;
   return new Date(v * 1000).toISOString();
@@ -1430,10 +1496,93 @@ export default {
           .bind(userId, now),
       ]);
 
+      const emailVerification = await issueEmailVerification(env, userId, email);
+
       return json(req, {
         ok: true,
         userId,
         email,
+        email_verification_sent: emailVerification.sent,
+      });
+    }
+
+    // ---------- AUTH VERIFY EMAIL ----------
+    if (req.method === "POST" && url.pathname === "/auth/verify-email") {
+      const body = await readJson<{ token?: string }>(req);
+      if (!body) return bad(req, "invalid_json");
+
+      const rawToken = String(body.token || "").trim();
+      if (!rawToken) return bad(req, "invalid_input");
+
+      const tokenHash = await sha256Hex(rawToken);
+
+      const user = await env.creatorrr_db
+        .prepare(
+          `
+            SELECT
+              id,
+              email,
+              pass_salt,
+              pass_hash,
+              created_at,
+              email_verified_at,
+              password_reset_token_hash,
+              password_reset_expires_at,
+              email_verify_token_hash,
+              email_verify_expires_at,
+              updated_at
+            FROM users
+            WHERE email_verify_token_hash=?1
+          `,
+        )
+        .bind(tokenHash)
+        .first<UserRow>();
+
+      if (!user) return bad(req, "invalid_or_expired_verify_token", 400);
+      if (isExpiredIso(user.email_verify_expires_at || null)) {
+        return bad(req, "invalid_or_expired_verify_token", 400);
+      }
+
+      const now = nowIso();
+      await env.creatorrr_db
+        .prepare(
+          `
+            UPDATE users
+            SET
+              email_verified_at=COALESCE(email_verified_at, ?2),
+              email_verify_token_hash=NULL,
+              email_verify_expires_at=NULL,
+              updated_at=?2
+            WHERE id=?1
+          `,
+        )
+        .bind(user.id, now)
+        .run();
+
+      return json(req, {
+        ok: true,
+        verified: true,
+        email: user.email,
+      });
+    }
+
+    // ---------- AUTH RESEND VERIFY EMAIL ----------
+    if (req.method === "POST" && url.pathname === "/auth/resend-verification") {
+      const body = await readJson<{ email?: string }>(req);
+      if (!body) return bad(req, "invalid_json");
+
+      const email = normalizeEmail(String(body.email || ""));
+      if (!email) return bad(req, "invalid_input");
+
+      const user = await getUserByEmail(env, email);
+      if (!user || user.email_verified_at) {
+        return json(req, { ok: true, sent: true });
+      }
+
+      await issueEmailVerification(env, user.id, user.email);
+      return json(req, {
+        ok: true,
+        sent: true,
       });
     }
 

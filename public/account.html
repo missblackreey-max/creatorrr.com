@@ -852,6 +852,7 @@
 
     const params = new URLSearchParams(window.location.search);
     const checkoutState = String(params.get("checkout") || "").trim().toLowerCase();
+    const verifyTokenParam = String(params.get("verify_token") || "").trim();
     const modeParam = String(params.get("mode") || "").trim().toLowerCase();
     const preselectParam = String(params.get("plan") || params.get("intent") || "").trim().toLowerCase();
 
@@ -1491,6 +1492,31 @@
       setSuccess("Signed in successfully.");
     }
 
+    async function verifyEmailFromLinkIfPresent() {
+      if (!verifyTokenParam) return false;
+
+      setStatus("Verifying your email...");
+
+      const cleanParams = new URLSearchParams(window.location.search);
+      cleanParams.delete("verify_token");
+      const qs = cleanParams.toString();
+      history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+
+      try {
+        await apiPost("/auth/verify-email", { token: verifyTokenParam });
+        setSuccess("Email verified successfully. You can now log in.");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Email verification failed.";
+        if (msg.includes("invalid_or_expired_verify_token")) {
+          setError("This verification link is invalid or expired. Log in and request a new verification email if needed.");
+        } else {
+          setError(msg);
+        }
+      }
+
+      return true;
+    }
+
     function beginGoogleAuth() {
       clearMessages();
       const deviceId = getOrCreateDeviceId();
@@ -1554,6 +1580,7 @@
     headerLogout.addEventListener("click", logoutNow);
 
     async function bootstrap() {
+      const verifyHandled = await verifyEmailFromLinkIfPresent();
       const oauthConsume = consumeOAuthResultFromHash();
 
       if (oauthConsume && oauthConsume.ok === false) {
@@ -1600,6 +1627,8 @@
 
       if (oauthConsume?.consumed) {
         setSuccess("Signed in with Google.");
+      } else if (verifyHandled) {
+        showTab("login");
       }
     }
 
