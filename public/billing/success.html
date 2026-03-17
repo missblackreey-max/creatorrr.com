@@ -367,17 +367,16 @@
     <div class="container grid">
       <section class="card">
         <span class="eyebrow">Contentorrr access</span>
-        <h1>Access confirmed</h1>
+        <h1>Thanks for your purchase</h1>
         <p>
-          Thank you for your purchase! 
+          Your account is ready. Next step: install the app and sign in with the same login you used here.
         </p>
 
         <div class="stack">
-          <div class="success-box">
-            Your purchase is complete and the access is now active. Download and instsall Contentorrr (Windows or Mac) and sign in.
+          <div class="success-box" id="access-box">
+            Activating your access…
           </div>
 
-          <div class="status-box" id="status-box"></div>
           <div class="error-box" id="error-box"></div>
         </div>
       </section>
@@ -392,18 +391,18 @@
           <div class="platform-card">
             <strong>Windows</strong>
             <span>Installer for Windows 11 and later</span>
-            <a class="btn btn-primary" href="../Contentorrr-Setup-v0.9.9.exe">Download .exe</a>
+            <a class="btn btn-primary" href="../Contentorrr-Setup-v1.0.0.exe">Download .exe</a>
           </div>
 
           <div class="platform-card">
             <strong>macOS</strong>
             <span>Installer package for macOS builds</span>
-            <a class="btn btn-primary" href="../Contentorrr-v0.9.9.dmg">Download .dmg</a>
+            <a class="btn btn-primary" href="../Contentorrr-v1.0.0.dmg">Download .dmg</a>
           </div>
         </div>
 
         <div class="footer-note">
-          Already installed? Open Contentorrr and log in now.
+          After install, open Contentorrr and log in with the same email and password (or Google account).
         </div>
       </section>
     </div>
@@ -413,12 +412,11 @@
     const API_BASE = "https://api.creatorrr.com";
     const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
 
-    const statusBox = document.getElementById("status-box");
+    const accessBox = document.getElementById("access-box");
     const errorBox = document.getElementById("error-box");
 
-    function setStatus(text) {
-      statusBox.textContent = text;
-      statusBox.style.display = text ? "block" : "none";
+    function setAccessMessage(text) {
+      accessBox.textContent = text;
     }
 
     function setError(text) {
@@ -447,10 +445,12 @@
 
     async function verifyAccessInBrowser() {
       const token = safeLocalStorageGet(LS_WEB_TOKEN);
-      if (!token) return;
+      if (!token) {
+        setAccessMessage("Your purchase was received. If your plan does not appear immediately, open Account once and refresh this page.");
+        return;
+      }
 
       try {
-        setStatus("Checking account access...");
         const res = await fetch(`${API_BASE}/license/me`, {
           method: "GET",
           headers: {
@@ -459,29 +459,32 @@
         });
 
         const data = await safeReadJson(res);
+        if (!res.ok) return;
 
-        if (!res.ok) {
-          setStatus("");
+        if (data?.entitled && data?.in_trial) {
+          setAccessMessage("Your 3-day free trial is now active.");
           return;
         }
 
-        if (data?.entitled) {
-          if (data?.in_trial) {
-            setStatus("Your 3 day trial access is active. You can now sign in inside the app.");
-          } else {
-            setStatus("Your paid access is active. You can now sign in inside the app.");
-          }
-        } else {
-          setStatus("Checkout finished, but browser license state is not active yet. If Stripe just returned you, wait a few seconds and try opening the app.");
+        if (data?.entitled && data?.billing_interval === "month") {
+          setAccessMessage("Your monthly subscription is now active.");
+          return;
         }
+
+        if (data?.entitled && data?.billing_interval === "year") {
+          setAccessMessage("Your yearly subscription is now active.");
+          return;
+        }
+
+        setAccessMessage("Your purchase was received. Access can take a few seconds to sync after Stripe redirects back.");
       } catch {
-        setStatus("");
+        setAccessMessage("Your purchase was received. Access can take a few seconds to sync after Stripe redirects back.");
       }
     }
 
     const sessionId = new URLSearchParams(window.location.search).get("session_id");
     if (!sessionId) {
-      setError("No Stripe session ID was provided in the URL. The download links still work.");
+      setError("No Stripe session ID was provided in the URL. You can still download the app below.");
     }
 
     verifyAccessInBrowser();

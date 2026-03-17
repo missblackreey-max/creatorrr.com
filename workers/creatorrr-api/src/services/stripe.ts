@@ -361,4 +361,14 @@ export async function handleCheckoutSessionCompleted(env: Env, session: Record<s
     `)
     .bind(userId, customerId, nowIso())
     .run();
+
+  const subscriptionId = typeof session.subscription === "string" ? session.subscription.trim() : "";
+  if (!subscriptionId) return;
+
+  const subscription = await stripeGetJson<StripeSubscriptionLike>(
+    env,
+    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+  );
+
+  await upsertLicenseFromStripeSubscription(env, subscription);
 }
