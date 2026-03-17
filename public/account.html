@@ -1465,8 +1465,8 @@
     }
 
     function renderPlans(account) {
-      const state = deriveAccountState(account);
-      const trialBadge = state === "trial_active" ? "" : "Try now";
+      const trialAction = getPlanAction("trial", account);
+      const trialBadge = trialAction.kind === "cta" ? "Try now" : "";
 
       const plans = [
         {
