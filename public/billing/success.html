@@ -3,30 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Contentorrr | Access confirmed</title>
+  <title>Contentorrr | Payment confirmed</title>
   <meta
     name="description"
-    content="Your Contentorrr access has been confirmed. Download the app and sign in with your account."
+    content="Payment confirmed for Contentorrr."
   />
   <style>
     :root {
       --bg: #060606;
-      --bg-soft: #0d0d0d;
       --card: rgba(255, 255, 255, 0.04);
       --card-strong: rgba(255, 255, 255, 0.06);
       --text: #f5f5f5;
       --muted: rgba(245, 245, 245, 0.74);
       --muted-2: rgba(245, 245, 245, 0.56);
-      --line: rgba(247, 213, 106, 0.18);
       --line-soft: rgba(255, 255, 255, 0.08);
       --gold-1: #f7d56a;
       --gold-2: #b8892a;
       --shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
       --radius-lg: 24px;
-      --radius-md: 18px;
-      --max: 1080px;
       --success: rgba(90, 200, 120, 0.18);
       --success-line: rgba(90, 200, 120, 0.28);
+      --warn: rgba(247, 213, 106, 0.1);
+      --warn-line: rgba(247, 213, 106, 0.22);
+      --warn-text: #f5deb0;
+      --max: 1080px;
     }
 
     * { box-sizing: border-box; }
@@ -43,7 +43,10 @@
       text-rendering: optimizeLegibility;
     }
 
-    a { color: inherit; text-decoration: none; }
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
 
     .container {
       width: min(calc(100% - 32px), var(--max));
@@ -117,7 +120,7 @@
       border: 1px solid transparent;
       font-size: 14px;
       font-weight: 760;
-      transition: transform 0.18s ease, opacity 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
       cursor: pointer;
       white-space: nowrap;
     }
@@ -154,12 +157,6 @@
     .header-chip:hover {
       border-color: rgba(247, 213, 106, 0.48);
       box-shadow: 0 10px 24px rgba(0, 0, 0, 0.44), 0 0 0 1px rgba(247, 213, 106, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.26);
-    }
-
-    .btn[disabled] {
-      opacity: 0.55;
-      cursor: not-allowed;
-      transform: none !important;
     }
 
     main {
@@ -215,63 +212,70 @@
     .stack {
       display: grid;
       gap: 18px;
-      margin-top: 20px;
+      margin-top: 22px;
     }
 
-    .success-box {
+    .status-box,
+    .notice-box {
       padding: 18px;
       border-radius: 18px;
-      background: var(--success);
-      border: 1px solid var(--success-line);
-      color: #daf7de;
       font-size: 14px;
       line-height: 1.55;
     }
 
-    .info-list {
+    .status-box {
+      background: var(--success);
+      border: 1px solid var(--success-line);
+      color: #daf7de;
+    }
+
+    .notice-box {
+      display: none;
+      background: var(--warn);
+      border: 1px solid var(--warn-line);
+      color: var(--warn-text);
+    }
+
+    .steps {
       display: grid;
       gap: 12px;
     }
 
-    .info-item {
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
       padding: 14px 16px;
       border-radius: 16px;
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.06);
     }
 
-    .info-item strong {
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+      font-size: 13px;
+      font-weight: 800;
+      color: #0b0b0b;
+      background: linear-gradient(180deg, var(--gold-1), var(--gold-2));
+    }
+
+    .step-copy strong {
       display: block;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
       font-size: 14px;
     }
 
-    .info-item span {
+    .step-copy span {
+      display: block;
       color: var(--muted);
       font-size: 14px;
       line-height: 1.45;
-    }
-
-    .status-box,
-    .error-box {
-      display: none;
-      margin-top: 16px;
-      padding: 14px 16px;
-      border-radius: 16px;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    .status-box {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-      color: var(--text);
-    }
-
-    .error-box {
-      background: rgba(255, 90, 90, 0.08);
-      border: 1px solid rgba(255, 90, 90, 0.20);
-      color: #ffd6d6;
     }
 
     .download-grid {
@@ -358,7 +362,6 @@
 
       <div class="nav-actions">
         <a class="btn btn-secondary header-chip" href="../account.html?mode=login&intent=login">Account</a>
-        <a class="btn btn-secondary header-chip" href="../index.html#pricing">Pricing</a>
       </div>
     </div>
   </header>
@@ -366,43 +369,60 @@
   <main>
     <div class="container grid">
       <section class="card">
-        <span class="eyebrow">Contentorrr access</span>
-        <h1>Thanks for your purchase</h1>
-        <p>
-          Your account is ready. Next step: install the app and sign in with the same login you used here.
-        </p>
+        <span class="eyebrow">Payment successful</span>
+        <h1>Subscription confirmed.</h1>
 
         <div class="stack">
-          <div class="success-box" id="access-box">
-            Activating your access…
+          <div class="status-box" id="status-box">
+            Payment confirmed.
           </div>
 
-          <div class="error-box" id="error-box"></div>
+          <div class="notice-box" id="notice-box"></div>
+
+          <div class="steps">
+            <div class="step">
+              <div class="step-number">1</div>
+              <div class="step-copy">
+                <strong>Download</strong>
+                <span>Choose Windows or macOS.</span>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">2</div>
+              <div class="step-copy">
+                <strong>Install</strong>
+                <span>Run the installer.</span>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">3</div>
+              <div class="step-copy">
+                <strong>Sign in</strong>
+                <span>Use your existing account.</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
       <section class="card">
         <h2>Download Contentorrr</h2>
-        <p>
-          Install the app on your machine, then sign in with the same account.
-        </p>
+        <p>Download the installer for your machine.</p>
 
         <div class="download-grid">
           <div class="platform-card">
             <strong>Windows</strong>
-            <span>Installer for Windows 11 and later</span>
-            <a class="btn btn-primary" href="../Contentorrr-Setup-v1.0.0.exe">Download .exe</a>
+            <span>Get the .exe installer:</span>
+            <a class="btn btn-primary" href="../Contentorrr-Setup-v1.0.0.exe">Download for Win11</a>
           </div>
 
           <div class="platform-card">
-            <strong>macOS</strong>
-            <span>Installer package for macOS builds</span>
-            <a class="btn btn-primary" href="../Contentorrr-v1.0.0.dmg">Download .dmg</a>
+            <strong>macOS (Apple Silicon)</strong>
+            <span>Get the .dmg installer:</span>
+            <a class="btn btn-primary" href="../Contentorrr-v1.0.0.dmg">Download for macOS</a>
           </div>
-        </div>
-
-        <div class="footer-note">
-          After install, open Contentorrr and log in with the same email and password (or Google account).
         </div>
       </section>
     </div>
@@ -412,16 +432,16 @@
     const API_BASE = "https://api.creatorrr.com";
     const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
 
-    const accessBox = document.getElementById("access-box");
-    const errorBox = document.getElementById("error-box");
+    const statusBox = document.getElementById("status-box");
+    const noticeBox = document.getElementById("notice-box");
 
-    function setAccessMessage(text) {
-      accessBox.textContent = text;
+    function setStatusMessage(text) {
+      statusBox.textContent = text;
     }
 
-    function setError(text) {
-      errorBox.textContent = text;
-      errorBox.style.display = text ? "block" : "none";
+    function setNotice(text) {
+      noticeBox.textContent = text;
+      noticeBox.style.display = text ? "block" : "none";
     }
 
     function safeLocalStorageGet(key) {
@@ -445,10 +465,7 @@
 
     async function verifyAccessInBrowser() {
       const token = safeLocalStorageGet(LS_WEB_TOKEN);
-      if (!token) {
-        setAccessMessage("Your purchase was received. If your plan does not appear immediately, open Account once and refresh this page.");
-        return;
-      }
+      if (!token) return;
 
       try {
         const res = await fetch(`${API_BASE}/license/me`, {
@@ -459,35 +476,28 @@
         });
 
         const data = await safeReadJson(res);
-        if (!res.ok) {
-          setAccessMessage("Your purchase was received. Access can take a few seconds to sync. If this message stays, open Account and sign in again.");
-          return;
-        }
+        if (!res.ok) return;
 
         if (data?.entitled && data?.in_trial) {
-          setAccessMessage("Your 3-day free trial is now active.");
+          setStatusMessage("3-day free trial active.");
           return;
         }
 
         if (data?.entitled && data?.billing_interval === "month") {
-          setAccessMessage("Your monthly subscription is now active.");
+          setStatusMessage("Monthly subscription active.");
           return;
         }
 
         if (data?.entitled && data?.billing_interval === "year") {
-          setAccessMessage("Your yearly subscription is now active.");
+          setStatusMessage("Yearly subscription active.");
           return;
         }
 
-        setAccessMessage("Your purchase was received. Access can take a few seconds to sync after Stripe redirects back.");
+        if (data?.entitled) {
+          setStatusMessage("Subscription active.");
+        }
       } catch {
-        setAccessMessage("Your purchase was received. Access can take a few seconds to sync after Stripe redirects back.");
       }
-    }
-
-    const sessionId = new URLSearchParams(window.location.search).get("session_id");
-    if (!sessionId) {
-      setError("No Stripe session ID was provided in the URL. You can still download the app below.");
     }
 
     verifyAccessInBrowser();
