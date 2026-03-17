@@ -392,14 +392,16 @@
     .section-head {
       display: flex;
       align-items: end;
-      justify-content: space-between;
+      justify-content: center;
       gap: 16px;
       flex-wrap: wrap;
       margin-bottom: 20px;
+      text-align: center;
     }
 
     .section-subtext {
       max-width: 760px;
+      margin: 0 auto;
     }
 
     .status-box,
@@ -436,6 +438,7 @@
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
+      text-align: center;
     }
 
     .account-item {
@@ -478,12 +481,14 @@
       gap: 10px;
       flex-wrap: wrap;
       margin-top: 18px;
+      justify-content: center;
     }
 
     .plans-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 14px;
+      align-items: stretch;
     }
 
     .plan-card {
@@ -495,6 +500,7 @@
       border: 1px solid rgba(255,255,255,0.08);
       min-height: 100%;
       position: relative;
+      text-align: center;
     }
 
     .plan-card.recommended {
@@ -516,6 +522,7 @@
     .plan-badge-row {
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
       flex-wrap: wrap;
       min-height: 24px;
@@ -575,12 +582,24 @@
 
     .plan-action {
       margin-top: auto;
+      display: flex;
+      justify-content: center;
+    }
+
+    .plan-action .btn {
+      width: 100%;
+      max-width: 260px;
     }
 
     .download-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
+      align-items: stretch;
+    }
+
+    .download-grid > .platform-card {
+      min-height: 100%;
     }
 
     .platform-card {
@@ -588,6 +607,10 @@
       border-radius: 18px;
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.06);
+      text-align: center;
+      display: grid;
+      grid-auto-rows: min-content;
+      justify-items: center;
     }
 
     .platform-card strong {
@@ -851,6 +874,7 @@
 
     const params = new URLSearchParams(window.location.search);
     const checkoutState = String(params.get("checkout") || "").trim().toLowerCase();
+    const portalState = String(params.get("portal") || "").trim().toLowerCase();
     const modeParam = String(params.get("mode") || "").trim().toLowerCase();
     const preselectParam = String(params.get("plan") || params.get("intent") || "").trim().toLowerCase();
 
@@ -1267,6 +1291,11 @@
       headerLogout.classList.remove("initially-hidden");
     }
 
+    function hasUsedTrialOnAccount(account) {
+      const license = account?.license || {};
+      return Boolean(String(license.trial_start_at || "").trim() || String(license.trial_end_at || "").trim());
+    }
+
     function renderAccount(account) {
       currentAccount = account;
       showLoggedInUi();
@@ -1311,6 +1340,9 @@
 
       if (state === "no_access") {
         if (planKey === "month") {
+          if (hasUsedTrialOnAccount(account)) {
+            return { kind: "cta", label: "Buy monthly", action: "checkout-month", primary: preferredPlan !== "year" };
+          }
           return { kind: "cta", label: "Start free trial", action: "checkout-month-trial", primary: preferredPlan !== "year" };
         }
         return { kind: "cta", label: "Buy yearly", action: "checkout-year", primary: preferredPlan === "year" };
@@ -1394,6 +1426,11 @@
 
           if (action === "checkout-month-trial") {
             await continueCheckout("month", true);
+            return;
+          }
+
+          if (action === "checkout-month") {
+            await continueCheckout("month", false);
             return;
           }
 
@@ -1624,6 +1661,10 @@
         setError("Checkout was canceled. You can try again anytime.");
       }
 
+      if (portalState === "returned") {
+        setStatus("Welcome back. Refreshing your subscription status...");
+      }
+
       const oauthError = String(params.get("oauth_error") || "").trim();
       if (oauthError) {
         const map = {
@@ -1652,7 +1693,9 @@
       renderAccount(account);
       renderPlans(account);
 
-      if (oauthConsume?.consumed) {
+      if (portalState === "returned") {
+        setSuccess("Billing changes synced.");
+      } else if (oauthConsume?.consumed) {
         setSuccess("Signed in with Google.");
       }
     }

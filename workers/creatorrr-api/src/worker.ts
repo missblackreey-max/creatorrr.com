@@ -35,6 +35,7 @@ import {
   recoverStripeCustomerId,
   requireStripeCheckoutConfig,
   requireStripePortalConfig,
+  refreshLicenseFromStripe,
   updateStripeSubscriptionAutoRenew,
   upgradeStripeSubscriptionToYearly,
   upsertLicenseFromStripeSubscription,
@@ -64,6 +65,7 @@ function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof getLicens
       can_manage_subscription: Boolean(lic?.stripe_customer_id || lic?.stripe_subscription_id),
       billing_interval: lic?.billing_interval || null,
       current_period_end: lic?.current_period_end || null,
+      trial_start_at: lic?.trial_start_at || null,
       trial_end_at: lic?.trial_end_at || null,
     },
   };
@@ -578,7 +580,15 @@ export default {
       const user = await getUserById(env, auth.ctx.userId);
       if (!user) return bad(req, "user_not_found", 404);
 
-      const lic = await getLicenseRow(env, auth.ctx.userId);
+      let lic = await getLicenseRow(env, auth.ctx.userId);
+
+      if (env.STRIPE_SECRET_KEY?.trim()) {
+        try {
+          lic = await refreshLicenseFromStripe(env, auth.ctx.userId, lic);
+        } catch {
+        }
+      }
+
       return json(req, { ok: true, ...makeAccountView(user, lic) });
     }
 

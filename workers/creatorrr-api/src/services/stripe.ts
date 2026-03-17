@@ -193,7 +193,7 @@ export async function createStripePortalSession(
   customerId: string,
 ): Promise<StripePortalSessionResponse> {
   const siteUrl = normalizeSiteUrl(env.SITE_URL);
-  const returnUrl = normalizeSiteUrl(env.STRIPE_PORTAL_RETURN_URL || "") || `${siteUrl}/account.html?intent=login`;
+  const returnUrl = normalizeSiteUrl(env.STRIPE_PORTAL_RETURN_URL || "") || `${siteUrl}/account.html?intent=yearly&portal=returned`;
 
   const form = new URLSearchParams();
   form.set("customer", customerId);
@@ -214,6 +214,52 @@ async function findLatestSubscriptionIdForCustomer(env: Env, customerId: string)
 
   const firstId = data?.data?.find((item) => item?.id)?.id;
   return typeof firstId === "string" && firstId.trim() ? firstId.trim() : null;
+}
+
+async function findLatestSubscriptionForCustomer(env: Env, customerId: string): Promise<StripeSubscriptionLike | null> {
+  const data = await stripeGetJson<{ data?: Array<StripeSubscriptionLike | null> }>(
+    env,
+    `/v1/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=5`,
+  );
+
+  const sub = data?.data?.find((item) => item?.id);
+  return sub || null;
+}
+
+export async function refreshLicenseFromStripe(
+  env: Env,
+  userId: string,
+  lic: LicenseRow | null,
+): Promise<LicenseRow | null> {
+  const customerId = String(lic?.stripe_customer_id || "").trim();
+  let subscriptionId = String(lic?.stripe_subscription_id || "").trim();
+
+  if (!customerId && !subscriptionId) {
+    return lic;
+  }
+
+  if (!subscriptionId && customerId) {
+    const latestSubscription = await findLatestSubscriptionForCustomer(env, customerId);
+    subscriptionId = String(latestSubscription?.id || "").trim();
+  }
+
+  if (!subscriptionId) {
+    return lic;
+  }
+
+  const subscription = await stripeGetJson<StripeSubscriptionLike>(
+    env,
+    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+  );
+
+  await upsertLicenseFromStripeSubscription(env, subscription);
+
+  const refreshed = await env.creatorrr_db
+    .prepare("SELECT * FROM licenses WHERE user_id=?1")
+    .bind(userId)
+    .first<LicenseRow>();
+
+  return refreshed || lic;
 }
 
 
