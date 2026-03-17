@@ -790,7 +790,7 @@
         <div class="section-head">
           <div class="section-subtext">
             <h2>Download Contentorrr</h2>
-            <p id="downloads-copy">Current version v1.0.0. Sign in inside the app with the same account.</p>
+            <p id="downloads-copy">Current version: V1.0.0</p>
           </div>
         </div>
 
@@ -802,14 +802,10 @@
           </div>
 
           <div class="platform-card">
-            <strong>macOS</strong>
+            <strong>macOS (Apple Silicon)</strong>
             <span>Current version v1.0.0 for macOS</span>
             <a class="btn btn-primary" href="./Contentorrr-v1.0.0.dmg">Download .dmg</a>
           </div>
-        </div>
-
-        <div class="footer-note">
-          You can keep this section later and expand it with release notes or older versions.
         </div>
       </section>
     </div>
@@ -877,7 +873,7 @@
     let currentAccount = null;
     let preferredPlan = normalizePlan(preselectParam) || "year";
 
-    downloadsCopy.textContent = `Current version ${APP_VERSION}. Sign in inside the app with the same account.`;
+    downloadsCopy.textContent = `Current version ${APP_VERSION}.`;
 
     function normalizePlan(value) {
       if (value === "trial") return "trial";
