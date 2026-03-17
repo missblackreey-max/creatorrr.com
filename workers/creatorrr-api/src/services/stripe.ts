@@ -206,6 +206,54 @@ export async function createStripePortalSession(
   );
 }
 
+async function findLatestSubscriptionIdForCustomer(env: Env, customerId: string): Promise<string | null> {
+  const data = await stripeGetJson<{ data?: Array<{ id?: string | null } | null> }>(
+    env,
+    `/v1/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=5`,
+  );
+
+  const firstId = data?.data?.find((item) => item?.id)?.id;
+  return typeof firstId === "string" && firstId.trim() ? firstId.trim() : null;
+}
+
+export async function updateStripeSubscriptionAutoRenew(
+  env: Env,
+  userId: string,
+  lic: LicenseRow | null,
+  enabled: boolean,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  let subscriptionId = String(lic?.stripe_subscription_id || "").trim();
+  const customerId = String(lic?.stripe_customer_id || "").trim();
+
+  if (!subscriptionId && customerId) {
+    subscriptionId = (await findLatestSubscriptionIdForCustomer(env, customerId)) || "";
+  }
+
+  if (!subscriptionId) return { ok: false, reason: "no_stripe_subscription" };
+
+  const form = new URLSearchParams();
+  form.set("cancel_at_period_end", enabled ? "false" : "true");
+
+  const subscription = await stripePostForm<StripeSubscriptionLike>(
+    env,
+    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    form,
+  );
+
+  await upsertLicenseFromStripeSubscription(env, subscription);
+
+  await env.creatorrr_db
+    .prepare(`
+      UPDATE licenses
+      SET stripe_subscription_id=?2, updated_at=?3
+      WHERE user_id=?1
+    `)
+    .bind(userId, subscriptionId, nowIso())
+    .run();
+
+  return { ok: true };
+}
+
 function mapStripeStatus(subscription: StripeSubscriptionLike): string {
   const raw = String(subscription.status || "").trim().toLowerCase();
   const cancelAtPeriodEnd = Boolean(subscription.cancel_at_period_end);

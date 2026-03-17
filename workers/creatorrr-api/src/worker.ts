@@ -35,6 +35,7 @@ import {
   recoverStripeCustomerId,
   requireStripeCheckoutConfig,
   requireStripePortalConfig,
+  updateStripeSubscriptionAutoRenew,
   upsertLicenseFromStripeSubscription,
   verifyStripeWebhookSignature,
 } from "./services/stripe";
@@ -653,6 +654,32 @@ export default {
         const message = err instanceof Error ? err.message : "stripe_portal_failed";
         return bad(req, "stripe_portal_failed", 502, { message });
       }
+    }
+
+    if (req.method === "POST" && url.pathname === "/stripe/subscription/auto-renew") {
+      const cfgErr = requireStripePortalConfig(req, env);
+      if (cfgErr) return cfgErr;
+
+      const auth = await requireAuth(req, env);
+      if (!auth.ok) return auth.response;
+
+      const body = await readJson<{ enabled?: boolean }>(req);
+      if (!body || typeof body.enabled !== "boolean") return bad(req, "invalid_input", 400);
+
+      const lic = await getLicenseRow(env, auth.ctx.userId);
+      const updated = await updateStripeSubscriptionAutoRenew(env, auth.ctx.userId, lic, body.enabled);
+
+      if (!updated.ok) {
+        return bad(req, updated.reason, 400, {
+          message: "No Stripe subscription found yet for this account.",
+        });
+      }
+
+      const freshLic = await getLicenseRow(env, auth.ctx.userId);
+      const user = await getUserById(env, auth.ctx.userId);
+      if (!user) return bad(req, "user_not_found", 404);
+
+      return json(req, { ok: true, ...makeAccountView(user, freshLic) });
     }
 
     return bad(req, "not_found", 404);

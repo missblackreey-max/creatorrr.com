@@ -435,6 +435,21 @@
       word-break: break-word;
     }
 
+    .auto-renew-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .auto-renew-toggle input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--gold);
+      cursor: pointer;
+    }
+
     .account-actions {
       display: flex;
       gap: 10px;
@@ -1126,11 +1141,19 @@
     function deriveAccountState(account) {
       const user = account?.user || null;
       const license = account?.license || {};
+      const nowMs = Date.now();
+      const trialEndMs = Date.parse(license.trial_end_at || "");
+      const periodEndMs = Date.parse(license.current_period_end || "");
+
+      const hasLiveTrial = Number.isFinite(trialEndMs) && trialEndMs > nowMs;
+      const hasLiveSubscriptionPeriod = Number.isFinite(periodEndMs) && periodEndMs > nowMs;
+      const hasRecurringPlan = license.billing_interval === "month" || license.billing_interval === "year";
+      const isActiveByDates = hasLiveTrial || (hasRecurringPlan && hasLiveSubscriptionPeriod);
 
       if (!user) return "logged_out";
-      if (license.entitled && license.in_trial) return "trial_active";
-      if (license.entitled && license.billing_interval === "month") return "monthly_active";
-      if (license.entitled && license.billing_interval === "year") return "yearly_active";
+      if ((license.entitled || isActiveByDates) && (license.in_trial || hasLiveTrial)) return "trial_active";
+      if ((license.entitled || isActiveByDates) && license.billing_interval === "month") return "monthly_active";
+      if ((license.entitled || isActiveByDates) && license.billing_interval === "year") return "yearly_active";
       if (!license.entitled) return "no_access";
       return "no_access";
     }
@@ -1165,13 +1188,38 @@
 
     function buildAccessSummary(license) {
       if (!license) return "No active access.";
-      if (license.entitled && license.cancel_at_period_end) {
+      const nowMs = Date.now();
+      const trialEndMs = Date.parse(license.trial_end_at || "");
+      const periodEndMs = Date.parse(license.current_period_end || "");
+      const hasLiveTrial = Number.isFinite(trialEndMs) && trialEndMs > nowMs;
+      const hasLiveSubscriptionPeriod = Number.isFinite(periodEndMs) && periodEndMs > nowMs;
+      const hasRecurringPlan = license.billing_interval === "month" || license.billing_interval === "year";
+      const accessActive = Boolean(license.entitled) || hasLiveTrial || (hasRecurringPlan && hasLiveSubscriptionPeriod);
+
+      if (accessActive && license.cancel_at_period_end) {
         return "Access active until period end. Auto-renew is off.";
       }
-      if (license.entitled) {
+      if (accessActive && hasRecurringPlan) {
         return "Access active. Auto-renew is on.";
       }
+      if (accessActive && (license.in_trial || hasLiveTrial)) {
+        return "Trial access is active.";
+      }
       return "No active access.";
+    }
+
+    function renewalText(license) {
+      if (!license) return "-";
+      if (license.in_trial) return "N/A (trial)";
+      if (license.billing_interval !== "month" && license.billing_interval !== "year") return "-";
+      return license.cancel_at_period_end ? "Off (ends at period close)" : "On";
+    }
+
+    function canToggleRenewal(license) {
+      if (!license) return false;
+      if (license.in_trial) return false;
+      if (license.billing_interval !== "month" && license.billing_interval !== "year") return false;
+      return Boolean(license.can_manage_subscription);
     }
 
     function canStartTrial(account) {
@@ -1210,16 +1258,18 @@
           <span>${escapeHtml(user.email || "-")}</span>
         </div>
         <div class="account-item">
-          <strong>Verification</strong>
-          <span>${escapeHtml(user.email_verified ? "Verified" : "Not verified")}</span>
-        </div>
-        <div class="account-item">
           <strong>Current plan</strong>
           <span>${escapeHtml(currentPlanName(license))}</span>
         </div>
         <div class="account-item">
           <strong>Access until (local time)</strong>
           <span>${escapeHtml(expiryText(license))}</span>
+        </div>
+        <div class="account-item">
+          <strong>Auto-renew</strong>
+          ${canToggleRenewal(license)
+            ? `<label class="auto-renew-toggle"><input type="checkbox" id="auto-renew-toggle" data-busy-sensitive="true" ${license.cancel_at_period_end ? "" : "checked"} /><span id="auto-renew-label">${escapeHtml(renewalText(license))}</span></label>`
+            : `<span>${escapeHtml(renewalText(license))}</span>`}
         </div>
       `;
 
@@ -1232,6 +1282,37 @@
 
       const manageBtn = document.getElementById("action-manage-subscription");
       if (manageBtn) manageBtn.addEventListener("click", openPortal);
+
+      const autoRenewToggle = document.getElementById("auto-renew-toggle");
+      if (autoRenewToggle) {
+        autoRenewToggle.addEventListener("change", async (event) => {
+          const input = event.target;
+          if (!input) return;
+          const enabled = Boolean(input.checked);
+          await setAutoRenew(enabled, input);
+        });
+      }
+    }
+
+    async function setAutoRenew(enabled, inputEl) {
+      clearMessages();
+      setBusy(true);
+      try {
+        const token = getWebToken();
+        if (!token) throw new Error("You are not logged in.");
+
+        setStatus(`Turning auto-renew ${enabled ? "on" : "off"}...`);
+        const data = await apiPost("/stripe/subscription/auto-renew", { enabled }, token);
+        renderAccount(data);
+        renderPlans(data);
+        setSuccess(`Auto-renew turned ${enabled ? "on" : "off"}.`);
+      } catch (err) {
+        if (inputEl) inputEl.checked = !enabled;
+        const message = err instanceof Error ? err.message : "Could not update auto-renew.";
+        setError(message);
+      } finally {
+        setBusy(false);
+      }
     }
 
     function getPlanAction(planKey, account) {
