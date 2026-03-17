@@ -467,21 +467,6 @@
       word-break: break-word;
     }
 
-    .auto-renew-toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--text);
-      font-size: 14px;
-    }
-
-    .auto-renew-toggle input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--gold);
-      cursor: pointer;
-    }
-
     .account-actions {
       display: flex;
       gap: 10px;
@@ -674,14 +659,12 @@
         font-size: 14px;
       }
 
-      .account-actions,
       .tiny-row,
       .forgot-actions {
         flex-direction: column;
         align-items: stretch;
       }
 
-      .account-actions .btn,
       .tiny-row .text-link,
       .forgot-actions .text-link {
         width: 100%;
@@ -1296,16 +1279,6 @@
       return license.cancel_at_period_end ? "Off" : "On";
     }
 
-    function renewalText(license) {
-      if (!license) return "No active subscription";
-      const billingInterval = normalizeBillingInterval(license.billing_interval);
-      if (billingInterval !== "month" && billingInterval !== "year") return "No active subscription";
-      const periodEnd = String(license.current_period_end || "").trim();
-      if (!periodEnd) return "Period end unavailable";
-      if (license.cancel_at_period_end) return `Access ends ${expiryText(license)}`;
-      return `Renews ${expiryText(license)}`;
-    }
-
     function showLoggedOutUi() {
       authSection.classList.remove("initially-hidden");
       accountSection.classList.add("initially-hidden");
@@ -1352,10 +1325,6 @@
         <div class="account-item">
           <strong>Renewal</strong>
           <span>${escapeHtml(renewalStatus(license))}</span>
-        </div>
-        <div class="account-item">
-          <strong>Subscription period</strong>
-          <span>${escapeHtml(renewalText(license))}</span>
         </div>
       `;
 
