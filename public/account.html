@@ -327,6 +327,24 @@
       line-height: 1.5;
     }
 
+    .password-hint {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 520;
+      line-height: 1.4;
+      transition: opacity 0.2s ease, max-height 0.2s ease, margin-top 0.2s ease;
+      max-height: 30px;
+      opacity: 1;
+      overflow: hidden;
+    }
+
+    .password-hint.hidden {
+      opacity: 0;
+      max-height: 0;
+      margin-top: 0;
+    }
+
     .tiny-row,
     .forgot-actions {
     display: flex;
@@ -361,6 +379,11 @@
       justify-content: center;
     }
 
+    .auth-feedback {
+      margin-top: 14px;
+      margin-bottom: 6px;
+    }
+
     .oauth-action .btn-google {
       width: auto;
       min-width: 240px;
@@ -383,7 +406,7 @@
     .error-box,
     .success-box {
       display: none;
-      margin-top: 18px;
+      margin-top: 10px;
       padding: 14px 16px;
       border-radius: 16px;
       font-size: 14px;
@@ -392,8 +415,8 @@
     }
 
     .status-box {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(247, 213, 106, 0.10);
+      border: 1px solid rgba(247, 213, 106, 0.32);
       color: var(--text);
     }
 
@@ -404,8 +427,8 @@
     }
 
     .success-box {
-      background: rgba(90, 200, 120, 0.09);
-      border: 1px solid rgba(90, 200, 120, 0.20);
+      background: rgba(90, 200, 120, 0.12);
+      border: 1px solid rgba(90, 200, 120, 0.30);
       color: #daf7de;
     }
 
@@ -622,15 +645,6 @@
         font-size: 14px;
       }
 
-      .tabs {
-        grid-template-columns: 1fr;
-        border-radius: 18px;
-      }
-
-      .tab {
-        border-radius: 14px;
-      }
-
       .account-actions,
       .tiny-row,
       .forgot-actions {
@@ -717,6 +731,11 @@
                   Set password
                   <input id="signup-password" name="new-password" type="password" autocomplete="new-password" minlength="8" required />
                 </label>
+
+                <div class="password-hint" id="signup-password-hint">
+                  Use at least 8 characters.
+                </div>
+
                 <label>
                   Repeat password
                   <input id="signup-password-confirm" name="new-password-confirm" type="password" autocomplete="new-password" minlength="8" required />
@@ -726,13 +745,6 @@
                   <button class="btn btn-primary" id="signup-continue" type="submit">Create account</button>
                 </div>
 
-                <div class="form-note">
-                  Minimum password length: 8 characters.
-                </div>
-
-                <div class="tiny-row">
-                  <button class="text-link" id="switch-to-login-link" type="button">Already have an account?</button>
-                </div>
               </form>
             </div>
 
@@ -757,6 +769,12 @@
               </form>
             </div>
 
+            <div class="auth-feedback" aria-live="polite" aria-atomic="true">
+              <div class="status-box" id="status-box"></div>
+              <div class="error-box" id="error-box"></div>
+              <div class="success-box" id="success-box"></div>
+            </div>
+
             <div class="oauth-action">
               <button class="btn btn-secondary btn-google" id="google-continue" type="button" aria-label="Continue with Google">
                 <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
@@ -769,9 +787,6 @@
               </button>
             </div>
 
-            <div class="status-box" id="status-box"></div>
-            <div class="error-box" id="error-box"></div>
-            <div class="success-box" id="success-box"></div>
           </div>
 
           
@@ -853,6 +868,7 @@
     const signupEmail = document.getElementById("signup-email");
     const signupPassword = document.getElementById("signup-password");
     const signupPasswordConfirm = document.getElementById("signup-password-confirm");
+    const signupPasswordHint = document.getElementById("signup-password-hint");
     const loginEmail = document.getElementById("login-email");
     const loginPassword = document.getElementById("login-password");
     const forgotEmail = document.getElementById("forgot-email");
@@ -879,7 +895,6 @@
 
     const forgotPasswordLink = document.getElementById("forgot-password-link");
     const switchToSignupLink = document.getElementById("switch-to-signup-link");
-    const switchToLoginLink = document.getElementById("switch-to-login-link");
     const backToLoginLink = document.getElementById("back-to-login-link");
     const headerLogout = document.getElementById("header-logout");
 
@@ -915,14 +930,25 @@
       panelSignup.classList.toggle("active", signupActive);
       panelLogin.classList.toggle("active", loginActive);
       panelForgot.classList.toggle("active", forgotActive);
+
+      if (signupActive) {
+        updatePasswordHintVisibility();
+      }
+    }
+
+    function updatePasswordHintVisibility() {
+      const meetsLength = String(signupPassword.value || "").length >= 8;
+      signupPasswordHint.classList.toggle("hidden", meetsLength);
     }
 
     tabSignup.addEventListener("click", () => showTab("signup"));
     tabLogin.addEventListener("click", () => showTab("login"));
     switchToSignupLink.addEventListener("click", () => showTab("signup"));
-    switchToLoginLink.addEventListener("click", () => showTab("login"));
     forgotPasswordLink.addEventListener("click", () => showTab("forgot"));
     backToLoginLink.addEventListener("click", () => showTab("login"));
+
+    signupPassword.addEventListener("input", updatePasswordHintVisibility);
+    updatePasswordHintVisibility();
 
     function setStatus(text) {
       statusBox.textContent = text;
@@ -1531,7 +1557,7 @@
         if (password.length < 8) throw new Error("Password must be at least 8 characters.");
         if (password !== passwordConfirm) throw new Error("Passwords do not match.");
 
-        setStatus("Creating account...");
+        setStatus("Creating your account...");
         await registerOnly(email, password);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not create account.");
