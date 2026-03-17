@@ -32,6 +32,7 @@ import {
   createStripeCheckoutSession,
   createStripePortalSession,
   downgradeStripeSubscriptionToMonthly,
+  findLiveStripeSubscriptionForLicense,
   handleCheckoutSessionCompleted,
   recoverStripeCustomerId,
   requireStripeCheckoutConfig,
@@ -732,15 +733,14 @@ export default {
       }
 
       const currentInterval = String(lic?.billing_interval || "").trim().toLowerCase();
-      const currentPeriodEndMs = Date.parse(String(lic?.current_period_end || ""));
-      const hasLiveRecurringSubscription =
-        (currentInterval === "month" || currentInterval === "year") &&
-        Number.isFinite(currentPeriodEndMs) &&
-        currentPeriodEndMs > Date.now() &&
-        ["active", "trialing", "past_due", "canceling"].includes(String(lic?.status || "").trim().toLowerCase());
+      const liveSubscription = await findLiveStripeSubscriptionForLicense(env, lic);
+      const liveInterval = String(liveSubscription?.items?.data?.[0]?.price?.recurring?.interval || currentInterval)
+        .trim()
+        .toLowerCase();
+      const hasLiveRecurringSubscription = Boolean(liveSubscription);
 
       if (hasLiveRecurringSubscription) {
-        if (currentInterval === interval) {
+        if (liveInterval === interval) {
           return bad(req, "already_on_plan", 409, {
             message: "You already have an active subscription on this plan.",
           });
