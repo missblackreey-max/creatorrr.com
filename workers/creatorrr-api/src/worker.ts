@@ -720,12 +720,16 @@ export default {
       }
 
       const currentInterval = String(lic?.billing_interval || "").trim().toLowerCase();
+      const currentStatus = String(lic?.status || "").trim().toLowerCase();
       const currentPeriodEndMs = Date.parse(String(lic?.current_period_end || ""));
+      const trialEndMs = Date.parse(String(lic?.trial_end_at || ""));
+      const hasFutureMonthlyAccess =
+        (Number.isFinite(currentPeriodEndMs) && currentPeriodEndMs > Date.now()) ||
+        (currentStatus === "trialing" && Number.isFinite(trialEndMs) && trialEndMs > Date.now());
       const isMonthlyActive =
         currentInterval === "month" &&
-        Number.isFinite(currentPeriodEndMs) &&
-        currentPeriodEndMs > Date.now() &&
-        ["active", "trialing", "past_due", "canceling"].includes(String(lic?.status || "").trim().toLowerCase());
+        hasFutureMonthlyAccess &&
+        ["active", "trialing", "past_due", "canceling"].includes(currentStatus);
 
       if (!isMonthlyActive) {
         return bad(req, "monthly_subscription_required", 409, {
@@ -752,7 +756,6 @@ export default {
             });
           }
         }
-
         const user = await getUserById(env, auth.ctx.userId);
         if (!user) return bad(req, "user_not_found", 404);
 

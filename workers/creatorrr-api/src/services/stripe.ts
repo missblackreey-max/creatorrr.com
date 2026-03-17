@@ -266,22 +266,29 @@ export async function refreshLicenseFromStripe(
     return lic;
   }
 
-  if (customerId) {
+  let subscription: StripeSubscriptionLike | null = null;
+
+  if (subscriptionId) {
+    subscription = await stripeGetJson<StripeSubscriptionLike>(
+      env,
+      `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    );
+  } else if (customerId) {
     const best = await findBestSubscriptionForCustomer(env, customerId);
     const bestId = String(best?.id || "").trim();
-    if (bestId) {
-      subscriptionId = bestId;
+    if (!bestId) {
+      return lic;
     }
+    subscriptionId = bestId;
+    subscription = await stripeGetJson<StripeSubscriptionLike>(
+      env,
+      `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    );
   }
 
-  if (!subscriptionId) {
+  if (!subscription) {
     return lic;
   }
-
-  const subscription = await stripeGetJson<StripeSubscriptionLike>(
-    env,
-    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
-  );
 
   const upsertResult = await upsertLicenseFromStripeSubscription(env, subscription);
   if (!upsertResult.ok) {
@@ -319,17 +326,18 @@ export async function upgradeStripeSubscriptionToYearly(
   if (!itemId) return { ok: false, reason: "subscription_item_missing" };
   if (!env.STRIPE_PRICE_ID_YEARLY?.trim()) return { ok: false, reason: "missing_yearly_price_id" };
 
-  const status = String(subscription.status || "").trim().toLowerCase();
-  const isTrialing = status === "trialing" && Number(subscription.trial_end || 0) > 0;
-
   const form = new URLSearchParams();
   form.set("items[0][id]", itemId);
   form.set("items[0][price]", env.STRIPE_PRICE_ID_YEARLY);
   form.set("cancel_at_period_end", "false");
 
-  if (isTrialing) {
+  const status = String(subscription.status || "").trim().toLowerCase();
+  const trialEnd = Number(subscription.trial_end || 0);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  if (status === "trialing" && trialEnd > nowSeconds) {
     form.set("proration_behavior", "none");
-    form.set("trial_end", String(subscription.trial_end));
+    form.set("trial_end", String(trialEnd));
   } else {
     form.set("proration_behavior", "create_prorations");
     form.set("billing_cycle_anchor", "now");
