@@ -459,7 +459,10 @@
         });
 
         const data = await safeReadJson(res);
-        if (!res.ok) return;
+        if (!res.ok) {
+          setAccessMessage("Your purchase was received. Access can take a few seconds to sync. If this message stays, open Account and sign in again.");
+          return;
+        }
 
         if (data?.entitled && data?.in_trial) {
           setAccessMessage("Your 3-day free trial is now active.");
