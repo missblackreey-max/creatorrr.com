@@ -692,13 +692,21 @@ export default {
       const auth = await requireAuth(req, env);
       if (!auth.ok) return auth.response;
 
-      const lic = await getLicenseRow(env, auth.ctx.userId);
+      let lic = await getLicenseRow(env, auth.ctx.userId);
+      if (env.STRIPE_SECRET_KEY?.trim()) {
+        try {
+          lic = await refreshLicenseFromStripe(env, auth.ctx.userId, lic);
+        } catch (err) {
+          console.error("[upgrade-yearly] stripe sync failed", {
+            userId: auth.ctx.userId,
+            error: err instanceof Error ? err.message : "stripe_sync_error",
+          });
+        }
+      }
+
       const currentInterval = String(lic?.billing_interval || "").trim().toLowerCase();
-      const currentPeriodEndMs = Date.parse(String(lic?.current_period_end || ""));
       const isMonthlyActive =
         currentInterval === "month" &&
-        Number.isFinite(currentPeriodEndMs) &&
-        currentPeriodEndMs > Date.now() &&
         ["active", "trialing", "past_due", "canceling"].includes(String(lic?.status || "").trim().toLowerCase());
 
       if (!isMonthlyActive) {
