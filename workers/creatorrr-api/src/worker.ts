@@ -581,7 +581,6 @@ export default {
       if (!user) return bad(req, "user_not_found", 404);
 
       let lic = await getLicenseRow(env, auth.ctx.userId);
-
       let stripeSyncError: string | null = null;
 
       if (env.STRIPE_SECRET_KEY?.trim()) {
@@ -596,7 +595,11 @@ export default {
         }
       }
 
-      return json(req, { ok: true, ...makeAccountView(user, lic), stripe_sync_error: stripeSyncError });
+      return json(req, {
+        ok: true,
+        ...makeAccountView(user, lic),
+        stripe_sync_error: stripeSyncError,
+      });
     }
 
     if (req.method === "GET" && url.pathname === "/license/me") {
@@ -704,6 +707,7 @@ export default {
       if (!auth.ok) return auth.response;
 
       let lic = await getLicenseRow(env, auth.ctx.userId);
+
       if (env.STRIPE_SECRET_KEY?.trim()) {
         try {
           lic = await refreshLicenseFromStripe(env, auth.ctx.userId, lic);
@@ -716,8 +720,11 @@ export default {
       }
 
       const currentInterval = String(lic?.billing_interval || "").trim().toLowerCase();
+      const currentPeriodEndMs = Date.parse(String(lic?.current_period_end || ""));
       const isMonthlyActive =
         currentInterval === "month" &&
+        Number.isFinite(currentPeriodEndMs) &&
+        currentPeriodEndMs > Date.now() &&
         ["active", "trialing", "past_due", "canceling"].includes(String(lic?.status || "").trim().toLowerCase());
 
       if (!isMonthlyActive) {

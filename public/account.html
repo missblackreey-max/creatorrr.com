@@ -46,6 +46,14 @@
       text-rendering: optimizeLegibility;
     }
 
+    body.booting .boot-only-hidden {
+      display: none !important;
+    }
+
+    body.booting #boot-screen {
+      display: flex;
+    }
+
     a { color: inherit; text-decoration: none; }
     img { max-width: 100%; display: block; }
 
@@ -193,6 +201,35 @@
       padding: 28px 0 64px;
     }
 
+    #boot-screen {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      min-height: 48vh;
+    }
+
+    .boot-card {
+      width: min(calc(100% - 32px), 560px);
+      margin: 0 auto;
+      padding: 24px;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, var(--card-strong), var(--card));
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+
+    .boot-card strong {
+      display: block;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .boot-card span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
     .stack {
       display: grid;
       gap: 24px;
@@ -251,12 +288,13 @@
       font-size: 15px;
     }
 
-
     .account-note {
       margin-top: 12px;
       font-size: 13px;
       color: var(--muted-2);
+      text-align: center;
     }
+
     .auth-copy {
       margin-bottom: 18px;
       max-width: 620px;
@@ -353,15 +391,15 @@
 
     .tiny-row,
     .forgot-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 14px;
-    flex-wrap: wrap;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
     }
 
     .tiny-row-spread {
-    justify-content: space-between;
+      justify-content: space-between;
     }
 
     .text-link {
@@ -477,7 +515,7 @@
 
     .plans-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
       align-items: stretch;
     }
@@ -677,8 +715,8 @@
     }
   </style>
 </head>
-<body>
-  <header class="site-header">
+<body class="booting">
+  <header class="site-header boot-only-hidden">
     <div class="container nav">
       <a class="brand" href="./index.html">
         <img src="./creatorrr-logo_only_32x32.png" alt="Creatorrr logo" onerror="this.src='./creatorrr-logo.png'">
@@ -696,7 +734,14 @@
   </header>
 
   <main>
-    <div class="container stack">
+    <div id="boot-screen">
+      <div class="boot-card">
+        <strong>Loading account...</strong>
+        <span>Checking your login and billing status.</span>
+      </div>
+    </div>
+
+    <div class="container stack boot-only-hidden">
       <section class="card initially-hidden" id="auth-section">
         <div class="auth-hero">
           <div>
@@ -756,7 +801,6 @@
                 <div class="form-actions">
                   <button class="btn btn-primary" id="signup-continue" type="submit">Create account</button>
                 </div>
-
               </form>
             </div>
 
@@ -798,10 +842,7 @@
                 <span>Continue with Google</span>
               </button>
             </div>
-
           </div>
-
-          
         </div>
       </section>
 
@@ -1132,7 +1173,10 @@
 
       const data = await safeReadJson(res);
       if (!res.ok) {
-        throw new Error(data?.error || data?.message || `Request failed: ${res.status}`);
+        const err = new Error(data?.error || data?.message || `Request failed: ${res.status}`);
+        err.status = res.status;
+        err.payload = data;
+        throw err;
       }
       return data;
     }
@@ -1176,11 +1220,18 @@
     async function fetchAccount() {
       const token = getWebToken();
       if (!token) return null;
+
       try {
         return await apiGet("/account/me", token);
-      } catch (_) {
-        clearWebToken();
-        return null;
+      } catch (err) {
+        const status = err && typeof err === "object" ? err.status : undefined;
+
+        if (status === 401 || status === 403) {
+          clearWebToken();
+          return null;
+        }
+
+        throw err;
       }
     }
 
@@ -1230,23 +1281,19 @@
 
     function expiryText(license) {
       if (!license) return "-";
+
       const billingInterval = normalizeBillingInterval(license.billing_interval);
       const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
-      const trialEnd = String(license.trial_end_at || "").trim();
-      const periodEnd = String(license.current_period_end || "").trim();
 
       if (license.in_trial) {
-        if (!trialEnd) return "Trial active, end date unavailable";
-        return formatDateFriendly(trialEnd);
+        return formatDateFriendly(license.trial_end_at || "");
       }
 
       if (hasRecurringPlan) {
-        if (!periodEnd) return "Subscription active, renewal date unavailable";
-        return formatDateFriendly(periodEnd);
+        return formatDateFriendly(license.current_period_end || "");
       }
 
-      const fallback = String(license.entitled_until || "").trim();
-      return fallback ? formatDateFriendly(fallback) : "-";
+      return formatDateFriendly(license.entitled_until || "");
     }
 
     function buildAccessSummary(license) {
@@ -1272,11 +1319,15 @@
       return "No active access.";
     }
 
-    function renewalStatus(license) {
+    function renewalText(license) {
       if (!license) return "-";
+
       const billingInterval = normalizeBillingInterval(license.billing_interval);
       if (billingInterval !== "month" && billingInterval !== "year") return "-";
-      return license.cancel_at_period_end ? "Off" : "On";
+
+      const when = formatDateFriendly(license.current_period_end || "");
+      if (license.cancel_at_period_end) return `Off, access ends ${when}`;
+      return `On, renews ${when}`;
     }
 
     function showLoggedOutUi() {
@@ -1324,7 +1375,7 @@
         </div>
         <div class="account-item">
           <strong>Renewal</strong>
-          <span>${escapeHtml(renewalStatus(license))}</span>
+          <span>${escapeHtml(renewalText(license))}</span>
         </div>
       `;
 
@@ -1333,48 +1384,10 @@
         actions.push(`<button class="btn btn-secondary" type="button" id="action-manage-subscription" data-busy-sensitive="true">Manage subscription</button>`);
       }
 
-      if (renewalStatus(license) !== "-") {
-        const checkedAttr = license.cancel_at_period_end ? "" : "checked";
-        actions.push(`
-          <label class="auto-renew-toggle">
-            <input type="checkbox" id="auto-renew-toggle" ${checkedAttr} data-busy-sensitive="true" />
-            Auto-renew
-          </label>
-        `);
-      }
-
       accountActions.innerHTML = actions.join("");
 
       const manageBtn = document.getElementById("action-manage-subscription");
       if (manageBtn) manageBtn.addEventListener("click", openPortal);
-
-      const autoRenewToggle = document.getElementById("auto-renew-toggle");
-      if (autoRenewToggle) {
-        autoRenewToggle.addEventListener("change", async () => {
-          await updateAutoRenew(Boolean(autoRenewToggle.checked), autoRenewToggle);
-        });
-      }
-    }
-
-    async function updateAutoRenew(enabled, toggleEl) {
-      clearMessages();
-      setBusy(true);
-      try {
-        const token = getWebToken();
-        if (!token) throw new Error("You are not logged in.");
-
-        setStatus(enabled ? "Turning auto-renew on..." : "Turning auto-renew off...");
-        const data = await apiPost("/stripe/subscription/auto-renew", { enabled }, token);
-        renderAccount(data);
-        renderPlans(data);
-        setSuccess(enabled ? "Auto-renew is now on." : "Auto-renew is now off.");
-      } catch (err) {
-        if (toggleEl) toggleEl.checked = !enabled;
-        const message = err instanceof Error ? err.message : "Could not update auto-renew.";
-        setError(message);
-      } finally {
-        setBusy(false);
-      }
     }
 
     function getPlanAction(planKey, account) {
@@ -1601,7 +1614,15 @@
     }
 
     async function continueAfterAuth() {
-      const account = await fetchAccount();
+      let account = null;
+      try {
+        account = await fetchAccount();
+      } catch (_) {
+        setError("We could not load your account right now. Please refresh.");
+        showLoggedOutUi();
+        return;
+      }
+
       if (!account) {
         showLoggedOutUi();
         return;
@@ -1621,6 +1642,10 @@
       const planParam = preferredPlan === "month" ? "monthly" : "yearly";
       const target = `${API_BASE}/auth/google/start?intent=${encodeURIComponent(planParam)}&deviceId=${encodeURIComponent(deviceId)}&clientNonce=${encodeURIComponent(clientNonce)}`;
       window.location.href = target;
+    }
+
+    function finishBootstrap() {
+      document.body.classList.remove("booting");
     }
 
     signupForm.addEventListener("submit", async (event) => {
@@ -1687,60 +1712,72 @@
     headerLogout.addEventListener("click", logoutNow);
 
     async function bootstrap() {
-      const oauthConsume = consumeOAuthResultFromHash();
+      try {
+        const oauthConsume = consumeOAuthResultFromHash();
 
-      if (oauthConsume && oauthConsume.ok === false) {
-        setError(oauthConsume.error || "Google login could not be verified. Please try again.");
-      }
+        if (oauthConsume && oauthConsume.ok === false) {
+          setError(oauthConsume.error || "Google login could not be verified. Please try again.");
+        }
 
-      if (modeParam === "signup") {
-        showTab("signup");
-      } else {
-        showTab("login");
-      }
+        if (modeParam === "signup") {
+          showTab("signup");
+        } else {
+          showTab("login");
+        }
 
-      if (checkoutState === "canceled") {
-        setError("Checkout was canceled. You can try again anytime.");
-      }
+        if (checkoutState === "canceled") {
+          setError("Checkout was canceled. You can try again anytime.");
+        }
 
-      if (portalState === "returned") {
-        setStatus("Welcome back. Refreshing your subscription status...");
-      }
+        if (portalState === "returned") {
+          setStatus("Welcome back. Refreshing your subscription status...");
+        }
 
-      const oauthError = String(params.get("oauth_error") || "").trim();
-      if (oauthError) {
-        const map = {
-          email_already_exists_use_password: "This email already has a password account. Please log in with email and password.",
-          oauth_state_expired: "Google login expired. Please try again.",
-          google_token_exchange_failed: "Google login could not be completed. Please try again.",
-          access_denied: "Google login was canceled.",
-          not_found: "Google login is temporarily unavailable. Please use email and password for now.",
-          '{"ok":false,"error":"not_found"}': "Google login is temporarily unavailable. Please use email and password for now."
-        };
-        setError(map[oauthError] || "Google login failed. Please try again.");
-      }
+        const oauthError = String(params.get("oauth_error") || "").trim();
+        if (oauthError) {
+          const map = {
+            email_already_exists_use_password: "This email already has a password account. Please log in with email and password.",
+            oauth_state_expired: "Google login expired. Please try again.",
+            google_token_exchange_failed: "Google login could not be completed. Please try again.",
+            access_denied: "Google login was canceled.",
+            not_found: "Google login is temporarily unavailable. Please use email and password for now.",
+            '{"ok":false,"error":"not_found"}': "Google login is temporarily unavailable. Please use email and password for now."
+          };
+          setError(map[oauthError] || "Google login failed. Please try again.");
+        }
 
-      const existingToken = getWebToken();
-      if (!existingToken) {
-        showLoggedOutUi();
-        return;
-      }
+        const existingToken = getWebToken();
+        if (!existingToken) {
+          showLoggedOutUi();
+          return;
+        }
 
-      const account = await fetchAccount();
-      if (!account) {
-        showLoggedOutUi();
-        return;
-      }
+        let account = null;
+        try {
+          account = await fetchAccount();
+        } catch (_) {
+          setError("We could not load your account right now. Please refresh.");
+          showLoggedOutUi();
+          return;
+        }
 
-      renderAccount(account);
-      renderPlans(account);
+        if (!account) {
+          showLoggedOutUi();
+          return;
+        }
 
-      if (account?.stripe_sync_error) {
-        setError("We could not sync the latest billing status from Stripe right now. Showing your last known account data.");
-      } else if (portalState === "returned") {
-        setSuccess("Billing changes synced.");
-      } else if (oauthConsume?.consumed) {
-        setSuccess("Signed in with Google.");
+        renderAccount(account);
+        renderPlans(account);
+
+        if (account?.stripe_sync_error) {
+          setError("We could not sync the latest billing status from Stripe right now. Showing your last known account data.");
+        } else if (portalState === "returned") {
+          setSuccess("Billing changes synced.");
+        } else if (oauthConsume?.consumed) {
+          setSuccess("Signed in with Google.");
+        }
+      } finally {
+        finishBootstrap();
       }
     }
 
