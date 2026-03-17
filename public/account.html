@@ -1235,6 +1235,23 @@
       }
     }
 
+    async function refreshCurrentAccountSilently() {
+      const token = getWebToken();
+      if (!token) return;
+
+      try {
+        const account = await fetchAccount();
+        if (!account) {
+          showLoggedOutUi();
+          return;
+        }
+
+        renderAccount(account);
+        renderPlans(account);
+      } catch (_) {
+      }
+    }
+
     function deriveAccountState(account) {
       const user = account?.user || null;
       const license = account?.license || {};
@@ -1257,8 +1274,14 @@
     }
 
     function currentPlanName(license) {
-      if (license?.in_trial) return "3-day trial";
       const billingInterval = normalizeBillingInterval(license?.billing_interval);
+
+      if (license?.in_trial) {
+        if (billingInterval === "year") return "3-day trial, yearly next";
+        if (billingInterval === "month") return "3-day trial, monthly next";
+        return "3-day trial";
+      }
+
       if (billingInterval === "month") return "Monthly";
       if (billingInterval === "year") return "Yearly";
       return "None";
@@ -1322,18 +1345,12 @@
     function renewalText(license) {
       if (!license) return "-";
 
-      if (license.in_trial) {
-        const when = formatDateFriendly(license.trial_end_at || "");
-        if (license.cancel_at_period_end) return `Off, trial ends ${when}`;
-        return `On, billing starts ${when}`;
-      }
-
       const billingInterval = normalizeBillingInterval(license.billing_interval);
-      if (billingInterval !== "month" && billingInterval !== "year") return "-";
+      const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
+      const hasTrial = Boolean(String(license.trial_end_at || "").trim());
 
-      const when = formatDateFriendly(license.current_period_end || "");
-      if (license.cancel_at_period_end) return `Off, access ends ${when}`;
-      return `On, renews ${when}`;
+      if (!hasRecurringPlan && !hasTrial) return "-";
+      return license.cancel_at_period_end ? "Off" : "On";
     }
 
     function showLoggedOutUi() {
@@ -1410,8 +1427,15 @@
       }
 
       if (state === "trial_active") {
+        const billingInterval = normalizeBillingInterval(account?.license?.billing_interval);
+
+        if (billingInterval === "year") {
+          if (planKey === "year") return { kind: "current", label: "Current plan" };
+          return { kind: "disabled", label: "Trial active" };
+        }
+
         if (planKey === "month") return { kind: "current", label: "Current plan" };
-        return { kind: "disabled", label: "Available after trial" };
+        return { kind: "cta", label: "Upgrade to yearly", action: "upgrade-yearly", primary: true };
       }
 
       if (state === "monthly_active") {
@@ -1542,11 +1566,17 @@
         const token = getWebToken();
         if (!token) throw new Error("You are not logged in.");
 
-        setStatus("Upgrading to yearly plan...");
+        setStatus("Updating yearly plan...");
         const data = await apiPost("/stripe/subscription/upgrade-yearly", {}, token);
         renderAccount(data);
         renderPlans(data);
-        setSuccess("Upgraded to yearly plan.");
+
+        const isTrialYearly = !!data?.license?.in_trial && normalizeBillingInterval(data?.license?.billing_interval) === "year";
+        if (isTrialYearly) {
+          setSuccess("Yearly plan selected. Your trial continues until the current trial end.");
+        } else {
+          setSuccess("Upgraded to yearly plan.");
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Could not upgrade subscription.";
         setError(message);
@@ -1722,6 +1752,10 @@
     googleContinue.addEventListener("click", beginGoogleAuth);
     headerLogout.addEventListener("click", logoutNow);
 
+    window.addEventListener("focus", () => {
+      refreshCurrentAccountSilently();
+    });
+
     async function bootstrap() {
       try {
         const oauthConsume = consumeOAuthResultFromHash();
@@ -1784,6 +1818,8 @@
           setError("We could not sync the latest billing status from Stripe right now. Showing your last known account data.");
         } else if (portalState === "returned") {
           setSuccess("Billing changes synced.");
+          setTimeout(refreshCurrentAccountSilently, 1500);
+          setTimeout(refreshCurrentAccountSilently, 4000);
         } else if (oauthConsume?.consumed) {
           setSuccess("Signed in with Google.");
         }

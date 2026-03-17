@@ -741,7 +741,18 @@ export default {
           });
         }
 
-        const freshLic = await getLicenseRow(env, auth.ctx.userId);
+        let freshLic = await getLicenseRow(env, auth.ctx.userId);
+        if (env.STRIPE_SECRET_KEY?.trim()) {
+          try {
+            freshLic = await refreshLicenseFromStripe(env, auth.ctx.userId, freshLic);
+          } catch (err) {
+            console.error("[upgrade-yearly] post-upgrade stripe sync failed", {
+              userId: auth.ctx.userId,
+              error: err instanceof Error ? err.message : "stripe_sync_error",
+            });
+          }
+        }
+
         const user = await getUserById(env, auth.ctx.userId);
         if (!user) return bad(req, "user_not_found", 404);
 

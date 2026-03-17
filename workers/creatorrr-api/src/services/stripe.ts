@@ -319,12 +319,21 @@ export async function upgradeStripeSubscriptionToYearly(
   if (!itemId) return { ok: false, reason: "subscription_item_missing" };
   if (!env.STRIPE_PRICE_ID_YEARLY?.trim()) return { ok: false, reason: "missing_yearly_price_id" };
 
+  const status = String(subscription.status || "").trim().toLowerCase();
+  const isTrialing = status === "trialing" && Number(subscription.trial_end || 0) > 0;
+
   const form = new URLSearchParams();
   form.set("items[0][id]", itemId);
   form.set("items[0][price]", env.STRIPE_PRICE_ID_YEARLY);
-  form.set("proration_behavior", "create_prorations");
-  form.set("billing_cycle_anchor", "now");
   form.set("cancel_at_period_end", "false");
+
+  if (isTrialing) {
+    form.set("proration_behavior", "none");
+    form.set("trial_end", String(subscription.trial_end));
+  } else {
+    form.set("proration_behavior", "create_prorations");
+    form.set("billing_cycle_anchor", "now");
+  }
 
   const updated = await stripePostForm<StripeSubscriptionLike>(
     env,
