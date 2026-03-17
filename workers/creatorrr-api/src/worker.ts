@@ -604,6 +604,27 @@ export default {
         return bad(req, "invalid_interval", 400, { allowed: ["month", "year"] });
       }
 
+      const lic = await getLicenseRow(env, auth.ctx.userId);
+      const currentInterval = String(lic?.billing_interval || "").trim().toLowerCase();
+      const currentPeriodEndMs = Date.parse(String(lic?.current_period_end || ""));
+      const hasLiveRecurringSubscription =
+        (currentInterval === "month" || currentInterval === "year") &&
+        Number.isFinite(currentPeriodEndMs) &&
+        currentPeriodEndMs > Date.now() &&
+        ["active", "past_due", "canceling"].includes(String(lic?.status || "").trim().toLowerCase());
+
+      if (hasLiveRecurringSubscription) {
+        if (currentInterval === interval) {
+          return bad(req, "already_on_plan", 409, {
+            message: "You already have an active subscription on this plan.",
+          });
+        }
+
+        return bad(req, "existing_subscription_conflict", 409, {
+          message: "You already have an active subscription. Use auto-renew controls to keep or end it before starting a different plan.",
+        });
+      }
+
       const email = await getUserEmail(env, auth.ctx.userId);
       if (!email) return bad(req, "user_email_not_found", 404);
 

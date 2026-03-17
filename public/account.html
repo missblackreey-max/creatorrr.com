@@ -898,6 +898,12 @@
       return null;
     }
 
+    function normalizeBillingInterval(value) {
+      if (value === "month") return "month";
+      if (value === "year") return "year";
+      return null;
+    }
+
     function showTab(mode) {
       const signupActive = mode === "signup";
       const loginActive = mode === "login";
@@ -1141,34 +1147,36 @@
     function deriveAccountState(account) {
       const user = account?.user || null;
       const license = account?.license || {};
+      const billingInterval = normalizeBillingInterval(license.billing_interval);
       const nowMs = Date.now();
       const trialEndMs = Date.parse(license.trial_end_at || "");
       const periodEndMs = Date.parse(license.current_period_end || "");
 
       const hasLiveTrial = Number.isFinite(trialEndMs) && trialEndMs > nowMs;
       const hasLiveSubscriptionPeriod = Number.isFinite(periodEndMs) && periodEndMs > nowMs;
-      const hasRecurringPlan = license.billing_interval === "month" || license.billing_interval === "year";
+      const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
       const isActiveByDates = hasLiveTrial || (hasRecurringPlan && hasLiveSubscriptionPeriod);
 
       if (!user) return "logged_out";
       if ((license.entitled || isActiveByDates) && (license.in_trial || hasLiveTrial)) return "trial_active";
-      if ((license.entitled || isActiveByDates) && license.billing_interval === "month") return "monthly_active";
-      if ((license.entitled || isActiveByDates) && license.billing_interval === "year") return "yearly_active";
+      if ((license.entitled || isActiveByDates) && billingInterval === "month") return "monthly_active";
+      if ((license.entitled || isActiveByDates) && billingInterval === "year") return "yearly_active";
       if (!license.entitled) return "no_access";
       return "no_access";
     }
 
     function currentPlanName(license) {
       if (license?.in_trial) return "3-day trial";
-      if (license?.billing_interval === "month") return "Monthly";
-      if (license?.billing_interval === "year") return "Yearly";
+      const billingInterval = normalizeBillingInterval(license?.billing_interval);
+      if (billingInterval === "month") return "Monthly";
+      if (billingInterval === "year") return "Yearly";
       return "None";
     }
 
     function formatDateFriendly(value) {
       if (!value) return "-";
       const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return String(value);
+      if (Number.isNaN(date.getTime())) return "-";
 
       return new Intl.DateTimeFormat(undefined, {
         month: "short",
@@ -1188,12 +1196,13 @@
 
     function buildAccessSummary(license) {
       if (!license) return "No active access.";
+      const billingInterval = normalizeBillingInterval(license.billing_interval);
       const nowMs = Date.now();
       const trialEndMs = Date.parse(license.trial_end_at || "");
       const periodEndMs = Date.parse(license.current_period_end || "");
       const hasLiveTrial = Number.isFinite(trialEndMs) && trialEndMs > nowMs;
       const hasLiveSubscriptionPeriod = Number.isFinite(periodEndMs) && periodEndMs > nowMs;
-      const hasRecurringPlan = license.billing_interval === "month" || license.billing_interval === "year";
+      const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
       const accessActive = Boolean(license.entitled) || hasLiveTrial || (hasRecurringPlan && hasLiveSubscriptionPeriod);
 
       if (accessActive && license.cancel_at_period_end) {
@@ -1211,14 +1220,19 @@
     function renewalText(license) {
       if (!license) return "-";
       if (license.in_trial) return "N/A (trial)";
-      if (license.billing_interval !== "month" && license.billing_interval !== "year") return "-";
-      return license.cancel_at_period_end ? "Off (ends at period close)" : "On";
+      const billingInterval = normalizeBillingInterval(license.billing_interval);
+      if (billingInterval !== "month" && billingInterval !== "year") return "-";
+      if (license.cancel_at_period_end) {
+        return `Off (access ends ${expiryText(license)})`;
+      }
+      return `On (renews ${expiryText(license)})`;
     }
 
     function canToggleRenewal(license) {
       if (!license) return false;
       if (license.in_trial) return false;
-      if (license.billing_interval !== "month" && license.billing_interval !== "year") return false;
+      const billingInterval = normalizeBillingInterval(license.billing_interval);
+      if (billingInterval !== "month" && billingInterval !== "year") return false;
       return Boolean(license.can_manage_subscription);
     }
 
@@ -1273,15 +1287,7 @@
         </div>
       `;
 
-      const actions = [];
-      if (license.can_manage_subscription) {
-        actions.push(`<button class="btn btn-secondary" type="button" id="action-manage-subscription" data-busy-sensitive="true">Manage subscription</button>`);
-      }
-
-      accountActions.innerHTML = actions.join("");
-
-      const manageBtn = document.getElementById("action-manage-subscription");
-      if (manageBtn) manageBtn.addEventListener("click", openPortal);
+      accountActions.innerHTML = "";
 
       const autoRenewToggle = document.getElementById("auto-renew-toggle");
       if (autoRenewToggle) {
@@ -1339,12 +1345,12 @@
       if (state === "monthly_active") {
         if (planKey === "trial") return { kind: "disabled", label: "Already beyond trial" };
         if (planKey === "month") return { kind: "current", label: "Current plan" };
-        return { kind: "cta", label: "Upgrade to yearly", action: "checkout-year", primary: true };
+        return { kind: "disabled", label: "End current subscription first" };
       }
 
       if (state === "yearly_active") {
         if (planKey === "year") return { kind: "current", label: "Current plan" };
-        return { kind: "disabled", label: "Already on best plan" };
+        return { kind: "disabled", label: "End current subscription first" };
       }
 
       return { kind: "disabled", label: "Unavailable" };
@@ -1390,7 +1396,10 @@
         }
       ];
 
-      plansCopy.textContent = "";
+      const recurringActive = ["monthly_active", "yearly_active"].includes(deriveAccountState(account));
+      plansCopy.textContent = recurringActive
+        ? "You already have an active subscription. To switch plans, turn auto-renew off and start a new plan when your current period ends."
+        : "";
 
       plansGrid.innerHTML = plans.map((plan) => {
         const action = getPlanAction(plan.key, account);
