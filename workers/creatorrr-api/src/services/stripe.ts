@@ -178,7 +178,6 @@ export async function createStripeCheckoutSession(
   userId: string,
   email: string,
   interval: "month" | "year",
-  withTrial: boolean,
 ): Promise<StripeCheckoutSessionResponse> {
   const priceId = getPriceIdForInterval(env, interval);
   if (!priceId) throw new Error("invalid_interval");
@@ -192,22 +191,14 @@ export async function createStripeCheckoutSession(
   form.set("line_items[0][price]", priceId);
   form.set("line_items[0][quantity]", "1");
 
-  if (withTrial) {
-    form.set("payment_method_collection", "always");
-    form.set("subscription_data[trial_period_days]", "3");
-    form.set("subscription_data[trial_settings][end_behavior][missing_payment_method]", "cancel");
-  }
-
   form.set("client_reference_id", userId);
   form.set("customer_email", email);
 
   form.set("metadata[user_id]", userId);
   form.set("metadata[interval]", interval);
-  form.set("metadata[with_trial]", withTrial ? "true" : "false");
 
   form.set("subscription_data[metadata][user_id]", userId);
   form.set("subscription_data[metadata][interval]", interval);
-  form.set("subscription_data[metadata][with_trial]", withTrial ? "true" : "false");
 
   form.set("success_url", successUrl);
   form.set("cancel_url", cancelUrl);

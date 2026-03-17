@@ -615,17 +615,7 @@ export default {
       const auth = await requireAuth(req, env);
       if (!auth.ok) return auth.response;
 
-      let lic = await getLicenseRow(env, auth.ctx.userId);
-      if (env.STRIPE_SECRET_KEY?.trim()) {
-        try {
-          lic = await refreshLicenseFromStripe(env, auth.ctx.userId, lic);
-        } catch (err) {
-          console.error("[trial-start] stripe sync failed", {
-            userId: auth.ctx.userId,
-            error: err instanceof Error ? err.message : "stripe_sync_error",
-          });
-        }
-      }
+      const lic = await getLicenseRow(env, auth.ctx.userId);
 
       const currentStatus = String(lic?.status || "").trim().toLowerCase();
       const billingInterval = String(lic?.billing_interval || "").trim().toLowerCase();
@@ -720,19 +710,12 @@ export default {
       const auth = await requireAuth(req, env);
       if (!auth.ok) return auth.response;
 
-      const body = await readJson<{ interval?: string; withTrial?: boolean }>(req);
+      const body = await readJson<{ interval?: string }>(req);
       if (!body) return bad(req, "invalid_json");
 
       const interval = String(body.interval || "").trim().toLowerCase();
       if (interval !== "month" && interval !== "year") {
         return bad(req, "invalid_interval", 400, { allowed: ["month", "year"] });
-      }
-
-      const withTrial = body.withTrial === true;
-      if (withTrial) {
-        return bad(req, "trial_not_available_in_stripe_checkout", 400, {
-          message: "Free trial is no longer handled through Stripe checkout.",
-        });
       }
 
       let lic = await getLicenseRow(env, auth.ctx.userId);
@@ -767,15 +750,6 @@ export default {
         });
       }
 
-      if (withTrial) {
-        const hasUsedTrial = Boolean(String(lic?.trial_start_at || "").trim() || String(lic?.trial_end_at || "").trim());
-        if (hasUsedTrial) {
-          return bad(req, "trial_already_used", 409, {
-            message: "Free trial already used on this account.",
-          });
-        }
-      }
-
       const email = await getUserEmail(env, auth.ctx.userId);
       if (!email) return bad(req, "user_email_not_found", 404);
 
@@ -785,7 +759,6 @@ export default {
           auth.ctx.userId,
           email,
           interval as "month" | "year",
-          withTrial,
         );
 
         if (!session.url) return bad(req, "stripe_checkout_url_missing", 502);
@@ -794,7 +767,6 @@ export default {
           ok: true,
           url: session.url,
           sessionId: session.id,
-          withTrial,
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : "stripe_checkout_failed";

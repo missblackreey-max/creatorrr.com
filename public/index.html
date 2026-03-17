@@ -594,7 +594,8 @@
     }
 
     .pricing-grid--pricing {
-      grid-template-columns: 0.95fr 1.05fr;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-items: stretch;
     }
 
     .price-card-featured {

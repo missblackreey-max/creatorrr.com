@@ -515,7 +515,7 @@
 
     .plans-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 14px;
       align-items: stretch;
     }
@@ -1277,8 +1277,6 @@
       const billingInterval = normalizeBillingInterval(license?.billing_interval);
 
       if (license?.in_trial) {
-        if (billingInterval === "year") return "3-day trial, yearly next";
-        if (billingInterval === "month") return "3-day trial, monthly next";
         return "3-day trial";
       }
 
@@ -1347,9 +1345,8 @@
 
       const billingInterval = normalizeBillingInterval(license.billing_interval);
       const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
-      const hasTrial = Boolean(String(license.trial_end_at || "").trim());
 
-      if (!hasRecurringPlan && !hasTrial) return "-";
+      if (!hasRecurringPlan) return "-";
       return license.cancel_at_period_end ? "Off" : "On";
     }
 
@@ -1403,7 +1400,9 @@
       `;
 
       const actions = [];
-      if (license.can_manage_subscription) {
+      const billingInterval = normalizeBillingInterval(license.billing_interval);
+      const hasRecurringStripePlan = (billingInterval === "month" || billingInterval === "year") && license.can_manage_subscription;
+      if (hasRecurringStripePlan) {
         actions.push(`<button class="btn btn-secondary" type="button" id="action-manage-subscription" data-busy-sensitive="true">Manage subscription</button>`);
       }
 
@@ -1553,7 +1552,7 @@
         if (!token) throw new Error("You are not logged in.");
 
         setStatus("Preparing secure checkout...");
-        const data = await apiPost("/stripe/checkout", { interval, withTrial: false }, token);
+        const data = await apiPost("/stripe/checkout", { interval }, token);
 
         if (!data?.url) {
           throw new Error("Checkout URL missing.");
@@ -1599,12 +1598,7 @@
         renderAccount(data);
         renderPlans(data);
 
-        const isTrialYearly = !!data?.license?.in_trial && normalizeBillingInterval(data?.license?.billing_interval) === "year";
-        if (isTrialYearly) {
-          setSuccess("Yearly plan selected. Your trial continues until the current trial end.");
-        } else {
-          setSuccess("Upgraded to yearly plan.");
-        }
+        setSuccess("Upgraded to yearly plan.");
       } catch (err) {
         const message = err instanceof Error ? err.message : "Could not upgrade subscription.";
         setError(message);
