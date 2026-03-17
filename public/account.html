@@ -467,21 +467,6 @@
       word-break: break-word;
     }
 
-    .auto-renew-toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--text);
-      font-size: 14px;
-    }
-
-    .auto-renew-toggle input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--gold);
-      cursor: pointer;
-    }
-
     .account-actions {
       display: flex;
       gap: 10px;
@@ -674,14 +659,12 @@
         font-size: 14px;
       }
 
-      .account-actions,
       .tiny-row,
       .forgot-actions {
         flex-direction: column;
         align-items: stretch;
       }
 
-      .account-actions .btn,
       .tiny-row .text-link,
       .forgot-actions .text-link {
         width: 100%;
@@ -1289,14 +1272,11 @@
       return "No active access.";
     }
 
-    function renewalText(license) {
-      if (!license) return "No subscription";
+    function renewalStatus(license) {
+      if (!license) return "-";
       const billingInterval = normalizeBillingInterval(license.billing_interval);
-      if (billingInterval !== "month" && billingInterval !== "year") return "No active subscription";
-      const periodEnd = String(license.current_period_end || "").trim();
-      if (!periodEnd) return "Subscription active, renewal date unavailable";
-      if (license.cancel_at_period_end) return `Auto-renew off. Access ends ${expiryText(license)}`;
-      return `Auto-renew on. Renews ${expiryText(license)}`;
+      if (billingInterval !== "month" && billingInterval !== "year") return "-";
+      return license.cancel_at_period_end ? "Off" : "On";
     }
 
     function showLoggedOutUi() {
@@ -1343,8 +1323,8 @@
           <span>${escapeHtml(expiryText(license))}</span>
         </div>
         <div class="account-item">
-          <strong>Subscription status</strong>
-          <span>${escapeHtml(renewalText(license))}</span>
+          <strong>Renewal</strong>
+          <span>${escapeHtml(renewalStatus(license))}</span>
         </div>
       `;
 

@@ -238,9 +238,12 @@ export async function refreshLicenseFromStripe(
     return lic;
   }
 
-  if (!subscriptionId && customerId) {
+  if (customerId) {
     const latestSubscription = await findLatestSubscriptionForCustomer(env, customerId);
-    subscriptionId = String(latestSubscription?.id || "").trim();
+    const latestSubscriptionId = String(latestSubscription?.id || "").trim();
+    if (latestSubscriptionId) {
+      subscriptionId = latestSubscriptionId;
+    }
   }
 
   if (!subscriptionId) {
