@@ -252,7 +252,10 @@ export async function refreshLicenseFromStripe(
     `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
   );
 
-  await upsertLicenseFromStripeSubscription(env, subscription);
+  const upsertResult = await upsertLicenseFromStripeSubscription(env, subscription);
+  if (!upsertResult.ok) {
+    throw new Error(`stripe_upsert_failed:${upsertResult.reason}`);
+  }
 
   const refreshed = await env.creatorrr_db
     .prepare("SELECT * FROM licenses WHERE user_id=?1")

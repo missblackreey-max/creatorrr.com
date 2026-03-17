@@ -251,6 +251,12 @@
       font-size: 15px;
     }
 
+
+    .account-note {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--muted-2);
+    }
     .auth-copy {
       margin-bottom: 18px;
       max-width: 620px;
@@ -708,7 +714,7 @@
 
   <main>
     <div class="container stack">
-      <section class="card" id="auth-section">
+      <section class="card initially-hidden" id="auth-section">
         <div class="auth-hero">
           <div>
             <span class="eyebrow">Your Account</span>
@@ -826,6 +832,7 @@
 
         <div class="account-grid" id="account-grid"></div>
         <div class="account-actions" id="account-actions"></div>
+        <p class="account-note">Billing opens in Stripe. After changes, click Return to Creatorrr.</p>
       </section>
 
       <section class="card initially-hidden" id="plans-section">
@@ -1240,8 +1247,23 @@
 
     function expiryText(license) {
       if (!license) return "-";
-      const raw = license.entitled_until || license.current_period_end || license.trial_end_at || "-";
-      return formatDateFriendly(raw);
+      const billingInterval = normalizeBillingInterval(license.billing_interval);
+      const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
+      const trialEnd = String(license.trial_end_at || "").trim();
+      const periodEnd = String(license.current_period_end || "").trim();
+
+      if (license.in_trial) {
+        if (!trialEnd) return "Trial active, end date unavailable";
+        return formatDateFriendly(trialEnd);
+      }
+
+      if (hasRecurringPlan) {
+        if (!periodEnd) return "Subscription active, renewal date unavailable";
+        return formatDateFriendly(periodEnd);
+      }
+
+      const fallback = String(license.entitled_until || "").trim();
+      return fallback ? formatDateFriendly(fallback) : "-";
     }
 
     function buildAccessSummary(license) {
@@ -1271,6 +1293,8 @@
       if (!license) return "No subscription";
       const billingInterval = normalizeBillingInterval(license.billing_interval);
       if (billingInterval !== "month" && billingInterval !== "year") return "No active subscription";
+      const periodEnd = String(license.current_period_end || "").trim();
+      if (!periodEnd) return "Subscription active, renewal date unavailable";
       if (license.cancel_at_period_end) return `Auto-renew off. Access ends ${expiryText(license)}`;
       return `Auto-renew on. Renews ${expiryText(license)}`;
     }
@@ -1693,7 +1717,9 @@
       renderAccount(account);
       renderPlans(account);
 
-      if (portalState === "returned") {
+      if (account?.stripe_sync_error) {
+        setError("We could not sync the latest billing status from Stripe right now. Showing your last known account data.");
+      } else if (portalState === "returned") {
         setSuccess("Billing changes synced.");
       } else if (oauthConsume?.consumed) {
         setSuccess("Signed in with Google.");
