@@ -114,6 +114,24 @@ async function stripeGetJson<T>(env: Env, path: string): Promise<T> {
   return data as T;
 }
 
+async function stripeGetSubscriptionById(
+  env: Env,
+  subscriptionId: string,
+): Promise<StripeSubscriptionLike | null> {
+  try {
+    return await stripeGetJson<StripeSubscriptionLike>(
+      env,
+      `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (message.includes("No such subscription") || message.includes("resource_missing")) {
+      return null;
+    }
+    throw err;
+  }
+}
+
 function isLiveStripeStatus(statusRaw: string): boolean {
   const s = String(statusRaw || "").trim().toLowerCase();
   return s === "trialing" || s === "active" || s === "past_due" || s === "unpaid";
@@ -260,10 +278,10 @@ export async function refreshLicenseFromStripe(
   let subscription: StripeSubscriptionLike | null = null;
 
   if (subscriptionId) {
-    subscription = await stripeGetJson<StripeSubscriptionLike>(
-      env,
-      `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
-    );
+    subscription = await stripeGetSubscriptionById(env, subscriptionId);
+    if (!subscription) {
+      return lic;
+    }
   } else if (customerId) {
     const best = await findBestSubscriptionForCustomer(env, customerId);
     const bestId = String(best?.id || "").trim();
@@ -271,10 +289,7 @@ export async function refreshLicenseFromStripe(
       return lic;
     }
     subscriptionId = bestId;
-    subscription = await stripeGetJson<StripeSubscriptionLike>(
-      env,
-      `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
-    );
+    subscription = await stripeGetSubscriptionById(env, subscriptionId);
   }
 
   if (!subscription) {
