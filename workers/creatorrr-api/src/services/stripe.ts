@@ -263,6 +263,30 @@ async function findLatestSubscriptionIdForCustomer(env: Env, customerId: string)
   return id || null;
 }
 
+
+export async function findLiveStripeSubscriptionForLicense(
+  env: Env,
+  lic: LicenseRow | null,
+): Promise<StripeSubscriptionLike | null> {
+  const subscriptionId = String(lic?.stripe_subscription_id || "").trim();
+  if (subscriptionId) {
+    const subscription = await stripeGetSubscriptionById(env, subscriptionId);
+    if (subscription && isLiveStripeStatus(String(subscription.status || ""))) {
+      return subscription;
+    }
+    return null;
+  }
+
+  const customerId = String(lic?.stripe_customer_id || "").trim();
+  if (!customerId) return null;
+
+  const best = await findBestSubscriptionForCustomer(env, customerId);
+  if (!best) return null;
+  if (!isLiveStripeStatus(String(best.status || ""))) return null;
+
+  return best;
+}
+
 export async function refreshLicenseFromStripe(
   env: Env,
   userId: string,
