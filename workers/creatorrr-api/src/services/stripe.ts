@@ -178,7 +178,6 @@ export async function createStripeCheckoutSession(
   userId: string,
   email: string,
   interval: "month" | "year",
-  withTrial: boolean,
 ): Promise<StripeCheckoutSessionResponse> {
   const priceId = getPriceIdForInterval(env, interval);
   if (!priceId) throw new Error("invalid_interval");
@@ -192,22 +191,14 @@ export async function createStripeCheckoutSession(
   form.set("line_items[0][price]", priceId);
   form.set("line_items[0][quantity]", "1");
 
-  if (withTrial) {
-    form.set("payment_method_collection", "always");
-    form.set("subscription_data[trial_period_days]", "3");
-    form.set("subscription_data[trial_settings][end_behavior][missing_payment_method]", "cancel");
-  }
-
   form.set("client_reference_id", userId);
   form.set("customer_email", email);
 
   form.set("metadata[user_id]", userId);
   form.set("metadata[interval]", interval);
-  form.set("metadata[with_trial]", withTrial ? "true" : "false");
 
   form.set("subscription_data[metadata][user_id]", userId);
   form.set("subscription_data[metadata][interval]", interval);
-  form.set("subscription_data[metadata][with_trial]", withTrial ? "true" : "false");
 
   form.set("success_url", successUrl);
   form.set("cancel_url", cancelUrl);
@@ -342,6 +333,58 @@ export async function upgradeStripeSubscriptionToYearly(
     form.set("proration_behavior", "create_prorations");
     form.set("billing_cycle_anchor", "now");
   }
+
+  const updated = await stripePostForm<StripeSubscriptionLike>(
+    env,
+    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    form,
+  );
+
+  const upsertResult = await upsertLicenseFromStripeSubscription(env, updated);
+  if (!upsertResult.ok) return { ok: false, reason: upsertResult.reason };
+
+  await env.creatorrr_db
+    .prepare(`
+      UPDATE licenses
+      SET stripe_subscription_id=?2, updated_at=?3
+      WHERE user_id=?1
+    `)
+    .bind(userId, subscriptionId, nowIso())
+    .run();
+
+  return { ok: true };
+}
+
+
+export async function downgradeStripeSubscriptionToMonthly(
+  env: Env,
+  userId: string,
+  lic: LicenseRow | null,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  let subscriptionId = String(lic?.stripe_subscription_id || "").trim();
+  const customerId = String(lic?.stripe_customer_id || "").trim();
+
+  if (!subscriptionId && customerId) {
+    subscriptionId = (await findLatestSubscriptionIdForCustomer(env, customerId)) || "";
+  }
+
+  if (!subscriptionId) return { ok: false, reason: "no_stripe_subscription" };
+
+  const subscription = await stripeGetJson<StripeSubscriptionLike>(
+    env,
+    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+  );
+
+  const itemId = String(subscription.items?.data?.[0]?.id || "").trim();
+  if (!itemId) return { ok: false, reason: "subscription_item_missing" };
+  if (!env.STRIPE_PRICE_ID_MONTHLY?.trim()) return { ok: false, reason: "missing_monthly_price_id" };
+
+  const form = new URLSearchParams();
+  form.set("items[0][id]", itemId);
+  form.set("items[0][price]", env.STRIPE_PRICE_ID_MONTHLY);
+  form.set("cancel_at_period_end", "false");
+  form.set("proration_behavior", "none");
+  form.set("billing_cycle_anchor", "unchanged");
 
   const updated = await stripePostForm<StripeSubscriptionLike>(
     env,

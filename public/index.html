@@ -594,7 +594,8 @@
     }
 
     .pricing-grid--pricing {
-      grid-template-columns: 0.95fr 1.05fr;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-items: stretch;
     }
 
     .price-card-featured {
@@ -864,7 +865,7 @@
         <a href="#demo">Demo</a>
         <a href="#workflow">Workflow</a>
         <a href="#pricing">Pricing</a>
-        <a class="nav-link-highlight" href="./account.html?intent=trial">3 day free trial</a>
+        <a class="nav-link-highlight" href="./account.html?intent=trial">3-day free trial</a>
       </nav>
 
       <div class="nav-action-slot nav-auth-pending" id="nav-action-slot">
@@ -899,7 +900,7 @@
           </div>
 
           <div class="hero-actions">
-            <a class="btn btn-primary" href="./account.html?intent=trial">Start 3 day free trial</a>
+            <a class="btn btn-primary" href="./account.html?intent=trial">Start 3-day free trial</a>
             <a class="btn btn-secondary" href="#demo">Watch the demo</a>
           </div>
         </div>
@@ -986,23 +987,46 @@
       <div class="container">
         <div class="section-head">
           <h2>Pricing</h2>
-          <p>Not sure yet? Try before buy. Start with a 3 day free trial.</p>
+          <p>Not sure yet? Try before buy. Start with a 3-day free trial (watermark version, no Stripe).</p>
         </div>
 
           <div class="section-head">
-            <p>No time to play around? Choose a monthly or yearly subscription.</p>
+            <p>Ready for the real version without fixed watermark? Choose monthly or yearly.</p>
           </div>
         <div class="pricing-grid pricing-grid--pricing">
           <article class="price-card">
+            <h3>3-day trial</h3>
+            <p class="pricing-subtitle">Watermark version, no Stripe</p>
+
+            <div class="price">
+              <strong>$0</strong>
+              <span>/ 3 days</span>
+            </div>
+
+            <p class="price-note">Try Contentorrr with a fixed watermark before buying.</p>
+
+            <div class="pricing-features">
+              <div>Contentorrr trial access</div>
+              <div>Windows and macOS</div>
+              <div>Local workflow on your machine</div>
+              <div>Upgrade anytime</div>
+            </div>
+
+            <div class="pricing-actions">
+              <a class="btn btn-secondary" href="./account.html?intent=trial">Start 3-day trial</a>
+            </div>
+          </article>
+
+          <article class="price-card">
             <h3>Monthly</h3>
-            <p class="pricing-subtitle">3-day free trial</p>
+            <p class="pricing-subtitle">Real version, billed monthly</p>
 
             <div class="price">
               <strong>$29.90</strong>
               <span>/ month</span>
             </div>
 
-            <p class="price-note">Full access, billed monthly after your 3-day trial.</p>
+            <p class="price-note">Immediate full access without fixed watermark.</p>
 
             <div class="pricing-features">
               <div>Full Contentorrr access</div>
@@ -1012,7 +1036,7 @@
             </div>
 
             <div class="pricing-actions">
-              <a class="btn btn-secondary" href="./account.html?intent=monthly">Start free trial</a>
+              <a class="btn btn-secondary" href="./account.html?intent=monthly">Buy monthly</a>
             </div>
           </article>
 

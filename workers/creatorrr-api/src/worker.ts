@@ -31,6 +31,7 @@ import {
 import {
   createStripeCheckoutSession,
   createStripePortalSession,
+  downgradeStripeSubscriptionToMonthly,
   handleCheckoutSessionCompleted,
   recoverStripeCustomerId,
   requireStripeCheckoutConfig,
@@ -610,6 +611,99 @@ export default {
       return json(req, { ok: true, ...computeEntitlement(lic) });
     }
 
+
+    if (req.method === "POST" && url.pathname === "/license/trial/start") {
+      const auth = await requireAuth(req, env);
+      if (!auth.ok) return auth.response;
+
+      const lic = await getLicenseRow(env, auth.ctx.userId);
+
+      const currentStatus = String(lic?.status || "").trim().toLowerCase();
+      const billingInterval = String(lic?.billing_interval || "").trim().toLowerCase();
+      const currentPeriodEndMs = Date.parse(String(lic?.current_period_end || ""));
+      const trialEndMs = Date.parse(String(lic?.trial_end_at || ""));
+
+      const hasRecurringSubscription =
+        (billingInterval === "month" || billingInterval === "year") &&
+        Number.isFinite(currentPeriodEndMs) &&
+        currentPeriodEndMs > Date.now() &&
+        ["active", "trialing", "past_due", "canceling"].includes(currentStatus);
+
+      if (hasRecurringSubscription) {
+        return bad(req, "subscription_already_active", 409, {
+          message: "You already have an active paid subscription.",
+        });
+      }
+
+      const hasUsedTrial = Boolean(String(lic?.trial_start_at || "").trim() || String(lic?.trial_end_at || "").trim() || String(lic?.stripe_customer_id || "").trim() || String(lic?.stripe_subscription_id || "").trim());
+      const hasLiveTrial = Number.isFinite(trialEndMs) && trialEndMs > Date.now() && (currentStatus === "trialing" || currentStatus === "active");
+
+      if (hasLiveTrial) {
+        const user = await getUserById(env, auth.ctx.userId);
+        if (!user) return bad(req, "user_not_found", 404);
+        return json(req, { ok: true, ...makeAccountView(user, lic) });
+      }
+
+      if (hasUsedTrial) {
+        return bad(req, "trial_already_used", 409, {
+          message: "Free trial already used on this account.",
+        });
+      }
+
+      const now = nowIso();
+      const trialEndAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+
+      await env.creatorrr_db
+        .prepare(
+          `
+            INSERT INTO licenses (
+              user_id,
+              plan,
+              status,
+              notes,
+              created_at,
+              updated_at,
+              billing_interval,
+              current_period_start,
+              current_period_end,
+              trial_start_at,
+              trial_end_at,
+              cancel_at_period_end,
+              canceled_at,
+              ended_at,
+              stripe_customer_id,
+              stripe_subscription_id,
+              stripe_price_id
+            )
+            VALUES (?1, 'trial', 'trialing', 'local free trial', ?2, ?2, NULL, NULL, NULL, ?2, ?3, 1, NULL, NULL, NULL, NULL, NULL)
+            ON CONFLICT(user_id) DO UPDATE SET
+              plan='trial',
+              status='trialing',
+              notes='local free trial',
+              updated_at=excluded.updated_at,
+              billing_interval=NULL,
+              current_period_start=NULL,
+              current_period_end=NULL,
+              trial_start_at=excluded.trial_start_at,
+              trial_end_at=excluded.trial_end_at,
+              cancel_at_period_end=1,
+              canceled_at=NULL,
+              ended_at=NULL,
+              stripe_customer_id=NULL,
+              stripe_subscription_id=NULL,
+              stripe_price_id=NULL
+          `,
+        )
+        .bind(auth.ctx.userId, now, trialEndAt)
+        .run();
+
+      const user = await getUserById(env, auth.ctx.userId);
+      if (!user) return bad(req, "user_not_found", 404);
+
+      const updatedLic = await getLicenseRow(env, auth.ctx.userId);
+      return json(req, { ok: true, ...makeAccountView(user, updatedLic) });
+    }
+
     if (req.method === "POST" && url.pathname === "/stripe/checkout") {
       const cfgErr = requireStripeCheckoutConfig(req, env);
       if (cfgErr) return cfgErr;
@@ -617,19 +711,12 @@ export default {
       const auth = await requireAuth(req, env);
       if (!auth.ok) return auth.response;
 
-      const body = await readJson<{ interval?: string; withTrial?: boolean }>(req);
+      const body = await readJson<{ interval?: string }>(req);
       if (!body) return bad(req, "invalid_json");
 
       const interval = String(body.interval || "").trim().toLowerCase();
       if (interval !== "month" && interval !== "year") {
         return bad(req, "invalid_interval", 400, { allowed: ["month", "year"] });
-      }
-
-      const withTrial = body.withTrial === true;
-      if (withTrial && interval !== "month") {
-        return bad(req, "trial_only_on_monthly", 400, {
-          message: "Free trial is available only on monthly plans.",
-        });
       }
 
       let lic = await getLicenseRow(env, auth.ctx.userId);
@@ -664,15 +751,6 @@ export default {
         });
       }
 
-      if (withTrial) {
-        const hasUsedTrial = Boolean(String(lic?.trial_start_at || "").trim() || String(lic?.trial_end_at || "").trim());
-        if (hasUsedTrial) {
-          return bad(req, "trial_already_used", 409, {
-            message: "Free trial already used on this account.",
-          });
-        }
-      }
-
       const email = await getUserEmail(env, auth.ctx.userId);
       if (!email) return bad(req, "user_email_not_found", 404);
 
@@ -682,7 +760,6 @@ export default {
           auth.ctx.userId,
           email,
           interval as "month" | "year",
-          withTrial,
         );
 
         if (!session.url) return bad(req, "stripe_checkout_url_missing", 502);
@@ -691,7 +768,6 @@ export default {
           ok: true,
           url: session.url,
           sessionId: session.id,
-          withTrial,
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : "stripe_checkout_failed";
@@ -763,6 +839,71 @@ export default {
       } catch (err) {
         const message = err instanceof Error ? err.message : "stripe_upgrade_failed";
         return bad(req, "stripe_upgrade_failed", 502, { message });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/stripe/subscription/downgrade-monthly") {
+      const cfgErr = requireStripeCheckoutConfig(req, env);
+      if (cfgErr) return cfgErr;
+
+      const auth = await requireAuth(req, env);
+      if (!auth.ok) return auth.response;
+
+      let lic = await getLicenseRow(env, auth.ctx.userId);
+
+      if (env.STRIPE_SECRET_KEY?.trim()) {
+        try {
+          lic = await refreshLicenseFromStripe(env, auth.ctx.userId, lic);
+        } catch (err) {
+          console.error("[downgrade-monthly] stripe sync failed", {
+            userId: auth.ctx.userId,
+            error: err instanceof Error ? err.message : "stripe_sync_error",
+          });
+        }
+      }
+
+      const currentInterval = String(lic?.billing_interval || "").trim().toLowerCase();
+      const currentStatus = String(lic?.status || "").trim().toLowerCase();
+      const currentPeriodEndMs = Date.parse(String(lic?.current_period_end || ""));
+      const hasFutureYearlyAccess =
+        Number.isFinite(currentPeriodEndMs) &&
+        currentPeriodEndMs > Date.now() &&
+        ["active", "trialing", "past_due", "canceling"].includes(currentStatus);
+      const isYearlyActive = currentInterval === "year" && hasFutureYearlyAccess;
+
+      if (!isYearlyActive) {
+        return bad(req, "yearly_subscription_required", 409, {
+          message: "Yearly subscription required for monthly downgrade.",
+        });
+      }
+
+      try {
+        const updated = await downgradeStripeSubscriptionToMonthly(env, auth.ctx.userId, lic);
+        if (!updated.ok) {
+          return bad(req, updated.reason, 400, {
+            message: "Could not switch subscription to monthly.",
+          });
+        }
+
+        let freshLic = await getLicenseRow(env, auth.ctx.userId);
+        if (env.STRIPE_SECRET_KEY?.trim()) {
+          try {
+            freshLic = await refreshLicenseFromStripe(env, auth.ctx.userId, freshLic);
+          } catch (err) {
+            console.error("[downgrade-monthly] post-downgrade stripe sync failed", {
+              userId: auth.ctx.userId,
+              error: err instanceof Error ? err.message : "stripe_sync_error",
+            });
+          }
+        }
+
+        const user = await getUserById(env, auth.ctx.userId);
+        if (!user) return bad(req, "user_not_found", 404);
+
+        return json(req, { ok: true, ...makeAccountView(user, freshLic) });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "stripe_downgrade_failed";
+        return bad(req, "stripe_downgrade_failed", 502, { message });
       }
     }
 
