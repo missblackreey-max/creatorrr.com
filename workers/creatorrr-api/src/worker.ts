@@ -582,14 +582,21 @@ export default {
 
       let lic = await getLicenseRow(env, auth.ctx.userId);
 
+      let stripeSyncError: string | null = null;
+
       if (env.STRIPE_SECRET_KEY?.trim()) {
         try {
           lic = await refreshLicenseFromStripe(env, auth.ctx.userId, lic);
-        } catch {
+        } catch (err) {
+          stripeSyncError = err instanceof Error ? err.message : "stripe_sync_error";
+          console.error("[account/me] stripe sync failed", {
+            userId: auth.ctx.userId,
+            error: stripeSyncError,
+          });
         }
       }
 
-      return json(req, { ok: true, ...makeAccountView(user, lic) });
+      return json(req, { ok: true, ...makeAccountView(user, lic), stripe_sync_error: stripeSyncError });
     }
 
     if (req.method === "GET" && url.pathname === "/license/me") {
