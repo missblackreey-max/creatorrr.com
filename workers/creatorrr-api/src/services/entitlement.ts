@@ -16,19 +16,33 @@ export function computeEntitlement(lic: LicenseRow | null): EntitlementView {
   const nowMs = Date.now();
   const status = String(lic.status || "").toLowerCase().trim();
   const plan = String(lic.plan || "").toLowerCase().trim();
+  const billingInterval = String(lic.billing_interval || "").toLowerCase().trim();
 
   const trialEndMs = parseIsoMs(lic.trial_end_at);
   const periodEndMs = parseIsoMs(lic.current_period_end);
 
+  const hasLiveTrialWindow = trialEndMs !== null && trialEndMs > nowMs;
+  const hasLiveSubscriptionWindow = periodEndMs !== null && periodEndMs > nowMs;
+  const isRecurring = billingInterval === "month" || billingInterval === "year";
+
   const inTrial =
-    (status === "trialing" || plan === "trial" || plan === "free") &&
-    trialEndMs !== null &&
-    trialEndMs > nowMs;
+    hasLiveTrialWindow &&
+    (
+      status === "trialing" ||
+      status === "canceling" ||
+      plan === "trial" ||
+      plan === "free"
+    );
 
   const subscriptionActive =
-    (status === "active" || status === "past_due" || status === "canceling") &&
-    periodEndMs !== null &&
-    periodEndMs > nowMs;
+    hasLiveSubscriptionWindow &&
+    (
+      status === "active" ||
+      status === "past_due" ||
+      status === "canceling" ||
+      status === "trialing"
+    ) &&
+    isRecurring;
 
   const entitled = inTrial || subscriptionActive;
 

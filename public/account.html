@@ -1322,6 +1322,12 @@
     function renewalText(license) {
       if (!license) return "-";
 
+      if (license.in_trial) {
+        const when = formatDateFriendly(license.trial_end_at || "");
+        if (license.cancel_at_period_end) return `Off, trial ends ${when}`;
+        return `On, billing starts ${when}`;
+      }
+
       const billingInterval = normalizeBillingInterval(license.billing_interval);
       if (billingInterval !== "month" && billingInterval !== "year") return "-";
 
@@ -1403,7 +1409,12 @@
         return { kind: "cta", label: "Buy yearly", action: "checkout-year", primary: preferredPlan === "year" };
       }
 
-      if (state === "trial_active" || state === "monthly_active") {
+      if (state === "trial_active") {
+        if (planKey === "month") return { kind: "current", label: "Current plan" };
+        return { kind: "disabled", label: "Available after trial" };
+      }
+
+      if (state === "monthly_active") {
         if (planKey === "month") return { kind: "current", label: "Current plan" };
         return { kind: "cta", label: "Upgrade to yearly", action: "upgrade-yearly", primary: true };
       }
