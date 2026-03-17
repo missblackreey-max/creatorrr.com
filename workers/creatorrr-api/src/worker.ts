@@ -610,6 +610,109 @@ export default {
       return json(req, { ok: true, ...computeEntitlement(lic) });
     }
 
+
+    if (req.method === "POST" && url.pathname === "/license/trial/start") {
+      const auth = await requireAuth(req, env);
+      if (!auth.ok) return auth.response;
+
+      let lic = await getLicenseRow(env, auth.ctx.userId);
+      if (env.STRIPE_SECRET_KEY?.trim()) {
+        try {
+          lic = await refreshLicenseFromStripe(env, auth.ctx.userId, lic);
+        } catch (err) {
+          console.error("[trial-start] stripe sync failed", {
+            userId: auth.ctx.userId,
+            error: err instanceof Error ? err.message : "stripe_sync_error",
+          });
+        }
+      }
+
+      const currentStatus = String(lic?.status || "").trim().toLowerCase();
+      const billingInterval = String(lic?.billing_interval || "").trim().toLowerCase();
+      const currentPeriodEndMs = Date.parse(String(lic?.current_period_end || ""));
+      const trialEndMs = Date.parse(String(lic?.trial_end_at || ""));
+
+      const hasRecurringSubscription =
+        (billingInterval === "month" || billingInterval === "year") &&
+        Number.isFinite(currentPeriodEndMs) &&
+        currentPeriodEndMs > Date.now() &&
+        ["active", "trialing", "past_due", "canceling"].includes(currentStatus);
+
+      if (hasRecurringSubscription) {
+        return bad(req, "subscription_already_active", 409, {
+          message: "You already have an active paid subscription.",
+        });
+      }
+
+      const hasUsedTrial = Boolean(String(lic?.trial_start_at || "").trim() || String(lic?.trial_end_at || "").trim());
+      const hasLiveTrial = Number.isFinite(trialEndMs) && trialEndMs > Date.now() && (currentStatus === "trialing" || currentStatus === "active");
+
+      if (hasLiveTrial) {
+        const user = await getUserById(env, auth.ctx.userId);
+        if (!user) return bad(req, "user_not_found", 404);
+        return json(req, { ok: true, ...makeAccountView(user, lic) });
+      }
+
+      if (hasUsedTrial) {
+        return bad(req, "trial_already_used", 409, {
+          message: "Free trial already used on this account.",
+        });
+      }
+
+      const now = nowIso();
+      const trialEndAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+
+      await env.creatorrr_db
+        .prepare(
+          `
+            INSERT INTO licenses (
+              user_id,
+              plan,
+              status,
+              notes,
+              created_at,
+              updated_at,
+              billing_interval,
+              current_period_start,
+              current_period_end,
+              trial_start_at,
+              trial_end_at,
+              cancel_at_period_end,
+              canceled_at,
+              ended_at,
+              stripe_customer_id,
+              stripe_subscription_id,
+              stripe_price_id
+            )
+            VALUES (?1, 'trial', 'trialing', 'local free trial', ?2, ?2, NULL, NULL, NULL, ?2, ?3, 1, NULL, NULL, NULL, NULL, NULL)
+            ON CONFLICT(user_id) DO UPDATE SET
+              plan='trial',
+              status='trialing',
+              notes='local free trial',
+              updated_at=excluded.updated_at,
+              billing_interval=NULL,
+              current_period_start=NULL,
+              current_period_end=NULL,
+              trial_start_at=excluded.trial_start_at,
+              trial_end_at=excluded.trial_end_at,
+              cancel_at_period_end=1,
+              canceled_at=NULL,
+              ended_at=NULL,
+              stripe_customer_id=NULL,
+              stripe_subscription_id=NULL,
+              stripe_price_id=NULL
+          `,
+        )
+        .bind(auth.ctx.userId, now, trialEndAt)
+        .run();
+
+      const user = await getUserById(env, auth.ctx.userId);
+      if (!user) return bad(req, "user_not_found", 404);
+
+      const updatedLic = await getLicenseRow(env, auth.ctx.userId);
+      return json(req, { ok: true, ...makeAccountView(user, updatedLic) });
+    }
+
     if (req.method === "POST" && url.pathname === "/stripe/checkout") {
       const cfgErr = requireStripeCheckoutConfig(req, env);
       if (cfgErr) return cfgErr;
@@ -626,9 +729,9 @@ export default {
       }
 
       const withTrial = body.withTrial === true;
-      if (withTrial && interval !== "month") {
-        return bad(req, "trial_only_on_monthly", 400, {
-          message: "Free trial is available only on monthly plans.",
+      if (withTrial) {
+        return bad(req, "trial_not_available_in_stripe_checkout", 400, {
+          message: "Free trial is no longer handled through Stripe checkout.",
         });
       }
 
