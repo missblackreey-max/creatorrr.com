@@ -891,7 +891,7 @@
     downloadsCopy.textContent = `Current version ${APP_VERSION}.`;
 
     function normalizePlan(value) {
-      if (value === "trial") return "trial";
+      if (value === "trial") return "month";
       if (value === "monthly" || value === "month") return "month";
       if (value === "yearly" || value === "year") return "year";
       if (value === "login") return "year";
@@ -1218,27 +1218,11 @@
     }
 
     function renewalText(license) {
-      if (!license) return "-";
-      if (license.in_trial) return "N/A (trial)";
+      if (!license) return "No subscription";
       const billingInterval = normalizeBillingInterval(license.billing_interval);
-      if (billingInterval !== "month" && billingInterval !== "year") return "-";
-      if (license.cancel_at_period_end) {
-        return `Off (access ends ${expiryText(license)})`;
-      }
-      return `On (renews ${expiryText(license)})`;
-    }
-
-    function canToggleRenewal(license) {
-      if (!license) return false;
-      if (license.in_trial) return false;
-      const billingInterval = normalizeBillingInterval(license.billing_interval);
-      if (billingInterval !== "month" && billingInterval !== "year") return false;
-      return Boolean(license.can_manage_subscription);
-    }
-
-    function canStartTrial(account) {
-      const license = account?.license || {};
-      return !license.in_trial && !license.entitled;
+      if (billingInterval !== "month" && billingInterval !== "year") return "No active subscription";
+      if (license.cancel_at_period_end) return `Auto-renew off. Access ends ${expiryText(license)}`;
+      return `Auto-renew on. Renews ${expiryText(license)}`;
     }
 
     function showLoggedOutUi() {
@@ -1280,77 +1264,40 @@
           <span>${escapeHtml(expiryText(license))}</span>
         </div>
         <div class="account-item">
-          <strong>Auto-renew</strong>
-          ${canToggleRenewal(license)
-            ? `<label class="auto-renew-toggle"><input type="checkbox" id="auto-renew-toggle" data-busy-sensitive="true" ${license.cancel_at_period_end ? "" : "checked"} /><span id="auto-renew-label">${escapeHtml(renewalText(license))}</span></label>`
-            : `<span>${escapeHtml(renewalText(license))}</span>`}
+          <strong>Subscription status</strong>
+          <span>${escapeHtml(renewalText(license))}</span>
         </div>
       `;
 
-      accountActions.innerHTML = "";
-
-      const autoRenewToggle = document.getElementById("auto-renew-toggle");
-      if (autoRenewToggle) {
-        autoRenewToggle.addEventListener("change", async (event) => {
-          const input = event.target;
-          if (!input) return;
-          const enabled = Boolean(input.checked);
-          await setAutoRenew(enabled, input);
-        });
+      const actions = [];
+      if (license.can_manage_subscription) {
+        actions.push(`<button class="btn btn-secondary" type="button" id="action-manage-subscription" data-busy-sensitive="true">Manage subscription</button>`);
       }
-    }
 
-    async function setAutoRenew(enabled, inputEl) {
-      clearMessages();
-      setBusy(true);
-      try {
-        const token = getWebToken();
-        if (!token) throw new Error("You are not logged in.");
+      accountActions.innerHTML = actions.join("");
 
-        setStatus(`Turning auto-renew ${enabled ? "on" : "off"}...`);
-        const data = await apiPost("/stripe/subscription/auto-renew", { enabled }, token);
-        renderAccount(data);
-        renderPlans(data);
-        setSuccess(`Auto-renew turned ${enabled ? "on" : "off"}.`);
-      } catch (err) {
-        if (inputEl) inputEl.checked = !enabled;
-        const message = err instanceof Error ? err.message : "Could not update auto-renew.";
-        setError(message);
-      } finally {
-        setBusy(false);
-      }
+      const manageBtn = document.getElementById("action-manage-subscription");
+      if (manageBtn) manageBtn.addEventListener("click", openPortal);
     }
 
     function getPlanAction(planKey, account) {
       const state = deriveAccountState(account);
 
       if (state === "no_access") {
-        if (planKey === "trial") {
-          return canStartTrial(account)
-            ? { kind: "cta", label: "Start free trial", action: "checkout-trial", primary: preferredPlan === "trial" }
-            : { kind: "disabled", label: "Unavailable" };
-        }
         if (planKey === "month") {
-          return { kind: "cta", label: "Get monthly access", action: "checkout-month", primary: preferredPlan === "month" };
+          return { kind: "cta", label: "Start free trial", action: "checkout-month-trial", primary: preferredPlan !== "year" };
         }
-        return { kind: "cta", label: "Get yearly access", action: "checkout-year", primary: preferredPlan === "year" };
+        return { kind: "cta", label: "Buy yearly", action: "checkout-year", primary: preferredPlan === "year" };
       }
 
-      if (state === "trial_active") {
-        if (planKey === "trial") return { kind: "current", label: "Current plan" };
-        if (planKey === "month") return { kind: "cta", label: "Upgrade to monthly", action: "checkout-month", primary: preferredPlan === "month" };
-        return { kind: "cta", label: "Upgrade to yearly", action: "checkout-year", primary: true };
-      }
-
-      if (state === "monthly_active") {
-        if (planKey === "trial") return { kind: "disabled", label: "Already beyond trial" };
+      if (state === "trial_active" || state === "monthly_active") {
         if (planKey === "month") return { kind: "current", label: "Current plan" };
-        return { kind: "disabled", label: "End current subscription first" };
+        return { kind: "cta", label: "Upgrade to yearly", action: "upgrade-yearly", primary: true };
       }
 
       if (state === "yearly_active") {
         if (planKey === "year") return { kind: "current", label: "Current plan" };
-        return { kind: "disabled", label: "End current subscription first" };
+        return { kind: "disabled", label: "Yearly plan active" };
       }
 
       return { kind: "disabled", label: "Unavailable" };
@@ -1371,18 +1318,10 @@
     function renderPlans(account) {
       const plans = [
         {
-          key: "trial",
-          name: "3-day trial",
-          price: "Free",
-          meta: "Try first",
-          copy: "Full access, just a small creatorrr.com watermark in all exports.",
-          badge: ""
-        },
-        {
           key: "month",
           name: "Monthly",
           price: "$29.90",
-          meta: "Per month",
+          meta: "3-day free trial",
           copy: "Flexible month to month access.",
           badge: ""
         },
@@ -1392,14 +1331,11 @@
           price: "$239",
           meta: "$19.92/month effective",
           copy: "Best value if you produce a lot of content.",
-          badge: "Best value"
+          badge: "Save 33%"
         }
       ];
 
-      const recurringActive = ["monthly_active", "yearly_active"].includes(deriveAccountState(account));
-      plansCopy.textContent = recurringActive
-        ? "You already have an active subscription. To switch plans, turn auto-renew off and start a new plan when your current period ends."
-        : "";
+      plansCopy.textContent = "";
 
       plansGrid.innerHTML = plans.map((plan) => {
         const action = getPlanAction(plan.key, account);
@@ -1430,18 +1366,18 @@
         el.addEventListener("click", async () => {
           const action = el.getAttribute("data-plan-action");
 
-          if (action === "checkout-trial") {
+          if (action === "checkout-month-trial") {
             await continueCheckout("month", true);
-            return;
-          }
-
-          if (action === "checkout-month") {
-            await continueCheckout("month", false);
             return;
           }
 
           if (action === "checkout-year") {
             await continueCheckout("year", false);
+            return;
+          }
+
+          if (action === "upgrade-yearly") {
+            await upgradeToYearly();
             return;
           }
         });
@@ -1465,6 +1401,26 @@
         window.location.href = data.url;
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not open checkout.");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function upgradeToYearly() {
+      clearMessages();
+      setBusy(true);
+      try {
+        const token = getWebToken();
+        if (!token) throw new Error("You are not logged in.");
+
+        setStatus("Upgrading to yearly plan...");
+        const data = await apiPost("/stripe/subscription/upgrade-yearly", {}, token);
+        renderAccount(data);
+        renderPlans(data);
+        setSuccess("Upgraded to yearly plan.");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Could not upgrade subscription.";
+        setError(message);
       } finally {
         setBusy(false);
       }
@@ -1557,7 +1513,7 @@
       const clientNonce = randomUuidV4();
       safeLocalStorageSet(LS_WEB_OAUTH_NONCE, clientNonce);
 
-      const planParam = preferredPlan === "trial" ? "trial" : preferredPlan === "month" ? "monthly" : "yearly";
+      const planParam = preferredPlan === "month" ? "monthly" : "yearly";
       const target = `${API_BASE}/auth/google/start?intent=${encodeURIComponent(planParam)}&deviceId=${encodeURIComponent(deviceId)}&clientNonce=${encodeURIComponent(clientNonce)}`;
       window.location.href = target;
     }

@@ -162,7 +162,7 @@ export async function createStripeCheckoutSession(
   form.set("line_items[0][quantity]", "1");
 
   if (withTrial) {
-    form.set("payment_method_collection", "if_required");
+    form.set("payment_method_collection", "always");
     form.set("subscription_data[trial_period_days]", "3");
     form.set("subscription_data[trial_settings][end_behavior][missing_payment_method]", "cancel");
   }
@@ -216,6 +216,56 @@ async function findLatestSubscriptionIdForCustomer(env: Env, customerId: string)
   return typeof firstId === "string" && firstId.trim() ? firstId.trim() : null;
 }
 
+
+export async function upgradeStripeSubscriptionToYearly(
+  env: Env,
+  userId: string,
+  lic: LicenseRow | null,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  let subscriptionId = String(lic?.stripe_subscription_id || "").trim();
+  const customerId = String(lic?.stripe_customer_id || "").trim();
+
+  if (!subscriptionId && customerId) {
+    subscriptionId = (await findLatestSubscriptionIdForCustomer(env, customerId)) || "";
+  }
+
+  if (!subscriptionId) return { ok: false, reason: "no_stripe_subscription" };
+
+  const subscription = await stripeGetJson<StripeSubscriptionLike>(
+    env,
+    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+  );
+
+  const itemId = String(subscription.items?.data?.[0]?.id || "").trim();
+  if (!itemId) return { ok: false, reason: "subscription_item_missing" };
+  if (!env.STRIPE_PRICE_ID_YEARLY?.trim()) return { ok: false, reason: "missing_yearly_price_id" };
+
+  const form = new URLSearchParams();
+  form.set("items[0][id]", itemId);
+  form.set("items[0][price]", env.STRIPE_PRICE_ID_YEARLY);
+  form.set("proration_behavior", "create_prorations");
+  form.set("billing_cycle_anchor", "now");
+  form.set("cancel_at_period_end", "false");
+
+  const updated = await stripePostForm<StripeSubscriptionLike>(
+    env,
+    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    form,
+  );
+
+  await upsertLicenseFromStripeSubscription(env, updated);
+
+  await env.creatorrr_db
+    .prepare(`
+      UPDATE licenses
+      SET stripe_subscription_id=?2, updated_at=?3
+      WHERE user_id=?1
+    `)
+    .bind(userId, subscriptionId, nowIso())
+    .run();
+
+  return { ok: true };
+}
 export async function updateStripeSubscriptionAutoRenew(
   env: Env,
   userId: string,

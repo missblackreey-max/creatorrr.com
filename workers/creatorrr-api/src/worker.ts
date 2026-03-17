@@ -36,6 +36,7 @@ import {
   requireStripeCheckoutConfig,
   requireStripePortalConfig,
   updateStripeSubscriptionAutoRenew,
+  upgradeStripeSubscriptionToYearly,
   upsertLicenseFromStripeSubscription,
   verifyStripeWebhookSignature,
 } from "./services/stripe";
@@ -604,6 +605,13 @@ export default {
         return bad(req, "invalid_interval", 400, { allowed: ["month", "year"] });
       }
 
+      const withTrial = body.withTrial === true;
+      if (withTrial && interval !== "month") {
+        return bad(req, "trial_only_on_monthly", 400, {
+          message: "Free trial is available only on monthly plans.",
+        });
+      }
+
       const lic = await getLicenseRow(env, auth.ctx.userId);
       const currentInterval = String(lic?.billing_interval || "").trim().toLowerCase();
       const currentPeriodEndMs = Date.parse(String(lic?.current_period_end || ""));
@@ -611,7 +619,7 @@ export default {
         (currentInterval === "month" || currentInterval === "year") &&
         Number.isFinite(currentPeriodEndMs) &&
         currentPeriodEndMs > Date.now() &&
-        ["active", "past_due", "canceling"].includes(String(lic?.status || "").trim().toLowerCase());
+        ["active", "trialing", "past_due", "canceling"].includes(String(lic?.status || "").trim().toLowerCase());
 
       if (hasLiveRecurringSubscription) {
         if (currentInterval === interval) {
@@ -621,8 +629,17 @@ export default {
         }
 
         return bad(req, "existing_subscription_conflict", 409, {
-          message: "You already have an active subscription. Use auto-renew controls to keep or end it before starting a different plan.",
+          message: "You already have an active subscription. Upgrade from monthly to yearly from your account, or wait until your current period ends.",
         });
+      }
+
+      if (withTrial) {
+        const hasUsedTrial = Boolean(String(lic?.trial_start_at || "").trim() || String(lic?.trial_end_at || "").trim());
+        if (hasUsedTrial) {
+          return bad(req, "trial_already_used", 409, {
+            message: "Free trial already used on this account.",
+          });
+        }
       }
 
       const email = await getUserEmail(env, auth.ctx.userId);
@@ -634,7 +651,7 @@ export default {
           auth.ctx.userId,
           email,
           interval as "month" | "year",
-          body.withTrial === true,
+          withTrial,
         );
 
         if (!session.url) return bad(req, "stripe_checkout_url_missing", 502);
@@ -643,11 +660,52 @@ export default {
           ok: true,
           url: session.url,
           sessionId: session.id,
-          withTrial: body.withTrial === true,
+          withTrial,
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : "stripe_checkout_failed";
         return bad(req, "stripe_checkout_failed", 502, { message });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/stripe/subscription/upgrade-yearly") {
+      const cfgErr = requireStripeCheckoutConfig(req, env);
+      if (cfgErr) return cfgErr;
+
+      const auth = await requireAuth(req, env);
+      if (!auth.ok) return auth.response;
+
+      const lic = await getLicenseRow(env, auth.ctx.userId);
+      const currentInterval = String(lic?.billing_interval || "").trim().toLowerCase();
+      const currentPeriodEndMs = Date.parse(String(lic?.current_period_end || ""));
+      const isMonthlyActive =
+        currentInterval === "month" &&
+        Number.isFinite(currentPeriodEndMs) &&
+        currentPeriodEndMs > Date.now() &&
+        ["active", "trialing", "past_due", "canceling"].includes(String(lic?.status || "").trim().toLowerCase());
+
+      if (!isMonthlyActive) {
+        return bad(req, "monthly_subscription_required", 409, {
+          message: "Monthly subscription required for yearly upgrade.",
+        });
+      }
+
+      try {
+        const updated = await upgradeStripeSubscriptionToYearly(env, auth.ctx.userId, lic);
+        if (!updated.ok) {
+          return bad(req, updated.reason, 400, {
+            message: "Could not upgrade subscription to yearly.",
+          });
+        }
+
+        const freshLic = await getLicenseRow(env, auth.ctx.userId);
+        const user = await getUserById(env, auth.ctx.userId);
+        if (!user) return bad(req, "user_not_found", 404);
+
+        return json(req, { ok: true, ...makeAccountView(user, freshLic) });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "stripe_upgrade_failed";
+        return bad(req, "stripe_upgrade_failed", 502, { message });
       }
     }
 

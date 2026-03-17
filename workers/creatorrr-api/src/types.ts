@@ -86,6 +86,7 @@ export type StripeSubscriptionLike = {
   metadata?: Record<string, string>;
   items?: {
     data?: Array<{
+      id?: string | null;
       price?: {
         id?: string | null;
         recurring?: {
