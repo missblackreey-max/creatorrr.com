@@ -1368,7 +1368,9 @@
 
     function hasUsedTrialOnAccount(account) {
       const license = account?.license || {};
-      return Boolean(String(license.trial_start_at || "").trim() || String(license.trial_end_at || "").trim());
+      const trialTimestampsUsed = Boolean(String(license.trial_start_at || "").trim() || String(license.trial_end_at || "").trim());
+      const paidAccessEverUsed = Boolean(license.can_manage_subscription);
+      return trialTimestampsUsed || paidAccessEverUsed;
     }
 
     function renderAccount(account) {
@@ -1418,7 +1420,7 @@
       if (state === "no_access") {
         if (planKey === "trial") {
           if (hasUsedTrialOnAccount(account)) {
-            return { kind: "disabled", label: "Trial already used" };
+            return { kind: "disabled", label: "Expired" };
           }
           return { kind: "cta", label: "Start 3-day trial", action: "start-trial", primary: preferredPlan === "trial" };
         }
@@ -1437,14 +1439,14 @@
 
       if (state === "monthly_active") {
         if (planKey === "month") return { kind: "current", label: "Current plan" };
-        if (planKey === "trial") return { kind: "disabled", label: "Trial already used" };
+        if (planKey === "trial") return { kind: "disabled", label: "Expired" };
         return { kind: "cta", label: "Upgrade to yearly", action: "upgrade-yearly", primary: true };
       }
 
       if (state === "yearly_active") {
         if (planKey === "year") return { kind: "current", label: "Current plan" };
-        if (planKey === "trial") return { kind: "disabled", label: "Trial already used" };
-        return { kind: "disabled", label: "Yearly plan active" };
+        if (planKey === "trial") return { kind: "disabled", label: "Expired" };
+        return { kind: "cta", label: "Switch to monthly", action: "downgrade-monthly", primary: false };
       }
 
       return { kind: "disabled", label: "Unavailable" };
@@ -1463,6 +1465,9 @@
     }
 
     function renderPlans(account) {
+      const state = deriveAccountState(account);
+      const trialBadge = state === "trial_active" ? "" : "Try now";
+
       const plans = [
         {
           key: "trial",
@@ -1470,7 +1475,7 @@
           price: "$0",
           meta: "No Stripe required",
           copy: "Use the app with a fixed watermark. Upgrade anytime to remove it.",
-          badge: "Try now"
+          badge: trialBadge
         },
         {
           key: "month",
@@ -1540,6 +1545,11 @@
             await upgradeToYearly();
             return;
           }
+
+          if (action === "downgrade-monthly") {
+            await downgradeToMonthly();
+            return;
+          }
         });
       });
     }
@@ -1601,6 +1611,26 @@
         setSuccess("Upgraded to yearly plan.");
       } catch (err) {
         const message = err instanceof Error ? err.message : "Could not upgrade subscription.";
+        setError(message);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function downgradeToMonthly() {
+      clearMessages();
+      setBusy(true);
+      try {
+        const token = getWebToken();
+        if (!token) throw new Error("You are not logged in.");
+
+        setStatus("Switching to monthly...");
+        const data = await apiPost("/stripe/subscription/downgrade-monthly", {}, token);
+        renderAccount(data);
+        renderPlans(data);
+        setSuccess("Switched to monthly. Monthly renewal will continue after your current yearly period ends.");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Could not switch to monthly.";
         setError(message);
       } finally {
         setBusy(false);

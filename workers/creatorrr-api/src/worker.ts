@@ -31,6 +31,7 @@ import {
 import {
   createStripeCheckoutSession,
   createStripePortalSession,
+  downgradeStripeSubscriptionToMonthly,
   handleCheckoutSessionCompleted,
   recoverStripeCustomerId,
   requireStripeCheckoutConfig,
@@ -634,7 +635,7 @@ export default {
         });
       }
 
-      const hasUsedTrial = Boolean(String(lic?.trial_start_at || "").trim() || String(lic?.trial_end_at || "").trim());
+      const hasUsedTrial = Boolean(String(lic?.trial_start_at || "").trim() || String(lic?.trial_end_at || "").trim() || String(lic?.stripe_customer_id || "").trim() || String(lic?.stripe_subscription_id || "").trim());
       const hasLiveTrial = Number.isFinite(trialEndMs) && trialEndMs > Date.now() && (currentStatus === "trialing" || currentStatus === "active");
 
       if (hasLiveTrial) {
@@ -838,6 +839,71 @@ export default {
       } catch (err) {
         const message = err instanceof Error ? err.message : "stripe_upgrade_failed";
         return bad(req, "stripe_upgrade_failed", 502, { message });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/stripe/subscription/downgrade-monthly") {
+      const cfgErr = requireStripeCheckoutConfig(req, env);
+      if (cfgErr) return cfgErr;
+
+      const auth = await requireAuth(req, env);
+      if (!auth.ok) return auth.response;
+
+      let lic = await getLicenseRow(env, auth.ctx.userId);
+
+      if (env.STRIPE_SECRET_KEY?.trim()) {
+        try {
+          lic = await refreshLicenseFromStripe(env, auth.ctx.userId, lic);
+        } catch (err) {
+          console.error("[downgrade-monthly] stripe sync failed", {
+            userId: auth.ctx.userId,
+            error: err instanceof Error ? err.message : "stripe_sync_error",
+          });
+        }
+      }
+
+      const currentInterval = String(lic?.billing_interval || "").trim().toLowerCase();
+      const currentStatus = String(lic?.status || "").trim().toLowerCase();
+      const currentPeriodEndMs = Date.parse(String(lic?.current_period_end || ""));
+      const hasFutureYearlyAccess =
+        Number.isFinite(currentPeriodEndMs) &&
+        currentPeriodEndMs > Date.now() &&
+        ["active", "trialing", "past_due", "canceling"].includes(currentStatus);
+      const isYearlyActive = currentInterval === "year" && hasFutureYearlyAccess;
+
+      if (!isYearlyActive) {
+        return bad(req, "yearly_subscription_required", 409, {
+          message: "Yearly subscription required for monthly downgrade.",
+        });
+      }
+
+      try {
+        const updated = await downgradeStripeSubscriptionToMonthly(env, auth.ctx.userId, lic);
+        if (!updated.ok) {
+          return bad(req, updated.reason, 400, {
+            message: "Could not switch subscription to monthly.",
+          });
+        }
+
+        let freshLic = await getLicenseRow(env, auth.ctx.userId);
+        if (env.STRIPE_SECRET_KEY?.trim()) {
+          try {
+            freshLic = await refreshLicenseFromStripe(env, auth.ctx.userId, freshLic);
+          } catch (err) {
+            console.error("[downgrade-monthly] post-downgrade stripe sync failed", {
+              userId: auth.ctx.userId,
+              error: err instanceof Error ? err.message : "stripe_sync_error",
+            });
+          }
+        }
+
+        const user = await getUserById(env, auth.ctx.userId);
+        if (!user) return bad(req, "user_not_found", 404);
+
+        return json(req, { ok: true, ...makeAccountView(user, freshLic) });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "stripe_downgrade_failed";
+        return bad(req, "stripe_downgrade_failed", 502, { message });
       }
     }
 
