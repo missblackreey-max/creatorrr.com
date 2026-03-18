@@ -213,16 +213,41 @@ function isLiveStripeStatus(statusRaw: string): boolean {
   return s === "trialing" || s === "active" || s === "past_due" || s === "unpaid";
 }
 
+
+function hasStripeSubscriptionCancelAt(subscription: Pick<StripeSubscriptionLike, "cancel_at">): boolean {
+  return typeof subscription.cancel_at === "number" && Number.isFinite(subscription.cancel_at);
+}
+
+export function makeStripeAutoRenewUpdateForm(
+  subscription: StripeSubscriptionLike,
+  enabled: boolean,
+): URLSearchParams | null {
+  const form = new URLSearchParams();
+
+  if (enabled) {
+    form.set("cancel_at", "");
+    return form;
+  }
+
+  const currentPeriodEnd = extractCurrentPeriodEndUnix(subscription);
+  if (!currentPeriodEnd) {
+    return null;
+  }
+
+  form.set("cancel_at", String(currentPeriodEnd));
+  return form;
+}
+
 function subscriptionRank(sub: StripeSubscriptionLike): number {
   const status = String(sub.status || "").trim().toLowerCase();
-  const cancelAtPeriodEnd = Boolean(sub.cancel_at_period_end);
+  const hasCancelAt = hasStripeSubscriptionCancelAt(sub);
   const periodEnd = Number(extractCurrentPeriodEndUnix(sub) || 0);
 
-  if ((status === "trialing" || status === "active" || status === "past_due" || status === "unpaid") && !cancelAtPeriodEnd) {
+  if ((status === "trialing" || status === "active" || status === "past_due" || status === "unpaid") && !hasCancelAt) {
     return 4000000000 + periodEnd;
   }
 
-  if ((status === "trialing" || status === "active" || status === "past_due" || status === "unpaid") && cancelAtPeriodEnd) {
+  if ((status === "trialing" || status === "active" || status === "past_due" || status === "unpaid") && hasCancelAt) {
     return 3000000000 + periodEnd;
   }
 
@@ -448,7 +473,7 @@ export async function upgradeStripeSubscriptionToYearly(
   const form = new URLSearchParams();
   form.set("items[0][id]", itemId);
   form.set("items[0][price]", env.STRIPE_PRICE_ID_YEARLY);
-  form.set("cancel_at_period_end", "false");
+  form.set("cancel_at", "");
   form.set("proration_behavior", "always_invoice");
   form.set("payment_behavior", "error_if_incomplete");
 
@@ -470,7 +495,7 @@ export async function upgradeStripeSubscriptionToYearly(
     userId,
     subscriptionId,
     updatedStatus: updated.status,
-    updatedCancelAtPeriodEnd: updated.cancel_at_period_end,
+    updatedCancelAt: updated.cancel_at,
     updatedCurrentPeriodEnd: updated.current_period_end,
   });
 
@@ -526,8 +551,11 @@ export async function updateStripeSubscriptionAutoRenew(
 
   if (!subscriptionId) return { ok: false, reason: "no_stripe_subscription" };
 
-  const form = new URLSearchParams();
-  form.set("cancel_at_period_end", enabled ? "false" : "true");
+  const currentSubscription = await stripeGetSubscriptionById(env, subscriptionId);
+  if (!currentSubscription) return { ok: false, reason: "no_stripe_subscription" };
+
+  const form = makeStripeAutoRenewUpdateForm(currentSubscription, enabled);
+  if (!form) return { ok: false, reason: "missing_current_period_end" };
 
   const subscription = await stripePostForm<StripeSubscriptionLike>(
     env,
@@ -552,9 +580,9 @@ export async function updateStripeSubscriptionAutoRenew(
 
 function mapStripeStatus(subscription: StripeSubscriptionLike): string {
   const raw = String(subscription.status || "").trim().toLowerCase();
-  const cancelAtPeriodEnd = Boolean(subscription.cancel_at_period_end);
+  const cancelsAt = hasStripeSubscriptionCancelAt(subscription);
 
-  if (isLiveStripeStatus(raw) && cancelAtPeriodEnd) {
+  if (isLiveStripeStatus(raw) && cancelsAt) {
     return "canceling";
   }
 
@@ -607,7 +635,7 @@ export async function upsertLicenseFromStripeSubscription(
   const trialEndAt = unixToIso(subscription.trial_end);
   const canceledAt = unixToIso(subscription.canceled_at);
   const endedAt = unixToIso(subscription.ended_at);
-  const cancelAtPeriodEnd = subscription.cancel_at_period_end ? 1 : 0;
+  const cancelAt = unixToIso(subscription.cancel_at);
   const now = nowIso();
 
   await env.creatorrr_db
@@ -627,7 +655,7 @@ export async function upsertLicenseFromStripeSubscription(
         current_period_end,
         trial_start_at,
         trial_end_at,
-        cancel_at_period_end,
+        cancel_at,
         canceled_at,
         ended_at
       ) VALUES (
@@ -662,7 +690,7 @@ export async function upsertLicenseFromStripeSubscription(
         current_period_end=excluded.current_period_end,
         trial_start_at=excluded.trial_start_at,
         trial_end_at=excluded.trial_end_at,
-        cancel_at_period_end=excluded.cancel_at_period_end,
+        cancel_at=excluded.cancel_at,
         canceled_at=excluded.canceled_at,
         ended_at=excluded.ended_at
     `)
@@ -678,7 +706,7 @@ export async function upsertLicenseFromStripeSubscription(
       currentPeriodEnd,
       trialStartAt,
       trialEndAt,
-      cancelAtPeriodEnd,
+      cancelAt,
       canceledAt,
       endedAt,
     )

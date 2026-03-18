@@ -151,7 +151,7 @@ export async function getLicenseRow(env: Env, userId: string): Promise<LicenseRo
         current_period_end,
         trial_start_at,
         trial_end_at,
-        cancel_at_period_end,
+        cancel_at,
         canceled_at,
         ended_at
       FROM licenses

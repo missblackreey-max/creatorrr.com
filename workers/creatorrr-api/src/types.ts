@@ -29,7 +29,7 @@ export type LicenseRow = {
   current_period_end?: string | null;
   trial_start_at?: string | null;
   trial_end_at?: string | null;
-  cancel_at_period_end?: number | null;
+  cancel_at?: string | null;
   canceled_at?: string | null;
   ended_at?: string | null;
 };
@@ -54,7 +54,7 @@ export type EntitlementView = {
   entitled: boolean;
   entitled_until: string | null;
   in_trial: boolean;
-  cancel_at_period_end: boolean;
+  cancel_at: string | null;
 };
 
 export type AuthContext = {
@@ -76,7 +76,7 @@ export type StripeSubscriptionLike = {
   id: string;
   customer?: string | null;
   status?: string | null;
-  cancel_at_period_end?: boolean | null;
+  cancel_at?: number | null;
   canceled_at?: number | null;
   ended_at?: number | null;
   current_period_start?: number | null;
@@ -87,6 +87,8 @@ export type StripeSubscriptionLike = {
   items?: {
     data?: Array<{
       id?: string | null;
+      current_period_start?: number | null;
+      current_period_end?: number | null;
       price?: {
         id?: string | null;
         recurring?: {
