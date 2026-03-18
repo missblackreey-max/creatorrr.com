@@ -1349,7 +1349,7 @@
       if (accessActive && (license.in_trial || hasLiveTrial)) {
         return "Trial access is active.";
       }
-      if (accessActive && hasRecurringPlan && license.cancel_at_period_end) {
+      if (accessActive && hasRecurringPlan && license.cancel_at) {
         return "Access active until period end. Auto-renew is off.";
       }
       if (accessActive && hasRecurringPlan) {
@@ -1366,7 +1366,7 @@
       const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
 
       if (!hasRecurringPlan) return "-";
-      if (license.cancel_at_period_end || status === "canceling") return "Off";
+      if (license.cancel_at || status === "canceling") return "Off";
       return "On";
     }
 

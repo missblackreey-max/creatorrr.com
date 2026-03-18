@@ -63,7 +63,7 @@ function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof getLicens
       entitled: entitlement.entitled,
       entitled_until: entitlement.entitled_until,
       in_trial: entitlement.in_trial,
-      cancel_at_period_end: entitlement.cancel_at_period_end,
+      cancel_at: entitlement.cancel_at,
       can_manage_subscription: Boolean(lic?.stripe_customer_id || lic?.stripe_subscription_id),
       billing_interval: lic?.billing_interval || null,
       current_period_end: lic?.current_period_end || null,
@@ -313,8 +313,8 @@ export default {
                 billing_interval,
                 trial_start_at,
                 trial_end_at,
-                cancel_at_period_end
-              ) VALUES (?1,'none','none','registered_no_license',?2,?2,NULL,NULL,NULL,0)`,
+                cancel_at
+              ) VALUES (?1,'none','none','registered_no_license',?2,?2,NULL,NULL,NULL,NULL)`,
             )
             .bind(userId, now),
           env.creatorrr_db
@@ -391,8 +391,8 @@ export default {
               billing_interval,
               trial_start_at,
               trial_end_at,
-              cancel_at_period_end
-            ) VALUES (?1,'none','none','registered_no_license',?2,?2,NULL,NULL,NULL,0)`,
+              cancel_at
+            ) VALUES (?1,'none','none','registered_no_license',?2,?2,NULL,NULL,NULL,NULL)`,
           )
           .bind(userId, now),
       ]);
@@ -669,14 +669,14 @@ export default {
               current_period_end,
               trial_start_at,
               trial_end_at,
-              cancel_at_period_end,
+              cancel_at,
               canceled_at,
               ended_at,
               stripe_customer_id,
               stripe_subscription_id,
               stripe_price_id
             )
-            VALUES (?1, 'trial', 'trialing', 'local free trial', ?2, ?2, NULL, NULL, NULL, ?2, ?3, 0, NULL, NULL, NULL, NULL, NULL)
+            VALUES (?1, 'trial', 'trialing', 'local free trial', ?2, ?2, NULL, NULL, NULL, ?2, ?3, NULL, NULL, NULL, NULL, NULL, NULL)
             ON CONFLICT(user_id) DO UPDATE SET
               plan='trial',
               status='trialing',
@@ -687,7 +687,7 @@ export default {
               current_period_end=NULL,
               trial_start_at=excluded.trial_start_at,
               trial_end_at=excluded.trial_end_at,
-              cancel_at_period_end=0,
+              cancel_at=NULL,
               canceled_at=NULL,
               ended_at=NULL,
               stripe_customer_id=NULL,

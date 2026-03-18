@@ -9,7 +9,7 @@ export function computeEntitlement(lic: LicenseRow | null): EntitlementView {
       entitled: false,
       entitled_until: null,
       in_trial: false,
-      cancel_at_period_end: false,
+      cancel_at: null,
     };
   }
 
@@ -56,6 +56,6 @@ export function computeEntitlement(lic: LicenseRow | null): EntitlementView {
     entitled,
     entitled_until: entitledUntil,
     in_trial: inTrial,
-    cancel_at_period_end: Number(lic.cancel_at_period_end || 0) === 1,
+    cancel_at: lic.cancel_at || null,
   };
 }
