@@ -439,6 +439,31 @@ export async function refreshLicenseFromStripe(
   return refreshed || lic;
 }
 
+export function makeStripeSubscriptionScheduleCreateForm(subscriptionId: string): URLSearchParams {
+  const form = new URLSearchParams();
+  form.set("from_subscription", subscriptionId);
+  return form;
+}
+
+export function makeStripeSubscriptionScheduleUpdateForm(
+  currentPriceId: string,
+  currentPeriodStart: number,
+  currentPeriodEnd: number,
+  nextPriceId: string,
+): URLSearchParams {
+  const form = new URLSearchParams();
+  form.set("end_behavior", "release");
+  form.set("proration_behavior", "none");
+  form.set("phases[0][start_date]", String(currentPeriodStart));
+  form.set("phases[0][end_date]", String(currentPeriodEnd));
+  form.set("phases[0][items][0][price]", currentPriceId);
+  form.set("phases[0][items][0][quantity]", "1");
+  form.set("phases[1][start_date]", String(currentPeriodEnd));
+  form.set("phases[1][items][0][price]", nextPriceId);
+  form.set("phases[1][items][0][quantity]", "1");
+  return form;
+}
+
 async function ensureStripeSubscriptionSchedule(
   env: Env,
   subscription: StripeSubscriptionLike,
@@ -446,14 +471,13 @@ async function ensureStripeSubscriptionSchedule(
   const existingScheduleId = normalizeSubscriptionScheduleId(subscription.schedule);
   if (existingScheduleId) return existingScheduleId;
 
-  const form = new URLSearchParams();
-  form.set("from_subscription", String(subscription.id || "").trim());
-  form.set("end_behavior", "release");
+  const subscriptionId = String(subscription.id || "").trim();
+  if (!subscriptionId) return null;
 
   const created = await stripePostForm<{ id?: string | null }>(
     env,
     "/v1/subscription_schedules",
-    form,
+    makeStripeSubscriptionScheduleCreateForm(subscriptionId),
   );
 
   return typeof created?.id === "string" && created.id.trim() ? created.id.trim() : null;
@@ -517,19 +541,10 @@ export async function scheduleStripeSubscriptionIntervalChange(
   const scheduleId = await ensureStripeSubscriptionSchedule(env, updatedSubscription);
   if (!scheduleId) return { ok: false, reason: "stripe_schedule_missing" };
 
-  const scheduleForm = new URLSearchParams();
-  scheduleForm.set("end_behavior", "release");
-  scheduleForm.set("phases[0][start_date]", String(currentPeriodStart));
-  scheduleForm.set("phases[0][end_date]", String(currentPeriodEnd));
-  scheduleForm.set("phases[0][items][0][price]", currentPriceId);
-  scheduleForm.set("phases[0][items][0][quantity]", "1");
-  scheduleForm.set("phases[1][items][0][price]", nextPriceId);
-  scheduleForm.set("phases[1][items][0][quantity]", "1");
-
   await stripePostForm<{ id?: string | null }>(
     env,
     `/v1/subscription_schedules/${encodeURIComponent(scheduleId)}`,
-    scheduleForm,
+    makeStripeSubscriptionScheduleUpdateForm(currentPriceId, currentPeriodStart, currentPeriodEnd, nextPriceId),
   );
 
   await env.creatorrr_db
