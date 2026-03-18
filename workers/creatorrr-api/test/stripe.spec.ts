@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { makeStripeAutoRenewUpdateForm } from '../src/services/stripe';
+import {
+  makeStripeAutoRenewUpdateForm,
+  makeStripeSubscriptionScheduleCreateForm,
+  makeStripeSubscriptionScheduleUpdateForm,
+} from '../src/services/stripe';
 
 describe('makeStripeAutoRenewUpdateForm', () => {
   it('clears cancel_at when auto-renew is enabled', () => {
@@ -44,5 +48,33 @@ describe('makeStripeAutoRenewUpdateForm', () => {
     }, false);
 
     expect(form).toBeNull();
+  });
+});
+
+describe('makeStripeSubscriptionScheduleCreateForm', () => {
+  it('creates schedules from the existing subscription without extra create-only params', () => {
+    const form = makeStripeSubscriptionScheduleCreateForm('sub_123');
+
+    expect(form.get('from_subscription')).toBe('sub_123');
+    expect(form.get('end_behavior')).toBeNull();
+  });
+});
+
+describe('makeStripeSubscriptionScheduleUpdateForm', () => {
+  it('keeps the current phase intact and schedules the next interval at the period boundary', () => {
+    const form = makeStripeSubscriptionScheduleUpdateForm(
+      'price_month',
+      1733011200,
+      1735689600,
+      'price_year',
+    );
+
+    expect(form.get('end_behavior')).toBe('release');
+    expect(form.get('proration_behavior')).toBeNull();
+    expect(form.get('phases[0][start_date]')).toBe('1733011200');
+    expect(form.get('phases[0][end_date]')).toBe('1735689600');
+    expect(form.get('phases[0][items][0][price]')).toBe('price_month');
+    expect(form.get('phases[1][start_date]')).toBe('1735689600');
+    expect(form.get('phases[1][items][0][price]')).toBe('price_year');
   });
 });

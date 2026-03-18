@@ -550,16 +550,24 @@
     }
 
     .plan-badge-row {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(88px, 1fr) auto minmax(88px, 1fr);
       align-items: center;
-      justify-content: space-between;
       gap: 8px;
-      flex-wrap: nowrap;
       min-height: 24px;
     }
 
+    .plan-badge-spacer,
+    .plan-badge-side {
+      min-width: 88px;
+      display: flex;
+    }
+
+    .plan-badge-spacer {
+      justify-content: flex-start;
+    }
+
     .plan-badge-status {
-      flex: 1 1 auto;
       display: flex;
       justify-content: center;
       gap: 8px;
@@ -568,9 +576,6 @@
     }
 
     .plan-badge-side {
-      flex: 0 0 auto;
-      min-width: 88px;
-      display: flex;
       justify-content: flex-end;
     }
 
@@ -1534,14 +1539,14 @@
         if (planKey === "month") return { kind: "current", label: "Current plan" };
         if (planKey === "trial") return { kind: "disabled", label: "Expired" };
         if (scheduledInterval === "year") return { kind: "disabled", label: "Renews yearly" };
-        return { kind: "cta", label: "Renew yearly", action: "upgrade-yearly", primary: true };
+        return { kind: "cta", label: "Yearly renewal", action: "upgrade-yearly", primary: true };
       }
 
       if (state === "yearly_active") {
         if (planKey === "year") return { kind: "current", label: "Current plan" };
         if (planKey === "trial") return { kind: "disabled", label: "Expired" };
         if (scheduledInterval === "month") return { kind: "disabled", label: "Renews monthly" };
-        return { kind: "cta", label: "Renew monthly", action: "downgrade-monthly", primary: false };
+        return { kind: "cta", label: "Monthly renewal", action: "downgrade-monthly", primary: false };
       }
 
       return { kind: "disabled", label: "Unavailable" };
@@ -1602,6 +1607,7 @@
         return `
           <div class="plan-card ${recommended ? "recommended" : ""} ${preselected ? "preselected" : ""} ${current ? "current" : ""}">
             <div class="plan-badge-row">
+              <div class="plan-badge-spacer" aria-hidden="true"></div>
               <div class="plan-badge-status">
                 ${statusLabel ? `<span class="plan-badge green">${escapeHtml(statusLabel)}</span>` : ""}
               </div>
