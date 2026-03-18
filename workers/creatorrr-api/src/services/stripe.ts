@@ -630,10 +630,6 @@ export async function updateStripeSubscriptionAutoRenew(
   if (!currentSubscription) return { ok: false, reason: "no_stripe_subscription" };
 
   const scheduleId = extractScheduleId(currentSubscription);
-  const scheduledInterval = String(lic?.scheduled_billing_interval || "").trim().toLowerCase();
-  const currentInterval = String(
-    currentSubscription.items?.data?.[0]?.price?.recurring?.interval || "",
-  ).trim().toLowerCase();
 
   if (!enabled) {
     if (scheduleId) {
@@ -658,7 +654,10 @@ export async function updateStripeSubscriptionAutoRenew(
     await env.creatorrr_db
       .prepare(`
         UPDATE licenses
-        SET stripe_subscription_id=?2, updated_at=?3
+        SET stripe_subscription_id=?2,
+            scheduled_billing_interval=NULL,
+            scheduled_change_at=NULL,
+            updated_at=?3
         WHERE user_id=?1
       `)
       .bind(userId, subscriptionId, nowIso())
@@ -671,13 +670,13 @@ export async function updateStripeSubscriptionAutoRenew(
     const enableForm = makeStripeAutoRenewUpdateForm(currentSubscription, true);
     if (!enableForm) return { ok: false, reason: "missing_current_period_end" };
 
-    currentSubscription = await stripePostForm<StripeSubscriptionLike>(
+    const updatedSubscription = await stripePostForm<StripeSubscriptionLike>(
       env,
       `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
       enableForm,
     );
 
-    const upsertResult = await upsertLicenseFromStripeSubscription(env, currentSubscription);
+    const upsertResult = await upsertLicenseFromStripeSubscription(env, updatedSubscription);
     if (!upsertResult.ok) return { ok: false, reason: upsertResult.reason };
 
     await env.creatorrr_db
@@ -688,27 +687,6 @@ export async function updateStripeSubscriptionAutoRenew(
       `)
       .bind(userId, subscriptionId, nowIso())
       .run();
-  }
-
-  if (
-    (scheduledInterval === "month" || scheduledInterval === "year") &&
-    scheduledInterval !== currentInterval
-  ) {
-    const freshLic = await env.creatorrr_db
-      .prepare("SELECT * FROM licenses WHERE user_id=?1")
-      .bind(userId)
-      .first<LicenseRow>();
-
-    const reapply = await scheduleStripeSubscriptionIntervalChange(
-      env,
-      userId,
-      freshLic,
-      scheduledInterval as "month" | "year",
-    );
-
-    if (!reapply.ok) {
-      return { ok: false, reason: reapply.reason };
-    }
   }
 
   return { ok: true };
