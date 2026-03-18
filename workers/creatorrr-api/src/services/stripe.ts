@@ -114,6 +114,35 @@ async function stripeGetJson<T>(env: Env, path: string): Promise<T> {
   return data as T;
 }
 
+function extractSubscriptionItemUnix(
+  subscription: StripeSubscriptionLike,
+  key: "current_period_start" | "current_period_end",
+): number | null {
+  const firstItem = subscription.items?.data?.[0];
+  if (!firstItem) return null;
+
+  const raw = (firstItem as Record<string, unknown>)[key];
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+
+  return null;
+}
+
+function extractCurrentPeriodStartUnix(subscription: StripeSubscriptionLike): number | null {
+  if (typeof subscription.current_period_start === "number" && Number.isFinite(subscription.current_period_start)) {
+    return subscription.current_period_start;
+  }
+
+  return extractSubscriptionItemUnix(subscription, "current_period_start");
+}
+
+function extractCurrentPeriodEndUnix(subscription: StripeSubscriptionLike): number | null {
+  if (typeof subscription.current_period_end === "number" && Number.isFinite(subscription.current_period_end)) {
+    return subscription.current_period_end;
+  }
+
+  return extractSubscriptionItemUnix(subscription, "current_period_end");
+}
+
 async function stripeGetSubscriptionById(
   env: Env,
   subscriptionId: string,
@@ -121,7 +150,7 @@ async function stripeGetSubscriptionById(
   try {
     return await stripeGetJson<StripeSubscriptionLike>(
       env,
-      `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+      `/v1/subscriptions/${encodeURIComponent(subscriptionId)}?expand[]=items.data.price`,
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
@@ -140,7 +169,7 @@ function isLiveStripeStatus(statusRaw: string): boolean {
 function subscriptionRank(sub: StripeSubscriptionLike): number {
   const status = String(sub.status || "").trim().toLowerCase();
   const cancelAtPeriodEnd = Boolean(sub.cancel_at_period_end);
-  const periodEnd = Number(sub.current_period_end || 0);
+  const periodEnd = Number(extractCurrentPeriodEndUnix(sub) || 0);
 
   if ((status === "trialing" || status === "active" || status === "past_due" || status === "unpaid") && !cancelAtPeriodEnd) {
     return 4000000000 + periodEnd;
@@ -171,12 +200,10 @@ export async function recoverStripeCustomerId(env: Env, userId: string, lic: Lic
   const subscriptionId = String(lic?.stripe_subscription_id || "").trim();
   if (!subscriptionId) return null;
 
-  const subscription = await stripeGetJson<StripeSubscriptionLike>(
-    env,
-    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
-  );
+  const subscription = await stripeGetSubscriptionById(env, subscriptionId);
+  if (!subscription) return null;
 
-  const recoveredCustomerId = String(subscription?.customer || "").trim();
+  const recoveredCustomerId = String(subscription.customer || "").trim();
   if (!recoveredCustomerId) return null;
 
   await env.creatorrr_db
@@ -251,7 +278,7 @@ export async function createStripePortalSession(
 async function findBestSubscriptionForCustomer(env: Env, customerId: string): Promise<StripeSubscriptionLike | null> {
   const data = await stripeGetJson<{ data?: Array<StripeSubscriptionLike | null> }>(
     env,
-    `/v1/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=10`,
+    `/v1/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=10&expand[]=data.items.data.price`,
   );
 
   return pickBestSubscription(data?.data || []);
@@ -262,7 +289,6 @@ async function findLatestSubscriptionIdForCustomer(env: Env, customerId: string)
   const id = String(best?.id || "").trim();
   return id || null;
 }
-
 
 export async function findLiveStripeSubscriptionForLicense(
   env: Env,
@@ -347,10 +373,8 @@ export async function upgradeStripeSubscriptionToYearly(
 
   if (!subscriptionId) return { ok: false, reason: "no_stripe_subscription" };
 
-  const subscription = await stripeGetJson<StripeSubscriptionLike>(
-    env,
-    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
-  );
+  const subscription = await stripeGetSubscriptionById(env, subscriptionId);
+  if (!subscription) return { ok: false, reason: "no_stripe_subscription" };
 
   const itemId = String(subscription.items?.data?.[0]?.id || "").trim();
   if (!itemId) return { ok: false, reason: "subscription_item_missing" };
@@ -394,7 +418,6 @@ export async function upgradeStripeSubscriptionToYearly(
   return { ok: true };
 }
 
-
 export async function downgradeStripeSubscriptionToMonthly(
   env: Env,
   userId: string,
@@ -409,10 +432,8 @@ export async function downgradeStripeSubscriptionToMonthly(
 
   if (!subscriptionId) return { ok: false, reason: "no_stripe_subscription" };
 
-  const subscription = await stripeGetJson<StripeSubscriptionLike>(
-    env,
-    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
-  );
+  const subscription = await stripeGetSubscriptionById(env, subscriptionId);
+  if (!subscription) return { ok: false, reason: "no_stripe_subscription" };
 
   const itemId = String(subscription.items?.data?.[0]?.id || "").trim();
   if (!itemId) return { ok: false, reason: "subscription_item_missing" };
@@ -536,8 +557,8 @@ export async function upsertLicenseFromStripeSubscription(
   const stripePriceId = extractPriceId(subscription);
   const billingInterval = extractRecurringInterval(subscription);
   const status = mapStripeStatus(subscription);
-  const currentPeriodStart = unixToIso(subscription.current_period_start);
-  const currentPeriodEnd = unixToIso(subscription.current_period_end);
+  const currentPeriodStart = unixToIso(extractCurrentPeriodStartUnix(subscription));
+  const currentPeriodEnd = unixToIso(extractCurrentPeriodEndUnix(subscription));
   const trialStartAt = unixToIso(subscription.trial_start);
   const trialEndAt = unixToIso(subscription.trial_end);
   const canceledAt = unixToIso(subscription.canceled_at);
@@ -644,10 +665,8 @@ export async function handleCheckoutSessionCompleted(env: Env, session: Record<s
   const subscriptionId = typeof session.subscription === "string" ? session.subscription.trim() : "";
   if (!subscriptionId) return;
 
-  const subscription = await stripeGetJson<StripeSubscriptionLike>(
-    env,
-    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
-  );
+  const subscription = await stripeGetSubscriptionById(env, subscriptionId);
+  if (!subscription) return;
 
   await upsertLicenseFromStripeSubscription(env, subscription);
 }
