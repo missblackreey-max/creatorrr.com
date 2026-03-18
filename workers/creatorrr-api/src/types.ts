@@ -93,6 +93,7 @@ export type StripeSubscriptionLike = {
   items?: {
     data?: Array<{
       id?: string | null;
+      quantity?: number | null;
       current_period_start?: number | null;
       current_period_end?: number | null;
       price?: {
@@ -103,6 +104,25 @@ export type StripeSubscriptionLike = {
       } | null;
     }>;
   } | null;
+};
+
+export type StripeSubscriptionScheduleLike = {
+  id: string;
+  subscription?: string | null;
+  status?: string | null;
+  current_phase?: {
+    start_date?: number | null;
+    end_date?: number | null;
+  } | null;
+  phases?: Array<{
+    start_date?: number | null;
+    end_date?: number | null;
+    proration_behavior?: string | null;
+    items?: Array<{
+      price?: string | { id?: string | null } | null;
+      quantity?: number | null;
+    }> | null;
+  }> | null;
 };
 
 export type GoogleIdTokenInfo = {
