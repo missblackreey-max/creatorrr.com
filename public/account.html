@@ -1154,9 +1154,10 @@
 
       const data = await safeReadJson(res);
       if (!res.ok) {
-        const err = new Error(data?.error || data?.message || `Request failed: ${res.status}`);
+        const err = new Error(data?.message || data?.error || `Request failed: ${res.status}`);
         err.status = res.status;
         err.payload = data;
+        err.code = data?.error || null;
         throw err;
       }
       return data;
@@ -1173,9 +1174,10 @@
 
       const data = await safeReadJson(res);
       if (!res.ok) {
-        const err = new Error(data?.error || data?.message || `Request failed: ${res.status}`);
+        const err = new Error(data?.message || data?.error || `Request failed: ${res.status}`);
         err.status = res.status;
         err.payload = data;
+        err.code = data?.error || null;
         throw err;
       }
       return data;
@@ -1307,14 +1309,29 @@
       const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
 
       if (license.in_trial) {
-        return formatDateFriendly(license.trial_end_at || "");
+        return formatDateFriendly(
+          license.trial_end_at ||
+          license.entitled_until ||
+          license.current_period_end ||
+          ""
+        );
       }
 
       if (hasRecurringPlan) {
-        return formatDateFriendly(license.current_period_end || "");
+        return formatDateFriendly(
+          license.current_period_end ||
+          license.entitled_until ||
+          license.trial_end_at ||
+          ""
+        );
       }
 
-      return formatDateFriendly(license.entitled_until || "");
+      return formatDateFriendly(
+        license.entitled_until ||
+        license.current_period_end ||
+        license.trial_end_at ||
+        ""
+      );
     }
 
     function buildAccessSummary(license) {
@@ -1328,14 +1345,14 @@
       const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
       const accessActive = Boolean(license.entitled) || hasLiveTrial || (hasRecurringPlan && hasLiveSubscriptionPeriod);
 
-      if (accessActive && license.cancel_at_period_end) {
+      if (accessActive && (license.in_trial || hasLiveTrial)) {
+        return "Trial access is active.";
+      }
+      if (accessActive && hasRecurringPlan && license.cancel_at_period_end) {
         return "Access active until period end. Auto-renew is off.";
       }
       if (accessActive && hasRecurringPlan) {
         return "Access active. Auto-renew is on.";
-      }
-      if (accessActive && (license.in_trial || hasLiveTrial)) {
-        return "Trial access is active.";
       }
       return "No active access.";
     }
@@ -1344,10 +1361,12 @@
       if (!license) return "-";
 
       const billingInterval = normalizeBillingInterval(license.billing_interval);
+      const status = String(license.status || "").trim().toLowerCase();
       const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
 
       if (!hasRecurringPlan) return "-";
-      return license.cancel_at_period_end ? "Off" : "On";
+      if (license.cancel_at_period_end || status === "canceling") return "Off";
+      return "On";
     }
 
     function showLoggedOutUi() {
@@ -1403,8 +1422,8 @@
 
       const actions = [];
       const billingInterval = normalizeBillingInterval(license.billing_interval);
-      const hasRecurringStripePlan = (billingInterval === "month" || billingInterval === "year") && license.can_manage_subscription;
-      if (hasRecurringStripePlan) {
+      const hasStripeBilling = Boolean(license.can_manage_subscription);
+      if (hasStripeBilling) {
         actions.push(`<button class="btn btn-secondary" type="button" id="action-manage-subscription" data-busy-sensitive="true">Manage subscription</button>`);
       }
 
@@ -1570,6 +1589,11 @@
 
         window.location.href = data.url;
       } catch (err) {
+        const status = err && typeof err === "object" ? err.status : undefined;
+        const code = err && typeof err === "object" ? err.code || err.payload?.error : "";
+        if (status === 409 || code === "already_on_plan" || code === "existing_subscription_conflict") {
+          await refreshCurrentAccountSilently();
+        }
         setError(err instanceof Error ? err.message : "Could not open checkout.");
       } finally {
         setBusy(false);
@@ -1590,6 +1614,11 @@
         renderPlans(data);
         setSuccess("3-day trial started. You can upgrade to monthly or yearly at any time.");
       } catch (err) {
+        const status = err && typeof err === "object" ? err.status : undefined;
+        const code = err && typeof err === "object" ? err.code || err.payload?.error : "";
+        if (status === 409 || code === "trial_already_used" || code === "subscription_already_active") {
+          await refreshCurrentAccountSilently();
+        }
         setError(err instanceof Error ? err.message : "Could not start trial.");
       } finally {
         setBusy(false);
@@ -1610,6 +1639,11 @@
 
         setSuccess("Upgraded to yearly plan.");
       } catch (err) {
+        const status = err && typeof err === "object" ? err.status : undefined;
+        const code = err && typeof err === "object" ? err.code || err.payload?.error : "";
+        if (status === 409 || code === "monthly_subscription_required") {
+          await refreshCurrentAccountSilently();
+        }
         const message = err instanceof Error ? err.message : "Could not upgrade subscription.";
         setError(message);
       } finally {
@@ -1630,6 +1664,11 @@
         renderPlans(data);
         setSuccess("Switched to monthly. Monthly renewal will continue after your current yearly period ends.");
       } catch (err) {
+        const status = err && typeof err === "object" ? err.status : undefined;
+        const code = err && typeof err === "object" ? err.code || err.payload?.error : "";
+        if (status === 409 || code === "yearly_subscription_required") {
+          await refreshCurrentAccountSilently();
+        }
         const message = err instanceof Error ? err.message : "Could not switch to monthly.";
         setError(message);
       } finally {
@@ -1654,8 +1693,10 @@
         window.location.href = data.url;
       } catch (err) {
         const message = err instanceof Error ? err.message : "Could not open billing portal.";
-        if (message.includes("no_stripe_customer")) {
-          setError("No subscription found yet for this account. Start a plan first, then manage or cancel it in the billing portal.");
+        const code = err && typeof err === "object" ? err.code || err.payload?.error : "";
+        if (code === "no_stripe_customer" || message.toLowerCase().includes("no subscription found")) {
+          await refreshCurrentAccountSilently();
+          setError("No Stripe subscription was found for this account. Start a paid plan first, then use Manage subscription.");
         } else {
           setError(message);
         }
@@ -1778,9 +1819,10 @@
         await continueAfterAuth();
       } catch (err) {
         const message = err instanceof Error ? err.message : "Could not log in.";
+        const errorCode = err && typeof err === "object" ? err.code || err.payload?.error : "";
         const emailVerificationSent = !!(err && typeof err === "object" && err.payload && err.payload.email_verification_sent);
         const emailDeliveryConfigured = !!(err && typeof err === "object" && err.payload && err.payload.email_delivery_configured);
-        if (message.includes("email_not_verified")) {
+        if (message.includes("email not verified") || errorCode === "email_not_verified") {
           if (emailVerificationSent) {
             setError("Your email is not verified yet. We sent a fresh verification email—check your inbox and spam folder.");
           } else if (!emailDeliveryConfigured) {

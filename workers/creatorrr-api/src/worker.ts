@@ -676,7 +676,7 @@ export default {
               stripe_subscription_id,
               stripe_price_id
             )
-            VALUES (?1, 'trial', 'trialing', 'local free trial', ?2, ?2, NULL, NULL, NULL, ?2, ?3, 1, NULL, NULL, NULL, NULL, NULL)
+            VALUES (?1, 'trial', 'trialing', 'local free trial', ?2, ?2, NULL, NULL, NULL, ?2, ?3, 0, NULL, NULL, NULL, NULL, NULL)
             ON CONFLICT(user_id) DO UPDATE SET
               plan='trial',
               status='trialing',
@@ -687,7 +687,7 @@ export default {
               current_period_end=NULL,
               trial_start_at=excluded.trial_start_at,
               trial_end_at=excluded.trial_end_at,
-              cancel_at_period_end=1,
+              cancel_at_period_end=0,
               canceled_at=NULL,
               ended_at=NULL,
               stripe_customer_id=NULL,
@@ -733,21 +733,41 @@ export default {
       }
 
       const currentInterval = String(lic?.billing_interval || "").trim().toLowerCase();
-      const liveSubscription = await findLiveStripeSubscriptionForLicense(env, lic);
-      const liveInterval = String(liveSubscription?.items?.data?.[0]?.price?.recurring?.interval || currentInterval)
-        .trim()
-        .toLowerCase();
-      const hasLiveRecurringSubscription = Boolean(liveSubscription);
+      const currentStatus = String(lic?.status || "").trim().toLowerCase();
+      const currentPeriodEndMs = Date.parse(String(lic?.current_period_end || ""));
+      const hasLocalRecurringAccess =
+        (currentInterval === "month" || currentInterval === "year") &&
+        Number.isFinite(currentPeriodEndMs) &&
+        currentPeriodEndMs > Date.now() &&
+        ["active", "trialing", "past_due", "canceling"].includes(currentStatus);
+
+      let liveSubscription: StripeSubscriptionLike | null = null;
+      try {
+        liveSubscription = await findLiveStripeSubscriptionForLicense(env, lic);
+      } catch (err) {
+        console.error("[checkout] live subscription lookup failed", {
+          userId: auth.ctx.userId,
+          error: err instanceof Error ? err.message : "stripe_lookup_error",
+        });
+      }
+
+      const liveInterval = String(
+        liveSubscription?.items?.data?.[0]?.price?.recurring?.interval ||
+        currentInterval
+      ).trim().toLowerCase();
+      const hasLiveRecurringSubscription = Boolean(liveSubscription) || hasLocalRecurringAccess;
 
       if (hasLiveRecurringSubscription) {
         if (liveInterval === interval) {
           return bad(req, "already_on_plan", 409, {
-            message: "You already have an active subscription on this plan.",
+            message: "You already have this plan. Manage renewal from your account instead of buying it again.",
           });
         }
 
         return bad(req, "existing_subscription_conflict", 409, {
-          message: "You already have an active subscription. Upgrade from monthly to yearly from your account, or wait until your current period ends.",
+          message: currentInterval === "month"
+            ? "You already have monthly access. Use Upgrade to yearly from your account."
+            : "You already have yearly access. Use Switch to monthly from your account.",
         });
       }
 
@@ -914,12 +934,32 @@ export default {
       const auth = await requireAuth(req, env);
       if (!auth.ok) return auth.response;
 
-      const lic = await getLicenseRow(env, auth.ctx.userId);
-      const customerId = await recoverStripeCustomerId(env, auth.ctx.userId, lic);
+      let lic = await getLicenseRow(env, auth.ctx.userId);
+
+      if (env.STRIPE_SECRET_KEY?.trim()) {
+        try {
+          lic = await refreshLicenseFromStripe(env, auth.ctx.userId, lic);
+        } catch (err) {
+          console.error("[portal] stripe sync failed", {
+            userId: auth.ctx.userId,
+            error: err instanceof Error ? err.message : "stripe_sync_error",
+          });
+        }
+      }
+
+      let customerId: string | null = null;
+      try {
+        customerId = await recoverStripeCustomerId(env, auth.ctx.userId, lic);
+      } catch (err) {
+        console.error("[portal] stripe customer recovery failed", {
+          userId: auth.ctx.userId,
+          error: err instanceof Error ? err.message : "stripe_customer_recovery_failed",
+        });
+      }
 
       if (!customerId) {
         return bad(req, "no_stripe_customer", 400, {
-          message: "No Stripe subscription found for this account yet. Start a plan first, then use Manage subscription.",
+          message: "No Stripe subscription found for this account yet. Start a paid plan first, then use Manage subscription.",
         });
       }
 
@@ -943,7 +983,19 @@ export default {
       const body = await readJson<{ enabled?: boolean }>(req);
       if (!body || typeof body.enabled !== "boolean") return bad(req, "invalid_input", 400);
 
-      const lic = await getLicenseRow(env, auth.ctx.userId);
+      let lic = await getLicenseRow(env, auth.ctx.userId);
+
+      if (env.STRIPE_SECRET_KEY?.trim()) {
+        try {
+          lic = await refreshLicenseFromStripe(env, auth.ctx.userId, lic);
+        } catch (err) {
+          console.error("[auto-renew] stripe sync failed", {
+            userId: auth.ctx.userId,
+            error: err instanceof Error ? err.message : "stripe_sync_error",
+          });
+        }
+      }
+
       const updated = await updateStripeSubscriptionAutoRenew(env, auth.ctx.userId, lic, body.enabled);
 
       if (!updated.ok) {
@@ -952,7 +1004,17 @@ export default {
         });
       }
 
-      const freshLic = await getLicenseRow(env, auth.ctx.userId);
+      let freshLic = await getLicenseRow(env, auth.ctx.userId);
+      if (env.STRIPE_SECRET_KEY?.trim()) {
+        try {
+          freshLic = await refreshLicenseFromStripe(env, auth.ctx.userId, freshLic);
+        } catch (err) {
+          console.error("[auto-renew] post-update stripe sync failed", {
+            userId: auth.ctx.userId,
+            error: err instanceof Error ? err.message : "stripe_sync_error",
+          });
+        }
+      }
       const user = await getUserById(env, auth.ctx.userId);
       if (!user) return bad(req, "user_not_found", 404);
 
