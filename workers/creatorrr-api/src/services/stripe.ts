@@ -621,13 +621,13 @@ export async function updateStripeSubscriptionAutoRenew(
   const form = makeStripeAutoRenewUpdateForm(currentSubscription, enabled);
   if (!form) return { ok: false, reason: "missing_current_period_end" };
 
-  const subscription = await stripePostForm<StripeSubscriptionLike>(
+  const updatedSubscription = await stripePostForm<StripeSubscriptionLike>(
     env,
     `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
     form,
   );
 
-  const upsertResult = await upsertLicenseFromStripeSubscription(env, subscription);
+  const upsertResult = await upsertLicenseFromStripeSubscription(env, updatedSubscription);
   if (!upsertResult.ok) return { ok: false, reason: upsertResult.reason };
 
   await env.creatorrr_db
@@ -638,6 +638,40 @@ export async function updateStripeSubscriptionAutoRenew(
     `)
     .bind(userId, subscriptionId, nowIso())
     .run();
+
+  // If auto-renew gets turned back on and the user had already selected
+  // a future renewal interval, re-apply that scheduled renewal explicitly.
+  const currentInterval = String(
+    updatedSubscription.items?.data?.[0]?.price?.recurring?.interval || "",
+  )
+    .trim()
+    .toLowerCase();
+
+  const scheduledInterval = String(lic?.scheduled_billing_interval || "")
+    .trim()
+    .toLowerCase();
+
+  if (
+    enabled &&
+    (scheduledInterval === "month" || scheduledInterval === "year") &&
+    scheduledInterval !== currentInterval
+  ) {
+    const freshLic = await env.creatorrr_db
+      .prepare("SELECT * FROM licenses WHERE user_id=?1")
+      .bind(userId)
+      .first<LicenseRow>();
+
+    const reapply = await scheduleStripeSubscriptionIntervalChange(
+      env,
+      userId,
+      freshLic,
+      scheduledInterval as "month" | "year",
+    );
+
+    if (!reapply.ok) {
+      return { ok: false, reason: reapply.reason };
+    }
+  }
 
   return { ok: true };
 }
@@ -690,13 +724,28 @@ export async function upsertLicenseFromStripeSubscription(
 
   const existing = await env.creatorrr_db
     .prepare(`
-      SELECT stripe_price_id, billing_interval, current_period_start, current_period_end,
-             scheduled_billing_interval, scheduled_change_at
+      SELECT
+        stripe_price_id,
+        billing_interval,
+        current_period_start,
+        current_period_end,
+        scheduled_billing_interval,
+        scheduled_change_at
       FROM licenses
       WHERE user_id=?1
     `)
     .bind(userId)
-    .first<Pick<LicenseRow, "stripe_price_id" | "billing_interval" | "current_period_start" | "current_period_end" | "scheduled_billing_interval" | "scheduled_change_at">>();
+    .first<
+      Pick<
+        LicenseRow,
+        | "stripe_price_id"
+        | "billing_interval"
+        | "current_period_start"
+        | "current_period_end"
+        | "scheduled_billing_interval"
+        | "scheduled_change_at"
+      >
+    >();
 
   const stripeCustomerId = subscription.customer ? String(subscription.customer) : null;
   const stripeSubscriptionId = subscription.id ? String(subscription.id) : null;
@@ -711,26 +760,40 @@ export async function upsertLicenseFromStripeSubscription(
   const endedAt = unixToIso(subscription.ended_at);
   const cancelAt = unixToIso(subscription.cancel_at);
   const now = nowIso();
+
   const sameCurrentPeriod =
     Boolean(existing?.current_period_start) &&
     Boolean(existing?.current_period_end) &&
     existing?.current_period_start === currentPeriodStart &&
     existing?.current_period_end === currentPeriodEnd;
+
   const preserveDisplayedCurrentInterval =
     Boolean(existing?.scheduled_billing_interval) &&
     sameCurrentPeriod &&
     Boolean(existing?.billing_interval) &&
     Boolean(billingInterval) &&
     existing?.billing_interval !== billingInterval;
-  const persistedStripePriceId = preserveDisplayedCurrentInterval ? existing?.stripe_price_id || stripePriceId : stripePriceId;
-  const persistedBillingInterval = preserveDisplayedCurrentInterval ? existing?.billing_interval || billingInterval : billingInterval;
+
+  const persistedStripePriceId = preserveDisplayedCurrentInterval
+    ? existing?.stripe_price_id || stripePriceId
+    : stripePriceId;
+
+  const persistedBillingInterval = preserveDisplayedCurrentInterval
+    ? existing?.billing_interval || billingInterval
+    : billingInterval;
+
   let scheduledBillingInterval = existing?.scheduled_billing_interval || null;
   let scheduledChangeAt = existing?.scheduled_change_at || null;
 
-  if (cancelAt) {
-    scheduledBillingInterval = null;
-    scheduledChangeAt = null;
-  } else if (!preserveDisplayedCurrentInterval && scheduledBillingInterval && scheduledBillingInterval === billingInterval) {
+  // Important:
+  // Do NOT clear scheduled renewal just because cancel_at is set.
+  // We want auto-renew OFF to keep the user's chosen future renewal plan in app state.
+  // Only clear it once the scheduled plan has actually become the active plan.
+  if (
+    !preserveDisplayedCurrentInterval &&
+    scheduledBillingInterval &&
+    scheduledBillingInterval === billingInterval
+  ) {
     scheduledBillingInterval = null;
     scheduledChangeAt = null;
   }

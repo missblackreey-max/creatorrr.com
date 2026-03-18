@@ -47,9 +47,31 @@ import { isEmailDeliveryConfigured, issueEmailVerification, issuePasswordReset }
 
 function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof getLicenseRow>>) {
   const entitlement = computeEntitlement(lic);
+
   const status = String(lic?.status || "").trim().toLowerCase();
   const billingInterval = String(lic?.billing_interval || "").trim().toLowerCase();
+  const scheduledBillingInterval = String(lic?.scheduled_billing_interval || "").trim().toLowerCase();
+
   const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
+  const autoRenewEnabled = hasRecurringPlan && status !== "canceling" && !lic?.cancel_at;
+
+  const nextBillingInterval =
+    autoRenewEnabled
+      ? (scheduledBillingInterval === "month" || scheduledBillingInterval === "year"
+          ? scheduledBillingInterval
+          : billingInterval || null)
+      : null;
+
+  const nextPaymentAt =
+    autoRenewEnabled
+      ? (lic?.scheduled_change_at || lic?.current_period_end || null)
+      : null;
+
+  const subscriptionEndsAt =
+    autoRenewEnabled
+      ? null
+      : (lic?.cancel_at || lic?.current_period_end || entitlement.entitled_until || null);
+
   return {
     user: {
       id: user.id,
@@ -66,14 +88,22 @@ function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof getLicens
       entitled_until: entitlement.entitled_until,
       in_trial: entitlement.in_trial,
       cancel_at: entitlement.cancel_at,
-      auto_renew_enabled: hasRecurringPlan && status !== "canceling" && !lic?.cancel_at,
-      can_manage_subscription: Boolean(lic?.stripe_customer_id || lic?.stripe_subscription_id),
+
       billing_interval: lic?.billing_interval || null,
       current_period_end: lic?.current_period_end || null,
       trial_start_at: lic?.trial_start_at || null,
       trial_end_at: lic?.trial_end_at || null,
+
       scheduled_billing_interval: lic?.scheduled_billing_interval || null,
       scheduled_change_at: lic?.scheduled_change_at || null,
+
+      auto_renew_enabled: autoRenewEnabled,
+
+      next_billing_interval: nextBillingInterval,
+      next_payment_at: nextPaymentAt,
+      subscription_ends_at: subscriptionEndsAt,
+
+      can_manage_subscription: false,
     },
   };
 }
@@ -890,17 +920,25 @@ export default {
       }
 
       const currentInterval = String(lic?.billing_interval || "").trim().toLowerCase();
+      const scheduledInterval = String(lic?.scheduled_billing_interval || "").trim().toLowerCase();
       const currentStatus = String(lic?.status || "").trim().toLowerCase();
       const currentPeriodEndMs = Date.parse(String(lic?.current_period_end || ""));
-      const hasFutureYearlyAccess =
+
+      const hasFuturePaidAccess =
         Number.isFinite(currentPeriodEndMs) &&
         currentPeriodEndMs > Date.now() &&
         ["active", "trialing", "past_due", "canceling"].includes(currentStatus);
-      const isYearlyActive = currentInterval === "year" && hasFutureYearlyAccess;
 
-      if (!isYearlyActive) {
-        return bad(req, "yearly_subscription_required", 409, {
-          message: "Yearly subscription required for monthly downgrade.",
+      const canSwitchRenewalToMonthly =
+        hasFuturePaidAccess &&
+        (
+          currentInterval === "year" ||
+          scheduledInterval === "year"
+        );
+
+      if (!canSwitchRenewalToMonthly) {
+        return bad(req, "monthly_renewal_change_not_allowed", 409, {
+          message: "A paid subscription with yearly billing or yearly renewal is required.",
         });
       }
 
@@ -981,8 +1019,7 @@ export default {
     }
 
 if (req.method === "POST" && url.pathname === "/stripe/subscription/auto-renew") {
-  const cfgErr = requireStripePortalConfig(req, env);
-  if (cfgErr) return cfgErr;
+  if (!env.STRIPE_SECRET_KEY?.trim()) return bad(req, "missing_stripe_secret", 500);
 
   const auth = await requireAuth(req, env);
   if (!auth.ok) return auth.response;
@@ -998,19 +1035,13 @@ if (req.method === "POST" && url.pathname === "/stripe/subscription/auto-renew")
     lic,
   });
 
-  if (env.STRIPE_SECRET_KEY?.trim()) {
-    try {
-      lic = await refreshLicenseFromStripe(env, auth.ctx.userId, lic);
-      console.log("[auto-renew] pre-refresh ok", {
-        userId: auth.ctx.userId,
-        lic,
-      });
-    } catch (err) {
-      console.error("[auto-renew] pre-refresh failed", {
-        userId: auth.ctx.userId,
-        error: err instanceof Error ? err.message : "stripe_sync_error",
-      });
-    }
+  try {
+    lic = await refreshLicenseFromStripe(env, auth.ctx.userId, lic);
+  } catch (err) {
+    console.error("[auto-renew] pre-refresh failed", {
+      userId: auth.ctx.userId,
+      error: err instanceof Error ? err.message : "stripe_sync_error",
+    });
   }
 
   const updated = await updateStripeSubscriptionAutoRenew(env, auth.ctx.userId, lic, body.enabled);
@@ -1027,19 +1058,13 @@ if (req.method === "POST" && url.pathname === "/stripe/subscription/auto-renew")
 
   let freshLic = await getLicenseRow(env, auth.ctx.userId);
 
-  if (env.STRIPE_SECRET_KEY?.trim()) {
-    try {
-      freshLic = await refreshLicenseFromStripe(env, auth.ctx.userId, freshLic);
-      console.log("[auto-renew] post-refresh ok", {
-        userId: auth.ctx.userId,
-        freshLic,
-      });
-    } catch (err) {
-      console.error("[auto-renew] post-refresh failed", {
-        userId: auth.ctx.userId,
-        error: err instanceof Error ? err.message : "stripe_sync_error",
-      });
-    }
+  try {
+    freshLic = await refreshLicenseFromStripe(env, auth.ctx.userId, freshLic);
+  } catch (err) {
+    console.error("[auto-renew] post-refresh failed", {
+      userId: auth.ctx.userId,
+      error: err instanceof Error ? err.message : "stripe_sync_error",
+    });
   }
 
   const user = await getUserById(env, auth.ctx.userId);

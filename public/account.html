@@ -381,7 +381,7 @@
       max-height: 30px;
       opacity: 1;
       overflow: hidden;
-      text-align: right; 
+      text-align: right;
     }
 
     .password-hint.hidden {
@@ -887,7 +887,7 @@
 
         <div class="account-grid" id="account-grid"></div>
         <div class="account-actions" id="account-actions"></div>
-        <p class="account-note">Billing opens in Stripe. After changes, click Return to Creatorrr.</p>
+        <p class="account-note" id="billing-note"></p>
       </section>
 
       <section class="card initially-hidden" id="plans-section">
@@ -933,10 +933,11 @@
     const LS_WEB_OAUTH_NONCE = "creatorrr.web.oauth.google.nonce.v1";
 
     const APP_VERSION = "v1.0.0";
+    const MONTHLY_PRICE_LABEL = "$29.90";
+    const YEARLY_PRICE_LABEL = "$239";
 
     const params = new URLSearchParams(window.location.search);
     const checkoutState = String(params.get("checkout") || "").trim().toLowerCase();
-    const portalState = String(params.get("portal") || "").trim().toLowerCase();
     const modeParam = String(params.get("mode") || "").trim().toLowerCase();
     const preselectParam = String(params.get("plan") || params.get("intent") || "").trim().toLowerCase();
 
@@ -972,6 +973,7 @@
     const accountGrid = document.getElementById("account-grid");
     const accountActions = document.getElementById("account-actions");
     const accountCopy = document.getElementById("account-copy");
+    const billingNote = document.getElementById("billing-note");
     const plansCopy = document.getElementById("plans-copy");
     const plansGrid = document.getElementById("plans-grid");
 
@@ -1017,6 +1019,13 @@
       if (normalized === "month") return "monthly";
       if (normalized === "year") return "yearly";
       return "unknown";
+    }
+
+    function planPriceLabel(value) {
+      const normalized = normalizeBillingInterval(value);
+      if (normalized === "month") return MONTHLY_PRICE_LABEL;
+      if (normalized === "year") return YEARLY_PRICE_LABEL;
+      return "$0";
     }
 
     function showTab(mode) {
@@ -1323,10 +1332,7 @@
     function currentPlanName(license) {
       const billingInterval = normalizeBillingInterval(license?.billing_interval);
 
-      if (license?.in_trial) {
-        return "3-day trial";
-      }
-
+      if (license?.in_trial) return "3-day trial";
       if (billingInterval === "month") return "Monthly";
       if (billingInterval === "year") return "Yearly";
       return "None";
@@ -1364,6 +1370,7 @@
 
       if (hasRecurringPlan) {
         return formatDateFriendly(
+          license.subscription_ends_at ||
           license.current_period_end ||
           license.entitled_until ||
           license.trial_end_at ||
@@ -1379,8 +1386,17 @@
       );
     }
 
+    function renewalText(license) {
+      if (!license) return "-";
+      const billingInterval = normalizeBillingInterval(license.billing_interval);
+      const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
+      if (!hasRecurringPlan) return "-";
+      return license.auto_renew_enabled ? "On" : "Off";
+    }
+
     function buildAccessSummary(license) {
       if (!license) return "No active access.";
+
       const billingInterval = normalizeBillingInterval(license.billing_interval);
       const scheduledInterval = normalizeBillingInterval(license.scheduled_billing_interval);
       const nowMs = Date.now();
@@ -1403,27 +1419,61 @@
       );
 
       if (accessActive && (license.in_trial || hasLiveTrial)) {
-        return `3 day trial active until ${trialEndText}. Besides the locked watermark, you have full access. Get the monthly plan to try for real and the yearly plan if you're convinced (33% off!).`;
+        return `3 day trial active until ${trialEndText}. Besides the locked watermark, you have full access.`;
       }
-      if (accessActive && hasRecurringPlan && scheduledInterval && scheduledInterval !== billingInterval && autoRenewEnabled) {
-        return `Full access active! ${planDisplayName(billingInterval)} plan is active until ${periodEndText}. Next period will renew ${sentenceIntervalLabel(scheduledInterval)}. Auto-renewal is on. Use the plan buttons below to switch monthly/yearly renewal. Billing details stay in "Manage subscription".`;
+
+      if (accessActive && hasRecurringPlan && autoRenewEnabled && scheduledInterval && scheduledInterval !== billingInterval) {
+        return `Full access active. ${planDisplayName(billingInterval)} plan is active until ${periodEndText}. Next renewal is set to ${sentenceIntervalLabel(scheduledInterval)}.`;
       }
-      if (accessActive && hasRecurringPlan) {
-        return `Full access active! ${planDisplayName(billingInterval)} plan: ${sentenceIntervalLabel(billingInterval)} auto-renewal is ${autoRenewEnabled ? "on" : "off"}. Use the plan buttons below to switch monthly/yearly renewal. Billing details stay in "Manage subscription".`;
+
+      if (accessActive && hasRecurringPlan && autoRenewEnabled) {
+        return `Full access active. ${planDisplayName(billingInterval)} plan is active and auto-renew is on.`;
       }
+
+      if (accessActive && hasRecurringPlan && !autoRenewEnabled) {
+        return `Full access active. ${planDisplayName(billingInterval)} plan will end at the current period end unless you turn auto-renew back on.`;
+      }
+
       return "No active access.";
     }
 
-    function renewalText(license) {
-      if (!license) return "-";
+    function buildBillingLine(license) {
+      if (!license) return "";
 
       const billingInterval = normalizeBillingInterval(license.billing_interval);
-      const status = String(license.status || "").trim().toLowerCase();
+      const nextBillingInterval = normalizeBillingInterval(license.next_billing_interval);
       const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
 
-      if (!hasRecurringPlan) return "-";
-      if (license.cancel_at || status === "canceling") return "Off";
-      return "On";
+      if (license.in_trial) {
+        return "Next payment: $0. Trial only.";
+      }
+
+      if (!hasRecurringPlan) {
+        return "";
+      }
+
+      if (!license.auto_renew_enabled) {
+        const endAt = formatDateFriendly(
+          license.subscription_ends_at ||
+          license.cancel_at ||
+          license.current_period_end ||
+          ""
+        );
+        if (endAt === "-") return "Next payment: $0.";
+        return `Next payment: $0, subscription will end ${endAt}`;
+      }
+
+      const when = formatDateFriendly(
+        license.next_payment_at ||
+        license.scheduled_change_at ||
+        license.current_period_end ||
+        ""
+      );
+      const intervalForPrice = nextBillingInterval || billingInterval;
+      const amount = planPriceLabel(intervalForPrice);
+
+      if (when === "-") return `Next payment: ${amount}`;
+      return `Next payment: ${amount}, ${when}`;
     }
 
     function getCurrentNextPeriodLabel(planKey, license) {
@@ -1438,8 +1488,9 @@
       }
 
       if (!currentInterval) return "";
-      if (planKey !== currentInterval && planKey !== scheduledInterval) return "";
       if (planKey === currentInterval && !autoRenewEnabled) return "Current";
+      if (planKey !== currentInterval && (!autoRenewEnabled || !scheduledInterval)) return "";
+      if (planKey !== currentInterval && planKey !== scheduledInterval) return "";
       if (planKey === currentInterval && scheduledInterval && scheduledInterval !== currentInterval) return "Current";
       if (planKey === scheduledInterval && scheduledInterval !== currentInterval) return "Next period";
       if (planKey === currentInterval && autoRenewEnabled) return "Current & next period";
@@ -1465,7 +1516,11 @@
     function hasUsedTrialOnAccount(account) {
       const license = account?.license || {};
       const trialTimestampsUsed = Boolean(String(license.trial_start_at || "").trim() || String(license.trial_end_at || "").trim());
-      const paidAccessEverUsed = Boolean(license.can_manage_subscription);
+      const paidAccessEverUsed = Boolean(
+        normalizeBillingInterval(license.billing_interval) ||
+        String(license.current_period_end || "").trim() ||
+        String(license.cancel_at || "").trim()
+      );
       return trialTimestampsUsed || paidAccessEverUsed;
     }
 
@@ -1477,6 +1532,7 @@
       const license = account?.license || {};
 
       accountCopy.textContent = buildAccessSummary(license);
+      billingNote.textContent = buildBillingLine(license);
 
       accountGrid.innerHTML = `
         <div class="account-item">
@@ -1492,28 +1548,41 @@
           <span>${escapeHtml(expiryText(license))}</span>
         </div>
         <div class="account-item">
-          <strong>Renewal</strong>
+          <strong>Auto-renew</strong>
           <span>${escapeHtml(renewalText(license))}</span>
         </div>
       `;
 
       const actions = [];
       const billingInterval = normalizeBillingInterval(license.billing_interval);
-      const hasStripeBilling = Boolean(license.can_manage_subscription);
-      if (hasStripeBilling) {
-        actions.push(`<button class="btn btn-secondary" type="button" id="action-manage-subscription" data-busy-sensitive="true">Manage subscription</button>`);
+      const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
+
+      if (hasRecurringPlan) {
+        actions.push(`
+          <button
+            class="btn ${license.auto_renew_enabled ? "btn-secondary" : "btn-primary"}"
+            type="button"
+            id="action-toggle-auto-renew"
+            data-busy-sensitive="true"
+          >
+            ${license.auto_renew_enabled ? "Turn auto-renew off" : "Turn auto-renew on"}
+          </button>
+        `);
       }
 
       accountActions.innerHTML = actions.join("");
 
-      const manageBtn = document.getElementById("action-manage-subscription");
-      if (manageBtn) manageBtn.addEventListener("click", openPortal);
+      const toggleBtn = document.getElementById("action-toggle-auto-renew");
+      if (toggleBtn) {
+        toggleBtn.addEventListener("click", toggleAutoRenew);
+      }
     }
 
     function getPlanAction(planKey, account) {
       const state = deriveAccountState(account);
       const license = account?.license || {};
       const scheduledInterval = normalizeBillingInterval(license.scheduled_billing_interval);
+      const autoRenewEnabled = Boolean(license.auto_renew_enabled);
 
       if (state === "no_access") {
         if (planKey === "trial") {
@@ -1538,14 +1607,14 @@
       if (state === "monthly_active") {
         if (planKey === "month") return { kind: "current", label: "Current plan" };
         if (planKey === "trial") return { kind: "disabled", label: "Expired" };
-        if (scheduledInterval === "year") return { kind: "disabled", label: "Renews yearly" };
+        if (autoRenewEnabled && scheduledInterval === "year") return { kind: "disabled", label: "Renews yearly" };
         return { kind: "cta", label: "Yearly renewal", action: "upgrade-yearly", primary: true };
       }
 
       if (state === "yearly_active") {
         if (planKey === "year") return { kind: "current", label: "Current plan" };
         if (planKey === "trial") return { kind: "disabled", label: "Expired" };
-        if (scheduledInterval === "month") return { kind: "disabled", label: "Renews monthly" };
+        if (autoRenewEnabled && scheduledInterval === "month") return { kind: "disabled", label: "Renews monthly" };
         return { kind: "cta", label: "Monthly renewal", action: "downgrade-monthly", primary: false };
       }
 
@@ -1580,7 +1649,7 @@
         {
           key: "month",
           name: "Monthly",
-          price: "$29.90",
+          price: MONTHLY_PRICE_LABEL,
           meta: "Paid via Stripe",
           copy: "Full access without the fixed watermark. Best if you want to stay flexible.",
           badge: ""
@@ -1588,7 +1657,7 @@
         {
           key: "year",
           name: "Yearly",
-          price: "$239",
+          price: YEARLY_PRICE_LABEL,
           meta: "$19.92/month effective",
           copy: "Full access without the fixed watermark. Best value if you produce a lot of content.",
           badge: "Save 33%"
@@ -1723,7 +1792,6 @@
         const data = await apiPost("/stripe/subscription/upgrade-yearly", {}, token);
         renderAccount(data);
         renderPlans(data);
-
         setSuccess("Yearly renewal scheduled for the next billing period.");
       } catch (err) {
         const status = err && typeof err === "object" ? err.status : undefined;
@@ -1731,7 +1799,7 @@
         if (status === 409 || code === "monthly_subscription_required") {
           await refreshCurrentAccountSilently();
         }
-        const message = err instanceof Error ? err.message : "Could not upgrade subscription.";
+        const message = err instanceof Error ? err.message : "Could not schedule yearly renewal.";
         setError(message);
       } finally {
         setBusy(false);
@@ -1758,30 +1826,26 @@
       }
     }
 
-    async function openPortal() {
+    async function toggleAutoRenew() {
       clearMessages();
       setBusy(true);
       try {
         const token = getWebToken();
         if (!token) throw new Error("You are not logged in.");
 
-        setStatus("Opening billing portal...");
-        const data = await apiPost("/stripe/portal", {}, token);
+        const currentEnabled = Boolean(currentAccount?.license?.auto_renew_enabled);
+        const nextEnabled = !currentEnabled;
 
-        if (!data?.url) {
-          throw new Error("Portal URL missing.");
-        }
+        setStatus(nextEnabled ? "Turning auto-renew on..." : "Turning auto-renew off...");
+        const data = await apiPost("/stripe/subscription/auto-renew", { enabled: nextEnabled }, token);
 
-        window.location.href = data.url;
+        renderAccount(data);
+        renderPlans(data);
+
+        setSuccess(nextEnabled ? "Auto-renew is now on." : "Auto-renew is now off.");
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Could not open billing portal.";
-        const code = err && typeof err === "object" ? err.code || err.payload?.error : "";
-        if (code === "no_stripe_customer" || message.toLowerCase().includes("no subscription found")) {
-          await refreshCurrentAccountSilently();
-          setError("No Stripe subscription was found for this account. Start a paid plan first, then use Manage subscription.");
-        } else {
-          setError(message);
-        }
+        const message = err instanceof Error ? err.message : "Could not update auto-renew.";
+        setError(message);
       } finally {
         setBusy(false);
       }
@@ -1906,7 +1970,7 @@
         const emailDeliveryConfigured = !!(err && typeof err === "object" && err.payload && err.payload.email_delivery_configured);
         if (message.includes("email not verified") || errorCode === "email_not_verified") {
           if (emailVerificationSent) {
-            setError("Your email is not verified yet. We sent a fresh verification email—check your inbox and spam folder.");
+            setError("Your email is not verified yet. We sent a fresh verification email. Check your inbox and spam folder.");
           } else if (!emailDeliveryConfigured) {
             setError("Your email is not verified yet, and email delivery is not configured on this server. Set RESEND_API_KEY and RESEND_FROM_EMAIL in the Worker environment, then try again.");
           } else {
@@ -1950,10 +2014,6 @@
           setError("Checkout was canceled. You can try again anytime.");
         }
 
-        if (portalState === "returned") {
-          setStatus("Welcome back. Refreshing your subscription status...");
-        }
-
         const oauthError = String(params.get("oauth_error") || "").trim();
         if (oauthError) {
           const map = {
@@ -1992,10 +2052,6 @@
 
         if (account?.stripe_sync_error) {
           setError("We could not sync the latest billing status from Stripe right now. Showing your last known account data.");
-        } else if (portalState === "returned") {
-          setSuccess("Billing changes synced.");
-          setTimeout(refreshCurrentAccountSilently, 1500);
-          setTimeout(refreshCurrentAccountSilently, 4000);
         } else if (oauthConsume?.consumed) {
           setSuccess("Signed in with Google.");
         }
