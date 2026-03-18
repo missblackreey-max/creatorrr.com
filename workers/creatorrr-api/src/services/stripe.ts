@@ -501,6 +501,7 @@ export function makeStripeSubscriptionScheduleUpdateForm(
   form.set("phases[1][items][0][price]", nextPriceId);
   form.set("phases[1][items][0][quantity]", String(currentPhase.quantity));
   form.set("phases[1][proration_behavior]", "none");
+  form.set("phases[1][billing_cycle_anchor]", "phase_start");
   return form;
 }
 
