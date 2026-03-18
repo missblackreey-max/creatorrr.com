@@ -31,7 +31,7 @@ import {
 import {
   createStripeCheckoutSession,
   createStripePortalSession,
-  downgradeStripeSubscriptionToMonthly,
+  scheduleStripeSubscriptionIntervalChange,
   findLiveStripeSubscriptionForLicense,
   handleCheckoutSessionCompleted,
   recoverStripeCustomerId,
@@ -39,7 +39,6 @@ import {
   requireStripePortalConfig,
   refreshLicenseFromStripe,
   updateStripeSubscriptionAutoRenew,
-  upgradeStripeSubscriptionToYearly,
   upsertLicenseFromStripeSubscription,
   verifyStripeWebhookSignature,
 } from "./services/stripe";
@@ -48,6 +47,9 @@ import { isEmailDeliveryConfigured, issueEmailVerification, issuePasswordReset }
 
 function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof getLicenseRow>>) {
   const entitlement = computeEntitlement(lic);
+  const status = String(lic?.status || "").trim().toLowerCase();
+  const billingInterval = String(lic?.billing_interval || "").trim().toLowerCase();
+  const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
   return {
     user: {
       id: user.id,
@@ -64,11 +66,14 @@ function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof getLicens
       entitled_until: entitlement.entitled_until,
       in_trial: entitlement.in_trial,
       cancel_at: entitlement.cancel_at,
+      auto_renew_enabled: hasRecurringPlan && status !== "canceling" && !lic?.cancel_at,
       can_manage_subscription: Boolean(lic?.stripe_customer_id || lic?.stripe_subscription_id),
       billing_interval: lic?.billing_interval || null,
       current_period_end: lic?.current_period_end || null,
       trial_start_at: lic?.trial_start_at || null,
       trial_end_at: lic?.trial_end_at || null,
+      scheduled_billing_interval: lic?.scheduled_billing_interval || null,
+      scheduled_change_at: lic?.scheduled_change_at || null,
     },
   };
 }
@@ -687,6 +692,8 @@ export default {
               current_period_end=NULL,
               trial_start_at=excluded.trial_start_at,
               trial_end_at=excluded.trial_end_at,
+              scheduled_billing_interval=NULL,
+              scheduled_change_at=NULL,
               cancel_at=NULL,
               canceled_at=NULL,
               ended_at=NULL,
@@ -766,8 +773,8 @@ export default {
 
         return bad(req, "existing_subscription_conflict", 409, {
           message: currentInterval === "month"
-            ? "You already have monthly access. Use Upgrade to yearly from your account."
-            : "You already have yearly access. Use Switch to monthly from your account.",
+            ? "You already have monthly access. Use Renew yearly from your account."
+            : "You already have yearly access. Use Renew monthly from your account.",
         });
       }
 
@@ -834,10 +841,10 @@ export default {
       }
 
       try {
-        const updated = await upgradeStripeSubscriptionToYearly(env, auth.ctx.userId, lic);
+        const updated = await scheduleStripeSubscriptionIntervalChange(env, auth.ctx.userId, lic, "year");
         if (!updated.ok) {
           return bad(req, updated.reason, 400, {
-            message: "Could not upgrade subscription to yearly.",
+            message: "Could not schedule yearly renewal.",
           });
         }
 
@@ -898,10 +905,10 @@ export default {
       }
 
       try {
-        const updated = await downgradeStripeSubscriptionToMonthly(env, auth.ctx.userId, lic);
+        const updated = await scheduleStripeSubscriptionIntervalChange(env, auth.ctx.userId, lic, "month");
         if (!updated.ok) {
           return bad(req, updated.reason, 400, {
-            message: "Could not switch subscription to monthly.",
+            message: "Could not schedule monthly renewal.",
           });
         }
 
@@ -922,8 +929,8 @@ export default {
 
         return json(req, { ok: true, ...makeAccountView(user, freshLic) });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "stripe_downgrade_failed";
-        return bad(req, "stripe_downgrade_failed", 502, { message });
+        const message = err instanceof Error ? err.message : "stripe_schedule_change_failed";
+        return bad(req, "stripe_schedule_change_failed", 502, { message });
       }
     }
 

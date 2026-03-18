@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Contentorrr | Payment confirmed</title>
+  <title>Contentorrr | Access confirmed</title>
   <meta
     name="description"
-    content="Payment confirmed for Contentorrr."
+    content="Access confirmed for Contentorrr."
   />
   <style>
     :root {
@@ -229,6 +229,12 @@
       color: #daf7de;
     }
 
+    .status-box a {
+      color: inherit;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
     .notice-box {
       display: none;
       background: var(--warn);
@@ -369,12 +375,12 @@
   <main>
     <div class="container grid">
       <section class="card">
-        <span class="eyebrow">Payment successful</span>
-        <h1>Subscription confirmed.</h1>
+        <span class="eyebrow" id="eyebrow">Activation successful</span>
+        <h1 id="page-title">Access confirmed.</h1>
 
         <div class="stack">
           <div class="status-box" id="status-box">
-            Thank you for your purchase!
+            We are confirming your access.
           </div>
 
           <div class="notice-box" id="notice-box"></div>
@@ -429,12 +435,23 @@
   <script>
     const API_BASE = "https://api.creatorrr.com";
     const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
+    const params = new URLSearchParams(window.location.search);
 
+    const eyebrow = document.getElementById("eyebrow");
+    const pageTitle = document.getElementById("page-title");
     const statusBox = document.getElementById("status-box");
     const noticeBox = document.getElementById("notice-box");
 
-    function setStatusMessage(text) {
-      statusBox.textContent = text;
+    function normalizeMode(value) {
+      const mode = String(value || "").trim().toLowerCase();
+      if (mode === "trial") return "trial";
+      if (mode === "month" || mode === "monthly") return "month";
+      if (mode === "year" || mode === "yearly") return "year";
+      return null;
+    }
+
+    function setStatusMessage(html) {
+      statusBox.innerHTML = html;
     }
 
     function setNotice(text) {
@@ -461,12 +478,47 @@
       }
     }
 
+    function applySuccessCopy(mode) {
+      if (mode === "trial") {
+        document.title = "Contentorrr | Free trial confirmed";
+        eyebrow.textContent = "Activation successful";
+        pageTitle.textContent = "Free trial confirmed.";
+        setStatusMessage('Your 3 day free trial is now active. Don&apos;t hesitate to contact me for any questions, suggestions or bugs: <a href="mailto:ben@creatorrr.com">ben@creatorrr.com</a>');
+        return;
+      }
+
+      if (mode === "month") {
+        document.title = "Contentorrr | Monthly subscription confirmed";
+        eyebrow.textContent = "Purchase successful";
+        pageTitle.textContent = "Monthly subscription confirmed.";
+        setStatusMessage('Thank you for your purchase! Your monthly subscription is now active. Don&apos;t hesitate to contact me for any questions, suggestions or bugs: <a href="mailto:ben@creatorrr.com">ben@creatorrr.com</a>');
+        return;
+      }
+
+      if (mode === "year") {
+        document.title = "Contentorrr | Yearly subscription confirmed";
+        eyebrow.textContent = "Purchase successful";
+        pageTitle.textContent = "Yearly subscription confirmed.";
+        setStatusMessage('Thank you for your purchase! Your yearly subscription is now active. Don&apos;t hesitate to contact me for any questions, suggestions or bugs: <a href="mailto:ben@creatorrr.com">ben@creatorrr.com</a>');
+        return;
+      }
+
+      document.title = "Contentorrr | Access confirmed";
+      eyebrow.textContent = "Activation successful";
+      pageTitle.textContent = "Access confirmed.";
+      setStatusMessage('Your access is now active. Don&apos;t hesitate to contact me for any questions, suggestions or bugs: <a href="mailto:ben@creatorrr.com">ben@creatorrr.com</a>');
+    }
+
     async function verifyAccessInBrowser() {
       const token = safeLocalStorageGet(LS_WEB_TOKEN);
-      if (!token) return;
+      const fallbackMode = normalizeMode(params.get("mode"));
+      if (!token) {
+        applySuccessCopy(fallbackMode);
+        return;
+      }
 
       try {
-        const res = await fetch(`${API_BASE}/license/me`, {
+        const res = await fetch(`${API_BASE}/account/me`, {
           method: "GET",
           headers: {
             authorization: `Bearer ${token}`,
@@ -474,27 +526,31 @@
         });
 
         const data = await safeReadJson(res);
-        if (!res.ok) return;
-
-        if (data?.entitled && data?.in_trial) {
-          setStatusMessage("3-day free trial active.");
+        if (!res.ok) {
+          applySuccessCopy(fallbackMode);
           return;
         }
 
-        if (data?.entitled && data?.billing_interval === "month") {
-          setStatusMessage("Monthly subscription active.");
+        const license = data?.license || {};
+
+        if (license?.entitled && license?.in_trial) {
+          applySuccessCopy("trial");
           return;
         }
 
-        if (data?.entitled && data?.billing_interval === "year") {
-          setStatusMessage("Yearly subscription active.");
+        if (license?.entitled && license?.billing_interval === "month") {
+          applySuccessCopy("month");
           return;
         }
 
-        if (data?.entitled) {
-          setStatusMessage("Subscription active.");
+        if (license?.entitled && license?.billing_interval === "year") {
+          applySuccessCopy("year");
+          return;
         }
+
+        applySuccessCopy(fallbackMode);
       } catch {
+        applySuccessCopy(normalizeMode(params.get("mode")));
       }
     }
 
