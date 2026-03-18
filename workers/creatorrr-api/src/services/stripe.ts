@@ -62,6 +62,14 @@ function getPriceIdForInterval(env: Env, interval: string): string | null {
   return null;
 }
 
+function normalizeSubscriptionScheduleId(value: StripeSubscriptionLike["schedule"]): string | null {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (value && typeof value === "object" && typeof value.id === "string" && value.id.trim()) {
+    return value.id.trim();
+  }
+  return null;
+}
+
 async function stripePostForm<T>(env: Env, path: string, form: URLSearchParams): Promise<T> {
   const body = form.toString();
 
@@ -300,7 +308,7 @@ export async function createStripeCheckoutSession(
   if (!priceId) throw new Error("invalid_interval");
 
   const siteUrl = normalizeSiteUrl(env.SITE_URL);
-  const successUrl = `${siteUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`;
+  const successUrl = `${siteUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}&mode=${interval}`;
   const cancelUrl = `${siteUrl}/account.html?intent=${interval === "year" ? "yearly" : "monthly"}&checkout=canceled`;
 
   const form = new URLSearchParams();
@@ -431,17 +439,39 @@ export async function refreshLicenseFromStripe(
   return refreshed || lic;
 }
 
-export async function upgradeStripeSubscriptionToYearly(
+async function ensureStripeSubscriptionSchedule(
+  env: Env,
+  subscription: StripeSubscriptionLike,
+): Promise<string | null> {
+  const existingScheduleId = normalizeSubscriptionScheduleId(subscription.schedule);
+  if (existingScheduleId) return existingScheduleId;
+
+  const form = new URLSearchParams();
+  form.set("from_subscription", String(subscription.id || "").trim());
+  form.set("end_behavior", "release");
+
+  const created = await stripePostForm<{ id?: string | null }>(
+    env,
+    "/v1/subscription_schedules",
+    form,
+  );
+
+  return typeof created?.id === "string" && created.id.trim() ? created.id.trim() : null;
+}
+
+export async function scheduleStripeSubscriptionIntervalChange(
   env: Env,
   userId: string,
   lic: LicenseRow | null,
+  nextInterval: "month" | "year",
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   let subscriptionId = String(lic?.stripe_subscription_id || "").trim();
   const customerId = String(lic?.stripe_customer_id || "").trim();
 
-  console.log("[upgrade-yearly] start", {
+  console.log("[schedule-plan-change] start", {
     userId,
     license: lic,
+    nextInterval,
   });
 
   if (!subscriptionId && customerId) {
@@ -449,91 +479,72 @@ export async function upgradeStripeSubscriptionToYearly(
   }
 
   if (!subscriptionId) {
-    console.error("[upgrade-yearly] no subscription id", { userId, customerId });
+    console.error("[schedule-plan-change] no subscription id", { userId, customerId, nextInterval });
     return { ok: false, reason: "no_stripe_subscription" };
   }
 
   const subscription = await stripeGetSubscriptionById(env, subscriptionId);
   if (!subscription) {
-    console.error("[upgrade-yearly] subscription not found", { userId, subscriptionId });
+    console.error("[schedule-plan-change] subscription not found", { userId, subscriptionId, nextInterval });
     return { ok: false, reason: "no_stripe_subscription" };
   }
 
   const itemId = String(subscription.items?.data?.[0]?.id || "").trim();
-  if (!itemId) {
-    console.error("[upgrade-yearly] subscription item missing", { userId, subscriptionId, subscription });
-    return { ok: false, reason: "subscription_item_missing" };
+  const currentInterval = String(subscription.items?.data?.[0]?.price?.recurring?.interval || "").trim().toLowerCase();
+  const currentPriceId = String(subscription.items?.data?.[0]?.price?.id || "").trim();
+  const currentPeriodStart = extractCurrentPeriodStartUnix(subscription);
+  const currentPeriodEnd = extractCurrentPeriodEndUnix(subscription);
+  const nextPriceId = getPriceIdForInterval(env, nextInterval);
+
+  if (!itemId) return { ok: false, reason: "subscription_item_missing" };
+  if (!nextPriceId) return { ok: false, reason: nextInterval === "year" ? "missing_yearly_price_id" : "missing_monthly_price_id" };
+  if (!currentPriceId || !currentPeriodStart || !currentPeriodEnd) return { ok: false, reason: "missing_current_period_bounds" };
+
+  let updatedSubscription = subscription;
+  if (hasStripeSubscriptionCancelAt(subscription)) {
+    const resumeForm = new URLSearchParams();
+    resumeForm.set("cancel_at", "");
+    updatedSubscription = await stripePostForm<StripeSubscriptionLike>(
+      env,
+      `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+      resumeForm,
+    );
+
+    const upsertResumed = await upsertLicenseFromStripeSubscription(env, updatedSubscription);
+    if (!upsertResumed.ok) return { ok: false, reason: upsertResumed.reason };
   }
 
-  if (!env.STRIPE_PRICE_ID_YEARLY?.trim()) {
-    console.error("[upgrade-yearly] missing yearly price id");
-    return { ok: false, reason: "missing_yearly_price_id" };
-  }
+  const scheduleId = await ensureStripeSubscriptionSchedule(env, updatedSubscription);
+  if (!scheduleId) return { ok: false, reason: "stripe_schedule_missing" };
 
-  const form = new URLSearchParams();
-  form.set("items[0][id]", itemId);
-  form.set("items[0][price]", env.STRIPE_PRICE_ID_YEARLY);
-  form.set("cancel_at", "");
-  form.set("proration_behavior", "always_invoice");
-  form.set("payment_behavior", "error_if_incomplete");
+  const scheduleForm = new URLSearchParams();
+  scheduleForm.set("end_behavior", "release");
+  scheduleForm.set("phases[0][start_date]", String(currentPeriodStart));
+  scheduleForm.set("phases[0][end_date]", String(currentPeriodEnd));
+  scheduleForm.set("phases[0][items][0][price]", currentPriceId);
+  scheduleForm.set("phases[0][items][0][quantity]", "1");
+  scheduleForm.set("phases[1][items][0][price]", nextPriceId);
+  scheduleForm.set("phases[1][items][0][quantity]", "1");
 
-  console.log("[upgrade-yearly] update payload", {
-    userId,
-    subscriptionId,
-    itemId,
-    yearlyPriceId: env.STRIPE_PRICE_ID_YEARLY,
-    payload: Object.fromEntries(form.entries()),
-  });
-
-  const updated = await stripePostForm<StripeSubscriptionLike>(
+  await stripePostForm<{ id?: string | null }>(
     env,
-    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
-    form,
+    `/v1/subscription_schedules/${encodeURIComponent(scheduleId)}`,
+    scheduleForm,
   );
-
-  console.log("[upgrade-yearly] stripe updated", {
-    userId,
-    subscriptionId,
-    updatedStatus: updated.status,
-    updatedCancelAt: updated.cancel_at,
-    updatedCurrentPeriodEnd: updated.current_period_end,
-  });
-
-  const upsertResult = await upsertLicenseFromStripeSubscription(env, updated);
-  if (!upsertResult.ok) {
-    console.error("[upgrade-yearly] upsert failed", {
-      userId,
-      subscriptionId,
-      reason: upsertResult.reason,
-    });
-    return { ok: false, reason: upsertResult.reason };
-  }
 
   await env.creatorrr_db
     .prepare(`
       UPDATE licenses
-      SET stripe_subscription_id=?2, updated_at=?3
+      SET scheduled_billing_interval=?2,
+          scheduled_change_at=?3,
+          cancel_at=NULL,
+          updated_at=?4
       WHERE user_id=?1
     `)
-    .bind(userId, subscriptionId, nowIso())
+    .bind(userId, nextInterval === currentInterval ? null : nextInterval, unixToIso(currentPeriodEnd), nowIso())
     .run();
 
-  console.log("[upgrade-yearly] success", { userId, subscriptionId });
-
   return { ok: true };
-}
-
-export async function downgradeStripeSubscriptionToMonthly(
-  env: Env,
-  userId: string,
-  lic: LicenseRow | null,
-): Promise<{ ok: true } | { ok: false; reason: string }> {
-  console.warn("[downgrade-monthly] unsupported custom downgrade flow", {
-    userId,
-    license: lic,
-  });
-
-  return { ok: false, reason: "unsupported_custom_downgrade_flow" };
 }
 
 export async function updateStripeSubscriptionAutoRenew(
@@ -655,6 +666,8 @@ export async function upsertLicenseFromStripeSubscription(
         current_period_end,
         trial_start_at,
         trial_end_at,
+        scheduled_billing_interval,
+        scheduled_change_at,
         cancel_at,
         canceled_at,
         ended_at
@@ -673,6 +686,8 @@ export async function upsertLicenseFromStripeSubscription(
         ?9,
         ?10,
         ?11,
+        NULL,
+        NULL,
         ?12,
         ?13,
         ?14
@@ -690,6 +705,20 @@ export async function upsertLicenseFromStripeSubscription(
         current_period_end=excluded.current_period_end,
         trial_start_at=excluded.trial_start_at,
         trial_end_at=excluded.trial_end_at,
+        scheduled_billing_interval=CASE
+          WHEN excluded.cancel_at IS NOT NULL THEN NULL
+          WHEN licenses.scheduled_billing_interval IS NOT NULL
+            AND licenses.scheduled_billing_interval = excluded.billing_interval
+          THEN NULL
+          ELSE licenses.scheduled_billing_interval
+        END,
+        scheduled_change_at=CASE
+          WHEN excluded.cancel_at IS NOT NULL THEN NULL
+          WHEN licenses.scheduled_billing_interval IS NOT NULL
+            AND licenses.scheduled_billing_interval = excluded.billing_interval
+          THEN NULL
+          ELSE licenses.scheduled_change_at
+        END,
         cancel_at=excluded.cancel_at,
         canceled_at=excluded.canceled_at,
         ended_at=excluded.ended_at

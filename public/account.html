@@ -552,10 +552,26 @@
     .plan-badge-row {
       display: flex;
       align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: nowrap;
+      min-height: 24px;
+    }
+
+    .plan-badge-status {
+      flex: 1 1 auto;
+      display: flex;
       justify-content: center;
       gap: 8px;
       flex-wrap: wrap;
-      min-height: 24px;
+      min-width: 0;
+    }
+
+    .plan-badge-side {
+      flex: 0 0 auto;
+      min-width: 88px;
+      display: flex;
+      justify-content: flex-end;
     }
 
     .plan-badge {
@@ -670,6 +686,15 @@
       .account-grid,
       .download-grid {
         grid-template-columns: 1fr;
+      }
+
+      .plan-badge-row {
+        flex-wrap: wrap;
+      }
+
+      .plan-badge-side {
+        width: 100%;
+        justify-content: center;
       }
     }
 
@@ -863,7 +888,7 @@
       <section class="card initially-hidden" id="plans-section">
         <div class="section-head">
           <div class="section-subtext">
-            <h2>Choose or upgrade access</h2>
+            <h2>Choose your plan</h2>
             <p id="plans-copy"></p>
           </div>
         </div>
@@ -973,6 +998,20 @@
       if (value === "month") return "month";
       if (value === "year") return "year";
       return null;
+    }
+
+    function planDisplayName(value) {
+      const normalized = normalizeBillingInterval(value);
+      if (normalized === "month") return "Monthly";
+      if (normalized === "year") return "Yearly";
+      return "None";
+    }
+
+    function sentenceIntervalLabel(value) {
+      const normalized = normalizeBillingInterval(value);
+      if (normalized === "month") return "monthly";
+      if (normalized === "year") return "yearly";
+      return "unknown";
     }
 
     function showTab(mode) {
@@ -1338,6 +1377,7 @@
     function buildAccessSummary(license) {
       if (!license) return "No active access.";
       const billingInterval = normalizeBillingInterval(license.billing_interval);
+      const scheduledInterval = normalizeBillingInterval(license.scheduled_billing_interval);
       const nowMs = Date.now();
       const trialEndMs = Date.parse(license.trial_end_at || "");
       const periodEndMs = Date.parse(license.current_period_end || "");
@@ -1345,15 +1385,26 @@
       const hasLiveSubscriptionPeriod = Number.isFinite(periodEndMs) && periodEndMs > nowMs;
       const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
       const accessActive = Boolean(license.entitled) || hasLiveTrial || (hasRecurringPlan && hasLiveSubscriptionPeriod);
+      const autoRenewEnabled = Boolean(license.auto_renew_enabled);
+      const periodEndText = formatDateFriendly(
+        license.current_period_end ||
+        license.entitled_until ||
+        ""
+      );
+      const trialEndText = formatDateFriendly(
+        license.trial_end_at ||
+        license.entitled_until ||
+        ""
+      );
 
       if (accessActive && (license.in_trial || hasLiveTrial)) {
-        return "Trial access is active.";
+        return `3 day trial active until ${trialEndText}. Besides the locked watermark, you have full access. Get the monthly plan to try for real and the yearly plan if you're convinced (33% off!).`;
       }
-      if (accessActive && hasRecurringPlan && license.cancel_at) {
-        return "Access active until period end. Auto-renew is off.";
+      if (accessActive && hasRecurringPlan && scheduledInterval && scheduledInterval !== billingInterval && autoRenewEnabled) {
+        return `Full access active! ${planDisplayName(billingInterval)} plan is active until ${periodEndText}. Next period will renew ${sentenceIntervalLabel(scheduledInterval)}. Auto-renewal is on. Click "Manage subscription" to change.`;
       }
       if (accessActive && hasRecurringPlan) {
-        return "Access active. Auto-renew is on.";
+        return `Full access active! ${planDisplayName(billingInterval)} plan: ${sentenceIntervalLabel(billingInterval)} auto-renewal is ${autoRenewEnabled ? "on" : "off"}. Click "Manage subscription" to change.`;
       }
       return "No active access.";
     }
@@ -1368,6 +1419,26 @@
       if (!hasRecurringPlan) return "-";
       if (license.cancel_at || status === "canceling") return "Off";
       return "On";
+    }
+
+    function getCurrentNextPeriodLabel(planKey, license) {
+      if (!license) return "";
+
+      const currentInterval = normalizeBillingInterval(license.billing_interval);
+      const scheduledInterval = normalizeBillingInterval(license.scheduled_billing_interval);
+      const autoRenewEnabled = Boolean(license.auto_renew_enabled);
+
+      if (planKey === "trial") {
+        return license.in_trial ? "Current" : "";
+      }
+
+      if (!currentInterval) return "";
+      if (planKey !== currentInterval && planKey !== scheduledInterval) return "";
+      if (planKey === currentInterval && !autoRenewEnabled) return "Current";
+      if (planKey === currentInterval && scheduledInterval && scheduledInterval !== currentInterval) return "Current";
+      if (planKey === scheduledInterval && scheduledInterval !== currentInterval) return "Next period";
+      if (planKey === currentInterval && autoRenewEnabled) return "Current & next period";
+      return "";
     }
 
     function showLoggedOutUi() {
@@ -1436,6 +1507,8 @@
 
     function getPlanAction(planKey, account) {
       const state = deriveAccountState(account);
+      const license = account?.license || {};
+      const scheduledInterval = normalizeBillingInterval(license.scheduled_billing_interval);
 
       if (state === "no_access") {
         if (planKey === "trial") {
@@ -1460,13 +1533,15 @@
       if (state === "monthly_active") {
         if (planKey === "month") return { kind: "current", label: "Current plan" };
         if (planKey === "trial") return { kind: "disabled", label: "Expired" };
-        return { kind: "cta", label: "Upgrade to yearly", action: "upgrade-yearly", primary: true };
+        if (scheduledInterval === "year") return { kind: "disabled", label: "Renews yearly" };
+        return { kind: "cta", label: "Renew yearly", action: "upgrade-yearly", primary: true };
       }
 
       if (state === "yearly_active") {
         if (planKey === "year") return { kind: "current", label: "Current plan" };
         if (planKey === "trial") return { kind: "disabled", label: "Expired" };
-        return { kind: "cta", label: "Switch to monthly", action: "downgrade-monthly", primary: false };
+        if (scheduledInterval === "month") return { kind: "disabled", label: "Renews monthly" };
+        return { kind: "cta", label: "Renew monthly", action: "downgrade-monthly", primary: false };
       }
 
       return { kind: "disabled", label: "Unavailable" };
@@ -1494,7 +1569,7 @@
           name: "3-day trial",
           price: "$0",
           meta: "No Stripe required",
-          copy: "Use the app with a fixed watermark. Upgrade anytime to remove it.",
+          copy: "Your 3 day test run with full access and the locked watermark.",
           badge: trialBadge
         },
         {
@@ -1502,7 +1577,7 @@
           name: "Monthly",
           price: "$29.90",
           meta: "Paid via Stripe",
-          copy: "Immediate full access without the fixed watermark.",
+          copy: "Full access without the fixed watermark. Best if you want to stay flexible.",
           badge: ""
         },
         {
@@ -1510,7 +1585,7 @@
           name: "Yearly",
           price: "$239",
           meta: "$19.92/month effective",
-          copy: "Best value if you produce a lot of content.",
+          copy: "Full access without the fixed watermark. Best value if you produce a lot of content.",
           badge: "Save 33%"
         }
       ];
@@ -1521,13 +1596,18 @@
         const action = getPlanAction(plan.key, account);
         const recommended = plan.key === "year";
         const preselected = preferredPlan === plan.key;
-        const current = action.kind === "current";
+        const statusLabel = getCurrentNextPeriodLabel(plan.key, account?.license || {});
+        const current = statusLabel === "Current" || statusLabel === "Current & next period";
 
         return `
           <div class="plan-card ${recommended ? "recommended" : ""} ${preselected ? "preselected" : ""} ${current ? "current" : ""}">
             <div class="plan-badge-row">
-              ${plan.badge ? `<span class="plan-badge gold">${escapeHtml(plan.badge)}</span>` : ""}
-              ${current ? `<span class="plan-badge green">Current</span>` : ""}
+              <div class="plan-badge-status">
+                ${statusLabel ? `<span class="plan-badge green">${escapeHtml(statusLabel)}</span>` : ""}
+              </div>
+              <div class="plan-badge-side">
+                ${plan.badge ? `<span class="plan-badge gold">${escapeHtml(plan.badge)}</span>` : ""}
+              </div>
             </div>
 
             <h3 class="plan-name">${escapeHtml(plan.name)}</h3>
@@ -1613,7 +1693,7 @@
 
         renderAccount(data);
         renderPlans(data);
-        setSuccess("3-day trial started. You can upgrade to monthly or yearly at any time.");
+        window.location.href = "./billing/success.html?mode=trial";
       } catch (err) {
         const status = err && typeof err === "object" ? err.status : undefined;
         const code = err && typeof err === "object" ? err.code || err.payload?.error : "";
@@ -1633,12 +1713,12 @@
         const token = getWebToken();
         if (!token) throw new Error("You are not logged in.");
 
-        setStatus("Updating yearly plan...");
+        setStatus("Scheduling yearly renewal...");
         const data = await apiPost("/stripe/subscription/upgrade-yearly", {}, token);
         renderAccount(data);
         renderPlans(data);
 
-        setSuccess("Upgraded to yearly plan.");
+        setSuccess("Yearly renewal scheduled for the next billing period.");
       } catch (err) {
         const status = err && typeof err === "object" ? err.status : undefined;
         const code = err && typeof err === "object" ? err.code || err.payload?.error : "";
@@ -1659,18 +1739,14 @@
         const token = getWebToken();
         if (!token) throw new Error("You are not logged in.");
 
-        setStatus("Switching to monthly...");
+        setStatus("Scheduling monthly renewal...");
         const data = await apiPost("/stripe/subscription/downgrade-monthly", {}, token);
         renderAccount(data);
         renderPlans(data);
-        setSuccess("Switched to monthly.");
+        setSuccess("Monthly renewal scheduled for the next billing period.");
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Could not switch to monthly.";
-        if (message.includes("unsupported_custom_downgrade_flow")) {
-          setError("Switching from yearly to monthly after the current yearly period is not implemented in the custom billing API yet. Use Manage subscription in Stripe for now.");
-        } else {
-          setError(message);
-        }
+        const message = err instanceof Error ? err.message : "Could not schedule monthly renewal.";
+        setError(message);
       } finally {
         setBusy(false);
       }

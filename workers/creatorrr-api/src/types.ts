@@ -29,6 +29,8 @@ export type LicenseRow = {
   current_period_end?: string | null;
   trial_start_at?: string | null;
   trial_end_at?: string | null;
+  scheduled_billing_interval?: string | null;
+  scheduled_change_at?: string | null;
   cancel_at?: string | null;
   canceled_at?: string | null;
   ended_at?: string | null;
@@ -75,6 +77,7 @@ export type StripePortalSessionResponse = {
 export type StripeSubscriptionLike = {
   id: string;
   customer?: string | null;
+  schedule?: string | null | { id?: string | null } | false;
   status?: string | null;
   cancel_at?: number | null;
   canceled_at?: number | null;
