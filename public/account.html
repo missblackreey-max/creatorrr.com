@@ -1406,10 +1406,10 @@
         return `3 day trial active until ${trialEndText}. Besides the locked watermark, you have full access. Get the monthly plan to try for real and the yearly plan if you're convinced (33% off!).`;
       }
       if (accessActive && hasRecurringPlan && scheduledInterval && scheduledInterval !== billingInterval && autoRenewEnabled) {
-        return `Full access active! ${planDisplayName(billingInterval)} plan is active until ${periodEndText}. Next period will renew ${sentenceIntervalLabel(scheduledInterval)}. Auto-renewal is on. Click "Manage subscription" to change.`;
+        return `Full access active! ${planDisplayName(billingInterval)} plan is active until ${periodEndText}. Next period will renew ${sentenceIntervalLabel(scheduledInterval)}. Auto-renewal is on. Use the plan buttons below to switch monthly/yearly renewal. Billing details stay in "Manage subscription".`;
       }
       if (accessActive && hasRecurringPlan) {
-        return `Full access active! ${planDisplayName(billingInterval)} plan: ${sentenceIntervalLabel(billingInterval)} auto-renewal is ${autoRenewEnabled ? "on" : "off"}. Click "Manage subscription" to change.`;
+        return `Full access active! ${planDisplayName(billingInterval)} plan: ${sentenceIntervalLabel(billingInterval)} auto-renewal is ${autoRenewEnabled ? "on" : "off"}. Use the plan buttons below to switch monthly/yearly renewal. Billing details stay in "Manage subscription".`;
       }
       return "No active access.";
     }
