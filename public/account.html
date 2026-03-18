@@ -1539,14 +1539,14 @@
         if (planKey === "month") return { kind: "current", label: "Current plan" };
         if (planKey === "trial") return { kind: "disabled", label: "Expired" };
         if (scheduledInterval === "year") return { kind: "disabled", label: "Renews yearly" };
-        return { kind: "cta", label: "Renew yearly", action: "upgrade-yearly", primary: true };
+        return { kind: "cta", label: "Yearly renewal", action: "upgrade-yearly", primary: true };
       }
 
       if (state === "yearly_active") {
         if (planKey === "year") return { kind: "current", label: "Current plan" };
         if (planKey === "trial") return { kind: "disabled", label: "Expired" };
         if (scheduledInterval === "month") return { kind: "disabled", label: "Renews monthly" };
-        return { kind: "cta", label: "Renew monthly", action: "downgrade-monthly", primary: false };
+        return { kind: "cta", label: "Monthly renewal", action: "downgrade-monthly", primary: false };
       }
 
       return { kind: "disabled", label: "Unavailable" };

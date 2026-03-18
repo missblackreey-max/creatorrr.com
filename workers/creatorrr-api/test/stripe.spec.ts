@@ -61,7 +61,7 @@ describe('makeStripeSubscriptionScheduleCreateForm', () => {
 });
 
 describe('makeStripeSubscriptionScheduleUpdateForm', () => {
-  it('keeps the current phase intact and schedules the next interval without proration', () => {
+  it('keeps the current phase intact and schedules the next interval at the period boundary', () => {
     const form = makeStripeSubscriptionScheduleUpdateForm(
       'price_month',
       1733011200,
@@ -70,7 +70,7 @@ describe('makeStripeSubscriptionScheduleUpdateForm', () => {
     );
 
     expect(form.get('end_behavior')).toBe('release');
-    expect(form.get('proration_behavior')).toBe('none');
+    expect(form.get('proration_behavior')).toBeNull();
     expect(form.get('phases[0][start_date]')).toBe('1733011200');
     expect(form.get('phases[0][end_date]')).toBe('1735689600');
     expect(form.get('phases[0][items][0][price]')).toBe('price_month');

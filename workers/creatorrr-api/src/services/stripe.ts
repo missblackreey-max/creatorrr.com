@@ -453,7 +453,6 @@ export function makeStripeSubscriptionScheduleUpdateForm(
 ): URLSearchParams {
   const form = new URLSearchParams();
   form.set("end_behavior", "release");
-  form.set("proration_behavior", "none");
   form.set("phases[0][start_date]", String(currentPeriodStart));
   form.set("phases[0][end_date]", String(currentPeriodEnd));
   form.set("phases[0][items][0][price]", currentPriceId);
