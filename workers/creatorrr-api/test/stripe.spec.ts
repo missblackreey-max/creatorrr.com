@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   makeStripeAutoRenewUpdateForm,
-  makeStripeSubscriptionIntervalUpdateForm,
+  makeStripeSubscriptionScheduleUpdateForm,
 } from '../src/services/stripe';
 
 describe('makeStripeAutoRenewUpdateForm', () => {
@@ -50,14 +50,25 @@ describe('makeStripeAutoRenewUpdateForm', () => {
   });
 });
 
-describe('makeStripeSubscriptionIntervalUpdateForm', () => {
-  it('changes the subscription price without proration and keeps the existing anchor', () => {
-    const form = makeStripeSubscriptionIntervalUpdateForm('si_123', 'price_year');
+describe('makeStripeSubscriptionScheduleUpdateForm', () => {
+  it('keeps the current phase intact and schedules the next renewal price without proration', () => {
+    const form = makeStripeSubscriptionScheduleUpdateForm({
+      startDate: 1733011200,
+      endDate: 1735689600,
+      currentPriceId: 'price_month',
+      quantity: 1,
+    }, 'price_year');
 
-    expect(form.get('items[0][id]')).toBe('si_123');
-    expect(form.get('items[0][price]')).toBe('price_year');
-    expect(form.get('items[0][quantity]')).toBe('1');
-    expect(form.get('billing_cycle_anchor')).toBe('unchanged');
+    expect(form.get('end_behavior')).toBe('release');
     expect(form.get('proration_behavior')).toBe('none');
+    expect(form.get('phases[0][start_date]')).toBe('1733011200');
+    expect(form.get('phases[0][end_date]')).toBe('1735689600');
+    expect(form.get('phases[0][items][0][price]')).toBe('price_month');
+    expect(form.get('phases[0][items][0][quantity]')).toBe('1');
+    expect(form.get('phases[0][proration_behavior]')).toBe('none');
+    expect(form.get('phases[1][start_date]')).toBe('1735689600');
+    expect(form.get('phases[1][items][0][price]')).toBe('price_year');
+    expect(form.get('phases[1][items][0][quantity]')).toBe('1');
+    expect(form.get('phases[1][proration_behavior]')).toBe('none');
   });
 });
