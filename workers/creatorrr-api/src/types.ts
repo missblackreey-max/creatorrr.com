@@ -78,6 +78,9 @@ export type StripeSubscriptionLike = {
   id: string;
   customer?: string | null;
   schedule?: string | null | { id?: string | null } | false;
+  billing_mode?: {
+    type?: string | null;
+  } | null;
   status?: string | null;
   cancel_at?: number | null;
   canceled_at?: number | null;

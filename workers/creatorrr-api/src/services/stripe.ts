@@ -9,6 +9,8 @@ import { bad } from "../lib/http";
 import { hmacSha256Hex, timingSafeEqualStr } from "../lib/crypto";
 import { normalizeSiteUrl, nowIso, unixToIso } from "../lib/utils";
 
+const STRIPE_FLEXIBLE_BILLING_API_VERSION = "2025-06-30.basil";
+
 function parseStripeSignature(header: string | null): { t: string | null; v1: string[] } {
   if (!header) return { t: null, v1: [] };
 
@@ -62,15 +64,12 @@ function getPriceIdForInterval(env: Env, interval: string): string | null {
   return null;
 }
 
-function normalizeSubscriptionScheduleId(value: StripeSubscriptionLike["schedule"]): string | null {
-  if (typeof value === "string" && value.trim()) return value.trim();
-  if (value && typeof value === "object" && typeof value.id === "string" && value.id.trim()) {
-    return value.id.trim();
-  }
-  return null;
-}
-
-async function stripePostForm<T>(env: Env, path: string, form: URLSearchParams): Promise<T> {
+async function stripePostForm<T>(
+  env: Env,
+  path: string,
+  form: URLSearchParams,
+  options?: { apiVersion?: string },
+): Promise<T> {
   const body = form.toString();
 
   console.log("[stripePostForm] request", {
@@ -83,6 +82,7 @@ async function stripePostForm<T>(env: Env, path: string, form: URLSearchParams):
     headers: {
       authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
       "content-type": "application/x-www-form-urlencoded",
+      ...(options?.apiVersion ? { "Stripe-Version": options.apiVersion } : {}),
     },
     body,
   });
@@ -123,13 +123,18 @@ async function stripePostForm<T>(env: Env, path: string, form: URLSearchParams):
   return data as T;
 }
 
-async function stripeGetJson<T>(env: Env, path: string): Promise<T> {
+async function stripeGetJson<T>(
+  env: Env,
+  path: string,
+  options?: { apiVersion?: string },
+): Promise<T> {
   console.log("[stripeGetJson] request", { path });
 
   const res = await fetch(`https://api.stripe.com${path}`, {
     method: "GET",
     headers: {
       authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
+      ...(options?.apiVersion ? { "Stripe-Version": options.apiVersion } : {}),
     },
   });
 
@@ -201,11 +206,13 @@ function extractCurrentPeriodEndUnix(subscription: StripeSubscriptionLike): numb
 async function stripeGetSubscriptionById(
   env: Env,
   subscriptionId: string,
+  options?: { apiVersion?: string },
 ): Promise<StripeSubscriptionLike | null> {
   try {
     return await stripeGetJson<StripeSubscriptionLike>(
       env,
       `/v1/subscriptions/${encodeURIComponent(subscriptionId)}?expand[]=items.data.price`,
+      options,
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
@@ -439,50 +446,41 @@ export async function refreshLicenseFromStripe(
   return refreshed || lic;
 }
 
-export function makeStripeSubscriptionScheduleCreateForm(subscriptionId: string): URLSearchParams {
-  const form = new URLSearchParams();
-  form.set("from_subscription", subscriptionId);
-  return form;
+function hasFlexibleBillingMode(subscription: StripeSubscriptionLike): boolean {
+  return String(subscription.billing_mode?.type || "").trim().toLowerCase() === "flexible";
 }
 
-export function makeStripeSubscriptionScheduleUpdateForm(
-  currentPriceId: string,
-  currentPeriodStart: number,
-  currentPeriodEnd: number,
+export function makeStripeSubscriptionIntervalUpdateForm(
+  itemId: string,
   nextPriceId: string,
 ): URLSearchParams {
   const form = new URLSearchParams();
-  form.set("end_behavior", "release");
+  form.set("items[0][id]", itemId);
+  form.set("items[0][price]", nextPriceId);
+  form.set("items[0][quantity]", "1");
+  form.set("billing_cycle_anchor", "unchanged");
   form.set("proration_behavior", "none");
-  form.set("phases[0][start_date]", String(currentPeriodStart));
-  form.set("phases[0][end_date]", String(currentPeriodEnd));
-  form.set("phases[0][items][0][price]", currentPriceId);
-  form.set("phases[0][items][0][quantity]", "1");
-  form.set("phases[1][start_date]", String(currentPeriodEnd));
-  form.set("phases[1][billing_cycle_anchor]", "phase_start");
-  form.set("phases[1][proration_behavior]", "none");
-  form.set("phases[1][items][0][price]", nextPriceId);
-  form.set("phases[1][items][0][quantity]", "1");
   return form;
 }
 
-async function ensureStripeSubscriptionSchedule(
+async function migrateStripeSubscriptionToFlexibleBilling(
   env: Env,
   subscription: StripeSubscriptionLike,
-): Promise<string | null> {
-  const existingScheduleId = normalizeSubscriptionScheduleId(subscription.schedule);
-  if (existingScheduleId) return existingScheduleId;
+): Promise<StripeSubscriptionLike> {
+  if (hasFlexibleBillingMode(subscription)) return subscription;
 
   const subscriptionId = String(subscription.id || "").trim();
-  if (!subscriptionId) return null;
+  if (!subscriptionId) throw new Error("no_stripe_subscription");
 
-  const created = await stripePostForm<{ id?: string | null }>(
+  const form = new URLSearchParams();
+  form.set("billing_mode[type]", "flexible");
+
+  return await stripePostForm<StripeSubscriptionLike>(
     env,
-    "/v1/subscription_schedules",
-    makeStripeSubscriptionScheduleCreateForm(subscriptionId),
+    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}/migrate`,
+    form,
+    { apiVersion: STRIPE_FLEXIBLE_BILLING_API_VERSION },
   );
-
-  return typeof created?.id === "string" && created.id.trim() ? created.id.trim() : null;
 }
 
 export async function scheduleStripeSubscriptionIntervalChange(
@@ -509,7 +507,9 @@ export async function scheduleStripeSubscriptionIntervalChange(
     return { ok: false, reason: "no_stripe_subscription" };
   }
 
-  const subscription = await stripeGetSubscriptionById(env, subscriptionId);
+  const subscription = await stripeGetSubscriptionById(env, subscriptionId, {
+    apiVersion: STRIPE_FLEXIBLE_BILLING_API_VERSION,
+  });
   if (!subscription) {
     console.error("[schedule-plan-change] subscription not found", { userId, subscriptionId, nextInterval });
     return { ok: false, reason: "no_stripe_subscription" };
@@ -517,14 +517,12 @@ export async function scheduleStripeSubscriptionIntervalChange(
 
   const itemId = String(subscription.items?.data?.[0]?.id || "").trim();
   const currentInterval = String(subscription.items?.data?.[0]?.price?.recurring?.interval || "").trim().toLowerCase();
-  const currentPriceId = String(subscription.items?.data?.[0]?.price?.id || "").trim();
-  const currentPeriodStart = extractCurrentPeriodStartUnix(subscription);
   const currentPeriodEnd = extractCurrentPeriodEndUnix(subscription);
   const nextPriceId = getPriceIdForInterval(env, nextInterval);
 
   if (!itemId) return { ok: false, reason: "subscription_item_missing" };
   if (!nextPriceId) return { ok: false, reason: nextInterval === "year" ? "missing_yearly_price_id" : "missing_monthly_price_id" };
-  if (!currentPriceId || !currentPeriodStart || !currentPeriodEnd) return { ok: false, reason: "missing_current_period_bounds" };
+  if (!currentPeriodEnd) return { ok: false, reason: "missing_current_period_bounds" };
 
   let updatedSubscription = subscription;
   if (hasStripeSubscriptionCancelAt(subscription)) {
@@ -540,14 +538,16 @@ export async function scheduleStripeSubscriptionIntervalChange(
     if (!upsertResumed.ok) return { ok: false, reason: upsertResumed.reason };
   }
 
-  const scheduleId = await ensureStripeSubscriptionSchedule(env, updatedSubscription);
-  if (!scheduleId) return { ok: false, reason: "stripe_schedule_missing" };
-
-  await stripePostForm<{ id?: string | null }>(
+  updatedSubscription = await migrateStripeSubscriptionToFlexibleBilling(env, updatedSubscription);
+  updatedSubscription = await stripePostForm<StripeSubscriptionLike>(
     env,
-    `/v1/subscription_schedules/${encodeURIComponent(scheduleId)}`,
-    makeStripeSubscriptionScheduleUpdateForm(currentPriceId, currentPeriodStart, currentPeriodEnd, nextPriceId),
+    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    makeStripeSubscriptionIntervalUpdateForm(itemId, nextPriceId),
+    { apiVersion: STRIPE_FLEXIBLE_BILLING_API_VERSION },
   );
+
+  const upsertUpdated = await upsertLicenseFromStripeSubscription(env, updatedSubscription);
+  if (!upsertUpdated.ok) return { ok: false, reason: upsertUpdated.reason };
 
   await env.creatorrr_db
     .prepare(`
@@ -652,6 +652,16 @@ export async function upsertLicenseFromStripeSubscription(
   const userId = await findUserIdForStripeSubscription(env, subscription);
   if (!userId) return { ok: false, reason: "user_not_found_for_subscription" };
 
+  const existing = await env.creatorrr_db
+    .prepare(`
+      SELECT stripe_price_id, billing_interval, current_period_start, current_period_end,
+             scheduled_billing_interval, scheduled_change_at
+      FROM licenses
+      WHERE user_id=?1
+    `)
+    .bind(userId)
+    .first<Pick<LicenseRow, "stripe_price_id" | "billing_interval" | "current_period_start" | "current_period_end" | "scheduled_billing_interval" | "scheduled_change_at">>();
+
   const stripeCustomerId = subscription.customer ? String(subscription.customer) : null;
   const stripeSubscriptionId = subscription.id ? String(subscription.id) : null;
   const stripePriceId = extractPriceId(subscription);
@@ -665,6 +675,29 @@ export async function upsertLicenseFromStripeSubscription(
   const endedAt = unixToIso(subscription.ended_at);
   const cancelAt = unixToIso(subscription.cancel_at);
   const now = nowIso();
+  const sameCurrentPeriod =
+    Boolean(existing?.current_period_start) &&
+    Boolean(existing?.current_period_end) &&
+    existing?.current_period_start === currentPeriodStart &&
+    existing?.current_period_end === currentPeriodEnd;
+  const preserveDisplayedCurrentInterval =
+    Boolean(existing?.scheduled_billing_interval) &&
+    sameCurrentPeriod &&
+    Boolean(existing?.billing_interval) &&
+    Boolean(billingInterval) &&
+    existing?.billing_interval !== billingInterval;
+  const persistedStripePriceId = preserveDisplayedCurrentInterval ? existing?.stripe_price_id || stripePriceId : stripePriceId;
+  const persistedBillingInterval = preserveDisplayedCurrentInterval ? existing?.billing_interval || billingInterval : billingInterval;
+  let scheduledBillingInterval = existing?.scheduled_billing_interval || null;
+  let scheduledChangeAt = existing?.scheduled_change_at || null;
+
+  if (cancelAt) {
+    scheduledBillingInterval = null;
+    scheduledChangeAt = null;
+  } else if (!preserveDisplayedCurrentInterval && scheduledBillingInterval && scheduledBillingInterval === billingInterval) {
+    scheduledBillingInterval = null;
+    scheduledChangeAt = null;
+  }
 
   await env.creatorrr_db
     .prepare(`
@@ -703,11 +736,11 @@ export async function upsertLicenseFromStripeSubscription(
         ?9,
         ?10,
         ?11,
-        NULL,
-        NULL,
         ?12,
         ?13,
-        ?14
+        ?14,
+        ?15,
+        ?16
       )
       ON CONFLICT(user_id) DO UPDATE SET
         plan='pro',
@@ -722,20 +755,8 @@ export async function upsertLicenseFromStripeSubscription(
         current_period_end=excluded.current_period_end,
         trial_start_at=excluded.trial_start_at,
         trial_end_at=excluded.trial_end_at,
-        scheduled_billing_interval=CASE
-          WHEN excluded.cancel_at IS NOT NULL THEN NULL
-          WHEN licenses.scheduled_billing_interval IS NOT NULL
-            AND licenses.scheduled_billing_interval = excluded.billing_interval
-          THEN NULL
-          ELSE licenses.scheduled_billing_interval
-        END,
-        scheduled_change_at=CASE
-          WHEN excluded.cancel_at IS NOT NULL THEN NULL
-          WHEN licenses.scheduled_billing_interval IS NOT NULL
-            AND licenses.scheduled_billing_interval = excluded.billing_interval
-          THEN NULL
-          ELSE licenses.scheduled_change_at
-        END,
+        scheduled_billing_interval=excluded.scheduled_billing_interval,
+        scheduled_change_at=excluded.scheduled_change_at,
         cancel_at=excluded.cancel_at,
         canceled_at=excluded.canceled_at,
         ended_at=excluded.ended_at
@@ -746,12 +767,14 @@ export async function upsertLicenseFromStripeSubscription(
       now,
       stripeCustomerId,
       stripeSubscriptionId,
-      stripePriceId,
-      billingInterval,
+      persistedStripePriceId,
+      persistedBillingInterval,
       currentPeriodStart,
       currentPeriodEnd,
       trialStartAt,
       trialEndAt,
+      scheduledBillingInterval,
+      scheduledChangeAt,
       cancelAt,
       canceledAt,
       endedAt,
