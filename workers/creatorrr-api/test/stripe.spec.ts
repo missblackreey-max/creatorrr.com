@@ -70,11 +70,13 @@ describe('makeStripeSubscriptionScheduleUpdateForm', () => {
     );
 
     expect(form.get('end_behavior')).toBe('release');
-    expect(form.get('proration_behavior')).toBeNull();
+    expect(form.get('proration_behavior')).toBe('none');
     expect(form.get('phases[0][start_date]')).toBe('1733011200');
     expect(form.get('phases[0][end_date]')).toBe('1735689600');
     expect(form.get('phases[0][items][0][price]')).toBe('price_month');
     expect(form.get('phases[1][start_date]')).toBe('1735689600');
+    expect(form.get('phases[1][billing_cycle_anchor]')).toBe('phase_start');
+    expect(form.get('phases[1][proration_behavior]')).toBe('none');
     expect(form.get('phases[1][items][0][price]')).toBe('price_year');
   });
 });
