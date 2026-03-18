@@ -63,26 +63,52 @@ function getPriceIdForInterval(env: Env, interval: string): string | null {
 }
 
 async function stripePostForm<T>(env: Env, path: string, form: URLSearchParams): Promise<T> {
+  const body = form.toString();
+
+  console.log("[stripePostForm] request", {
+    path,
+    form: Object.fromEntries(form.entries()),
+  });
+
   const res = await fetch(`https://api.stripe.com${path}`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
       "content-type": "application/x-www-form-urlencoded",
     },
-    body: form.toString(),
+    body,
   });
 
   const text = await res.text();
+
+  console.log("[stripePostForm] response", {
+    path,
+    status: res.status,
+    ok: res.ok,
+    body: text,
+  });
+
   let data: any = null;
 
   try {
     data = text ? JSON.parse(text) : null;
   } catch {
+    console.error("[stripePostForm] invalid_json", {
+      path,
+      status: res.status,
+      body: text,
+    });
     throw new Error(`stripe_invalid_json:${res.status}:${text}`);
   }
 
   if (!res.ok) {
     const msg = data?.error?.message || data?.error?.code || `stripe_error_${res.status}`;
+    console.error("[stripePostForm] stripe_error", {
+      path,
+      status: res.status,
+      message: msg,
+      error: data?.error || null,
+    });
     throw new Error(msg);
   }
 
@@ -90,6 +116,8 @@ async function stripePostForm<T>(env: Env, path: string, form: URLSearchParams):
 }
 
 async function stripeGetJson<T>(env: Env, path: string): Promise<T> {
+  console.log("[stripeGetJson] request", { path });
+
   const res = await fetch(`https://api.stripe.com${path}`, {
     method: "GET",
     headers: {
@@ -98,16 +126,35 @@ async function stripeGetJson<T>(env: Env, path: string): Promise<T> {
   });
 
   const text = await res.text();
+
+  console.log("[stripeGetJson] response", {
+    path,
+    status: res.status,
+    ok: res.ok,
+    body: text,
+  });
+
   let data: any = null;
 
   try {
     data = text ? JSON.parse(text) : null;
   } catch {
+    console.error("[stripeGetJson] invalid_json", {
+      path,
+      status: res.status,
+      body: text,
+    });
     throw new Error(`stripe_invalid_json:${res.status}:${text}`);
   }
 
   if (!res.ok) {
     const msg = data?.error?.message || data?.error?.code || `stripe_error_${res.status}`;
+    console.error("[stripeGetJson] stripe_error", {
+      path,
+      status: res.status,
+      message: msg,
+      error: data?.error || null,
+    });
     throw new Error(msg);
   }
 
@@ -367,35 +414,51 @@ export async function upgradeStripeSubscriptionToYearly(
   let subscriptionId = String(lic?.stripe_subscription_id || "").trim();
   const customerId = String(lic?.stripe_customer_id || "").trim();
 
+  console.log("[upgrade-yearly] start", {
+    userId,
+    license: lic,
+  });
+
   if (!subscriptionId && customerId) {
     subscriptionId = (await findLatestSubscriptionIdForCustomer(env, customerId)) || "";
   }
 
-  if (!subscriptionId) return { ok: false, reason: "no_stripe_subscription" };
+  if (!subscriptionId) {
+    console.error("[upgrade-yearly] no subscription id", { userId, customerId });
+    return { ok: false, reason: "no_stripe_subscription" };
+  }
 
   const subscription = await stripeGetSubscriptionById(env, subscriptionId);
-  if (!subscription) return { ok: false, reason: "no_stripe_subscription" };
+  if (!subscription) {
+    console.error("[upgrade-yearly] subscription not found", { userId, subscriptionId });
+    return { ok: false, reason: "no_stripe_subscription" };
+  }
 
   const itemId = String(subscription.items?.data?.[0]?.id || "").trim();
-  if (!itemId) return { ok: false, reason: "subscription_item_missing" };
-  if (!env.STRIPE_PRICE_ID_YEARLY?.trim()) return { ok: false, reason: "missing_yearly_price_id" };
+  if (!itemId) {
+    console.error("[upgrade-yearly] subscription item missing", { userId, subscriptionId, subscription });
+    return { ok: false, reason: "subscription_item_missing" };
+  }
+
+  if (!env.STRIPE_PRICE_ID_YEARLY?.trim()) {
+    console.error("[upgrade-yearly] missing yearly price id");
+    return { ok: false, reason: "missing_yearly_price_id" };
+  }
 
   const form = new URLSearchParams();
   form.set("items[0][id]", itemId);
   form.set("items[0][price]", env.STRIPE_PRICE_ID_YEARLY);
   form.set("cancel_at_period_end", "false");
+  form.set("proration_behavior", "always_invoice");
+  form.set("payment_behavior", "error_if_incomplete");
 
-  const status = String(subscription.status || "").trim().toLowerCase();
-  const trialEnd = Number(subscription.trial_end || 0);
-  const nowSeconds = Math.floor(Date.now() / 1000);
-
-  if (status === "trialing" && trialEnd > nowSeconds) {
-    form.set("proration_behavior", "none");
-    form.set("trial_end", String(trialEnd));
-  } else {
-    form.set("proration_behavior", "create_prorations");
-    form.set("billing_cycle_anchor", "now");
-  }
+  console.log("[upgrade-yearly] update payload", {
+    userId,
+    subscriptionId,
+    itemId,
+    yearlyPriceId: env.STRIPE_PRICE_ID_YEARLY,
+    payload: Object.fromEntries(form.entries()),
+  });
 
   const updated = await stripePostForm<StripeSubscriptionLike>(
     env,
@@ -403,8 +466,23 @@ export async function upgradeStripeSubscriptionToYearly(
     form,
   );
 
+  console.log("[upgrade-yearly] stripe updated", {
+    userId,
+    subscriptionId,
+    updatedStatus: updated.status,
+    updatedCancelAtPeriodEnd: updated.cancel_at_period_end,
+    updatedCurrentPeriodEnd: updated.current_period_end,
+  });
+
   const upsertResult = await upsertLicenseFromStripeSubscription(env, updated);
-  if (!upsertResult.ok) return { ok: false, reason: upsertResult.reason };
+  if (!upsertResult.ok) {
+    console.error("[upgrade-yearly] upsert failed", {
+      userId,
+      subscriptionId,
+      reason: upsertResult.reason,
+    });
+    return { ok: false, reason: upsertResult.reason };
+  }
 
   await env.creatorrr_db
     .prepare(`
@@ -414,6 +492,8 @@ export async function upgradeStripeSubscriptionToYearly(
     `)
     .bind(userId, subscriptionId, nowIso())
     .run();
+
+  console.log("[upgrade-yearly] success", { userId, subscriptionId });
 
   return { ok: true };
 }
@@ -423,48 +503,12 @@ export async function downgradeStripeSubscriptionToMonthly(
   userId: string,
   lic: LicenseRow | null,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
-  let subscriptionId = String(lic?.stripe_subscription_id || "").trim();
-  const customerId = String(lic?.stripe_customer_id || "").trim();
+  console.warn("[downgrade-monthly] unsupported custom downgrade flow", {
+    userId,
+    license: lic,
+  });
 
-  if (!subscriptionId && customerId) {
-    subscriptionId = (await findLatestSubscriptionIdForCustomer(env, customerId)) || "";
-  }
-
-  if (!subscriptionId) return { ok: false, reason: "no_stripe_subscription" };
-
-  const subscription = await stripeGetSubscriptionById(env, subscriptionId);
-  if (!subscription) return { ok: false, reason: "no_stripe_subscription" };
-
-  const itemId = String(subscription.items?.data?.[0]?.id || "").trim();
-  if (!itemId) return { ok: false, reason: "subscription_item_missing" };
-  if (!env.STRIPE_PRICE_ID_MONTHLY?.trim()) return { ok: false, reason: "missing_monthly_price_id" };
-
-  const form = new URLSearchParams();
-  form.set("items[0][id]", itemId);
-  form.set("items[0][price]", env.STRIPE_PRICE_ID_MONTHLY);
-  form.set("cancel_at_period_end", "false");
-  form.set("proration_behavior", "none");
-  form.set("billing_cycle_anchor", "unchanged");
-
-  const updated = await stripePostForm<StripeSubscriptionLike>(
-    env,
-    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
-    form,
-  );
-
-  const upsertResult = await upsertLicenseFromStripeSubscription(env, updated);
-  if (!upsertResult.ok) return { ok: false, reason: upsertResult.reason };
-
-  await env.creatorrr_db
-    .prepare(`
-      UPDATE licenses
-      SET stripe_subscription_id=?2, updated_at=?3
-      WHERE user_id=?1
-    `)
-    .bind(userId, subscriptionId, nowIso())
-    .run();
-
-  return { ok: true };
+  return { ok: false, reason: "unsupported_custom_downgrade_flow" };
 }
 
 export async function updateStripeSubscriptionAutoRenew(

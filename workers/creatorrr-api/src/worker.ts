@@ -973,53 +973,73 @@ export default {
       }
     }
 
-    if (req.method === "POST" && url.pathname === "/stripe/subscription/auto-renew") {
-      const cfgErr = requireStripePortalConfig(req, env);
-      if (cfgErr) return cfgErr;
+if (req.method === "POST" && url.pathname === "/stripe/subscription/auto-renew") {
+  const cfgErr = requireStripePortalConfig(req, env);
+  if (cfgErr) return cfgErr;
 
-      const auth = await requireAuth(req, env);
-      if (!auth.ok) return auth.response;
+  const auth = await requireAuth(req, env);
+  if (!auth.ok) return auth.response;
 
-      const body = await readJson<{ enabled?: boolean }>(req);
-      if (!body || typeof body.enabled !== "boolean") return bad(req, "invalid_input", 400);
+  const body = await readJson<{ enabled?: boolean }>(req);
+  if (!body || typeof body.enabled !== "boolean") return bad(req, "invalid_input", 400);
 
-      let lic = await getLicenseRow(env, auth.ctx.userId);
+  let lic = await getLicenseRow(env, auth.ctx.userId);
 
-      if (env.STRIPE_SECRET_KEY?.trim()) {
-        try {
-          lic = await refreshLicenseFromStripe(env, auth.ctx.userId, lic);
-        } catch (err) {
-          console.error("[auto-renew] stripe sync failed", {
-            userId: auth.ctx.userId,
-            error: err instanceof Error ? err.message : "stripe_sync_error",
-          });
-        }
-      }
+  console.log("[auto-renew] start", {
+    userId: auth.ctx.userId,
+    requestedEnabled: body.enabled,
+    lic,
+  });
 
-      const updated = await updateStripeSubscriptionAutoRenew(env, auth.ctx.userId, lic, body.enabled);
-
-      if (!updated.ok) {
-        return bad(req, updated.reason, 400, {
-          message: "No Stripe subscription found yet for this account.",
-        });
-      }
-
-      let freshLic = await getLicenseRow(env, auth.ctx.userId);
-      if (env.STRIPE_SECRET_KEY?.trim()) {
-        try {
-          freshLic = await refreshLicenseFromStripe(env, auth.ctx.userId, freshLic);
-        } catch (err) {
-          console.error("[auto-renew] post-update stripe sync failed", {
-            userId: auth.ctx.userId,
-            error: err instanceof Error ? err.message : "stripe_sync_error",
-          });
-        }
-      }
-      const user = await getUserById(env, auth.ctx.userId);
-      if (!user) return bad(req, "user_not_found", 404);
-
-      return json(req, { ok: true, ...makeAccountView(user, freshLic) });
+  if (env.STRIPE_SECRET_KEY?.trim()) {
+    try {
+      lic = await refreshLicenseFromStripe(env, auth.ctx.userId, lic);
+      console.log("[auto-renew] pre-refresh ok", {
+        userId: auth.ctx.userId,
+        lic,
+      });
+    } catch (err) {
+      console.error("[auto-renew] pre-refresh failed", {
+        userId: auth.ctx.userId,
+        error: err instanceof Error ? err.message : "stripe_sync_error",
+      });
     }
+  }
+
+  const updated = await updateStripeSubscriptionAutoRenew(env, auth.ctx.userId, lic, body.enabled);
+
+  if (!updated.ok) {
+    console.error("[auto-renew] update failed", {
+      userId: auth.ctx.userId,
+      reason: updated.reason,
+    });
+    return bad(req, updated.reason, 400, {
+      message: "No Stripe subscription found yet for this account.",
+    });
+  }
+
+  let freshLic = await getLicenseRow(env, auth.ctx.userId);
+
+  if (env.STRIPE_SECRET_KEY?.trim()) {
+    try {
+      freshLic = await refreshLicenseFromStripe(env, auth.ctx.userId, freshLic);
+      console.log("[auto-renew] post-refresh ok", {
+        userId: auth.ctx.userId,
+        freshLic,
+      });
+    } catch (err) {
+      console.error("[auto-renew] post-refresh failed", {
+        userId: auth.ctx.userId,
+        error: err instanceof Error ? err.message : "stripe_sync_error",
+      });
+    }
+  }
+
+  const user = await getUserById(env, auth.ctx.userId);
+  if (!user) return bad(req, "user_not_found", 404);
+
+  return json(req, { ok: true, ...makeAccountView(user, freshLic) });
+}
 
     return bad(req, "not_found", 404);
   },

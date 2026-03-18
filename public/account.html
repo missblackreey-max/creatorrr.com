@@ -1662,15 +1662,14 @@
         const data = await apiPost("/stripe/subscription/downgrade-monthly", {}, token);
         renderAccount(data);
         renderPlans(data);
-        setSuccess("Switched to monthly. Monthly renewal will continue after your current yearly period ends.");
+        setSuccess("Switched to monthly.");
       } catch (err) {
-        const status = err && typeof err === "object" ? err.status : undefined;
-        const code = err && typeof err === "object" ? err.code || err.payload?.error : "";
-        if (status === 409 || code === "yearly_subscription_required") {
-          await refreshCurrentAccountSilently();
-        }
         const message = err instanceof Error ? err.message : "Could not switch to monthly.";
-        setError(message);
+        if (message.includes("unsupported_custom_downgrade_flow")) {
+          setError("Switching from yearly to monthly after the current yearly period is not implemented in the custom billing API yet. Use Manage subscription in Stripe for now.");
+        } else {
+          setError(message);
+        }
       } finally {
         setBusy(false);
       }
