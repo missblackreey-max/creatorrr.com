@@ -600,6 +600,17 @@ export async function scheduleStripeSubscriptionIntervalChange(
   return { ok: true };
 }
 
+async function releaseStripeSubscriptionSchedule(
+  env: Env,
+  scheduleId: string,
+): Promise<void> {
+  await stripePostForm<Record<string, unknown>>(
+    env,
+    `/v1/subscription_schedules/${encodeURIComponent(scheduleId)}/release`,
+    new URLSearchParams(),
+  );
+}
+
 export async function updateStripeSubscriptionAutoRenew(
   env: Env,
   userId: string,
@@ -615,44 +626,71 @@ export async function updateStripeSubscriptionAutoRenew(
 
   if (!subscriptionId) return { ok: false, reason: "no_stripe_subscription" };
 
-  const currentSubscription = await stripeGetSubscriptionById(env, subscriptionId);
+  let currentSubscription = await stripeGetSubscriptionById(env, subscriptionId);
   if (!currentSubscription) return { ok: false, reason: "no_stripe_subscription" };
 
-  const form = makeStripeAutoRenewUpdateForm(currentSubscription, enabled);
-  if (!form) return { ok: false, reason: "missing_current_period_end" };
-
-  const updatedSubscription = await stripePostForm<StripeSubscriptionLike>(
-    env,
-    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
-    form,
-  );
-
-  const upsertResult = await upsertLicenseFromStripeSubscription(env, updatedSubscription);
-  if (!upsertResult.ok) return { ok: false, reason: upsertResult.reason };
-
-  await env.creatorrr_db
-    .prepare(`
-      UPDATE licenses
-      SET stripe_subscription_id=?2, updated_at=?3
-      WHERE user_id=?1
-    `)
-    .bind(userId, subscriptionId, nowIso())
-    .run();
-
-  // If auto-renew gets turned back on and the user had already selected
-  // a future renewal interval, re-apply that scheduled renewal explicitly.
+  const scheduleId = extractScheduleId(currentSubscription);
+  const scheduledInterval = String(lic?.scheduled_billing_interval || "").trim().toLowerCase();
   const currentInterval = String(
-    updatedSubscription.items?.data?.[0]?.price?.recurring?.interval || "",
-  )
-    .trim()
-    .toLowerCase();
+    currentSubscription.items?.data?.[0]?.price?.recurring?.interval || "",
+  ).trim().toLowerCase();
 
-  const scheduledInterval = String(lic?.scheduled_billing_interval || "")
-    .trim()
-    .toLowerCase();
+  if (!enabled) {
+    if (scheduleId) {
+      await releaseStripeSubscriptionSchedule(env, scheduleId);
+
+      currentSubscription = await stripeGetSubscriptionById(env, subscriptionId);
+      if (!currentSubscription) return { ok: false, reason: "no_stripe_subscription" };
+    }
+
+    const disableForm = makeStripeAutoRenewUpdateForm(currentSubscription, false);
+    if (!disableForm) return { ok: false, reason: "missing_current_period_end" };
+
+    const updatedSubscription = await stripePostForm<StripeSubscriptionLike>(
+      env,
+      `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+      disableForm,
+    );
+
+    const upsertResult = await upsertLicenseFromStripeSubscription(env, updatedSubscription);
+    if (!upsertResult.ok) return { ok: false, reason: upsertResult.reason };
+
+    await env.creatorrr_db
+      .prepare(`
+        UPDATE licenses
+        SET stripe_subscription_id=?2, updated_at=?3
+        WHERE user_id=?1
+      `)
+      .bind(userId, subscriptionId, nowIso())
+      .run();
+
+    return { ok: true };
+  }
+
+  if (hasStripeSubscriptionCancelAt(currentSubscription)) {
+    const enableForm = makeStripeAutoRenewUpdateForm(currentSubscription, true);
+    if (!enableForm) return { ok: false, reason: "missing_current_period_end" };
+
+    currentSubscription = await stripePostForm<StripeSubscriptionLike>(
+      env,
+      `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+      enableForm,
+    );
+
+    const upsertResult = await upsertLicenseFromStripeSubscription(env, currentSubscription);
+    if (!upsertResult.ok) return { ok: false, reason: upsertResult.reason };
+
+    await env.creatorrr_db
+      .prepare(`
+        UPDATE licenses
+        SET stripe_subscription_id=?2, updated_at=?3
+        WHERE user_id=?1
+      `)
+      .bind(userId, subscriptionId, nowIso())
+      .run();
+  }
 
   if (
-    enabled &&
     (scheduledInterval === "month" || scheduledInterval === "year") &&
     scheduledInterval !== currentInterval
   ) {

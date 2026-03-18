@@ -1044,33 +1044,50 @@ if (req.method === "POST" && url.pathname === "/stripe/subscription/auto-renew")
     });
   }
 
-  const updated = await updateStripeSubscriptionAutoRenew(env, auth.ctx.userId, lic, body.enabled);
-
-  if (!updated.ok) {
-    console.error("[auto-renew] update failed", {
-      userId: auth.ctx.userId,
-      reason: updated.reason,
-    });
-    return bad(req, updated.reason, 400, {
-      message: "No Stripe subscription found yet for this account.",
-    });
-  }
-
-  let freshLic = await getLicenseRow(env, auth.ctx.userId);
-
   try {
-    freshLic = await refreshLicenseFromStripe(env, auth.ctx.userId, freshLic);
+    const updated = await updateStripeSubscriptionAutoRenew(env, auth.ctx.userId, lic, body.enabled);
+
+    if (!updated.ok) {
+      console.error("[auto-renew] update failed", {
+        userId: auth.ctx.userId,
+        reason: updated.reason,
+      });
+
+      return bad(req, updated.reason, 400, {
+        message:
+          updated.reason === "no_stripe_subscription"
+            ? "No Stripe subscription found yet for this account."
+            : updated.reason === "missing_current_period_end"
+              ? "Current billing period end could not be determined."
+              : "Could not update auto-renew.",
+      });
+    }
+
+    let freshLic = await getLicenseRow(env, auth.ctx.userId);
+
+    try {
+      freshLic = await refreshLicenseFromStripe(env, auth.ctx.userId, freshLic);
+    } catch (err) {
+      console.error("[auto-renew] post-refresh failed", {
+        userId: auth.ctx.userId,
+        error: err instanceof Error ? err.message : "stripe_sync_error",
+      });
+    }
+
+    const user = await getUserById(env, auth.ctx.userId);
+    if (!user) return bad(req, "user_not_found", 404);
+
+    return json(req, { ok: true, ...makeAccountView(user, freshLic) });
   } catch (err) {
-    console.error("[auto-renew] post-refresh failed", {
+    const message = err instanceof Error ? err.message : "stripe_auto_renew_failed";
+
+    console.error("[auto-renew] exception", {
       userId: auth.ctx.userId,
-      error: err instanceof Error ? err.message : "stripe_sync_error",
+      message,
     });
+
+    return bad(req, "stripe_auto_renew_failed", 502, { message });
   }
-
-  const user = await getUserById(env, auth.ctx.userId);
-  if (!user) return bad(req, "user_not_found", 404);
-
-  return json(req, { ok: true, ...makeAccountView(user, freshLic) });
 }
 
     return bad(req, "not_found", 404);
