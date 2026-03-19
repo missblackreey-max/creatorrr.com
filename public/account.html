@@ -1350,11 +1350,22 @@
 
       const billingInterval = normalizeBillingInterval(license.billing_interval);
       const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
+      const status = String(license.status || "").trim().toLowerCase();
 
       if (license.in_trial) {
         return formatDateFriendly(
           license.trial_end_at ||
           license.entitled_until ||
+          license.current_period_end ||
+          ""
+        );
+      }
+
+      if (!license.entitled && status === "canceled") {
+        return formatDateFriendly(
+          license.ended_at ||
+          license.subscription_ends_at ||
+          license.cancel_at ||
           license.current_period_end ||
           ""
         );
@@ -1442,6 +1453,7 @@
 
       if (!license.entitled && status === "canceled") {
         const endedAt = formatDateFriendly(
+          license.ended_at ||
           license.subscription_ends_at ||
           license.cancel_at ||
           license.current_period_end ||
