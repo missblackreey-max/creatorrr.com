@@ -1312,19 +1312,11 @@
       const user = account?.user || null;
       const license = account?.license || {};
       const billingInterval = normalizeBillingInterval(license.billing_interval);
-      const nowMs = Date.now();
-      const trialEndMs = Date.parse(license.trial_end_at || "");
-      const periodEndMs = Date.parse(license.current_period_end || "");
-
-      const hasLiveTrial = Number.isFinite(trialEndMs) && trialEndMs > nowMs;
-      const hasLiveSubscriptionPeriod = Number.isFinite(periodEndMs) && periodEndMs > nowMs;
-      const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
-      const isActiveByDates = hasLiveTrial || (hasRecurringPlan && hasLiveSubscriptionPeriod);
 
       if (!user) return "logged_out";
-      if ((license.entitled || isActiveByDates) && (license.in_trial || hasLiveTrial)) return "trial_active";
-      if ((license.entitled || isActiveByDates) && billingInterval === "month") return "monthly_active";
-      if ((license.entitled || isActiveByDates) && billingInterval === "year") return "yearly_active";
+      if (license.entitled && license.in_trial) return "trial_active";
+      if (license.entitled && billingInterval === "month") return "monthly_active";
+      if (license.entitled && billingInterval === "year") return "yearly_active";
       if (!license.entitled) return "no_access";
       return "no_access";
     }
@@ -1358,11 +1350,22 @@
 
       const billingInterval = normalizeBillingInterval(license.billing_interval);
       const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
+      const status = String(license.status || "").trim().toLowerCase();
 
       if (license.in_trial) {
         return formatDateFriendly(
           license.trial_end_at ||
           license.entitled_until ||
+          license.current_period_end ||
+          ""
+        );
+      }
+
+      if (!license.entitled && status === "canceled") {
+        return formatDateFriendly(
+          license.ended_at ||
+          license.subscription_ends_at ||
+          license.cancel_at ||
           license.current_period_end ||
           ""
         );
@@ -1399,13 +1402,8 @@
 
       const billingInterval = normalizeBillingInterval(license.billing_interval);
       const scheduledInterval = normalizeBillingInterval(license.scheduled_billing_interval);
-      const nowMs = Date.now();
-      const trialEndMs = Date.parse(license.trial_end_at || "");
-      const periodEndMs = Date.parse(license.current_period_end || "");
-      const hasLiveTrial = Number.isFinite(trialEndMs) && trialEndMs > nowMs;
-      const hasLiveSubscriptionPeriod = Number.isFinite(periodEndMs) && periodEndMs > nowMs;
       const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
-      const accessActive = Boolean(license.entitled) || hasLiveTrial || (hasRecurringPlan && hasLiveSubscriptionPeriod);
+      const accessActive = Boolean(license.entitled);
       const autoRenewEnabled = Boolean(license.auto_renew_enabled);
       const periodEndText = formatDateFriendly(
         license.current_period_end ||
@@ -1418,7 +1416,7 @@
         ""
       );
 
-      if (accessActive && (license.in_trial || hasLiveTrial)) {
+      if (accessActive && license.in_trial) {
         return `3 day trial active until ${trialEndText}. Besides the locked watermark, you have full access.`;
       }
 
@@ -1443,6 +1441,7 @@
       const billingInterval = normalizeBillingInterval(license.billing_interval);
       const nextBillingInterval = normalizeBillingInterval(license.next_billing_interval);
       const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
+      const status = String(license.status || "").trim().toLowerCase();
 
       if (license.in_trial) {
         return "Next payment: $0. Trial only.";
@@ -1450,6 +1449,18 @@
 
       if (!hasRecurringPlan) {
         return "";
+      }
+
+      if (!license.entitled && status === "canceled") {
+        const endedAt = formatDateFriendly(
+          license.ended_at ||
+          license.subscription_ends_at ||
+          license.cancel_at ||
+          license.current_period_end ||
+          ""
+        );
+        if (endedAt === "-") return "Next payment: $0.";
+        return `Subscription ended ${endedAt}. Next payment: $0.`;
       }
 
       if (!license.auto_renew_enabled) {

@@ -45,15 +45,27 @@ import {
 import { getGoogleIdTokenInfo, getUserIdByGoogleSub, issueWebToken, oauthRedirectToSite } from "./services/oauth-google";
 import { isEmailDeliveryConfigured, issueEmailVerification, issuePasswordReset } from "./services/email";
 
-function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof getLicenseRow>>) {
+export function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof getLicenseRow>>) {
   const entitlement = computeEntitlement(lic);
 
   const status = String(lic?.status || "").trim().toLowerCase();
   const billingInterval = String(lic?.billing_interval || "").trim().toLowerCase();
   const scheduledBillingInterval = String(lic?.scheduled_billing_interval || "").trim().toLowerCase();
+  const accessEnded = status === "canceled" && !entitlement.entitled;
 
   const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
-  const autoRenewEnabled = hasRecurringPlan && status !== "canceling" && !lic?.cancel_at;
+  const autoRenewEnabled = hasRecurringPlan && entitlement.entitled && status !== "canceling" && !lic?.cancel_at;
+  const endedAt = accessEnded
+    ? (
+        lic?.ended_at ||
+        lic?.canceled_at ||
+        lic?.cancel_at ||
+        lic?.current_period_end ||
+        null
+      )
+    : (lic?.ended_at || null);
+  const currentPeriodEnd = accessEnded ? null : (lic?.current_period_end || null);
+  const cancelAt = accessEnded ? null : entitlement.cancel_at;
 
   const nextBillingInterval =
     autoRenewEnabled
@@ -70,7 +82,7 @@ function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof getLicens
   const subscriptionEndsAt =
     autoRenewEnabled
       ? null
-      : (lic?.cancel_at || lic?.current_period_end || entitlement.entitled_until || null);
+      : (accessEnded ? null : (lic?.cancel_at || lic?.current_period_end || entitlement.entitled_until || null));
 
   return {
     user: {
@@ -87,10 +99,11 @@ function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof getLicens
       entitled: entitlement.entitled,
       entitled_until: entitlement.entitled_until,
       in_trial: entitlement.in_trial,
-      cancel_at: entitlement.cancel_at,
+      cancel_at: cancelAt,
+      ended_at: endedAt,
 
       billing_interval: lic?.billing_interval || null,
-      current_period_end: lic?.current_period_end || null,
+      current_period_end: currentPeriodEnd,
       trial_start_at: lic?.trial_start_at || null,
       trial_end_at: lic?.trial_end_at || null,
 
