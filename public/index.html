@@ -69,10 +69,6 @@
       min-height: 74px;
     }
 
-    .nav-left {
-      justify-self: start;
-    }
-
     .nav-auth-pending {
       visibility: hidden;
     }
@@ -161,30 +157,16 @@
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
-      justify-content: flex-start;
-    }
-
-    .nav-account-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .nav-account-link img {
-      width: 24px;
-      height: 24px;
-      border-radius: 8px;
-      object-fit: contain;
-      flex: 0 0 auto;
+      justify-content: flex-end;
     }
 
     .nav-action-slot {
       display: flex;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: flex-end;
       min-width: 290px;
       min-height: 46px;
-      justify-self: start;
+      justify-self: end;
     }
 
     .btn {
@@ -700,7 +682,7 @@
         min-width: 0;
         min-height: 36px;
         width: auto;
-        margin-left: 0;
+        margin-left: auto;
       }
 
       .workflow {
@@ -871,19 +853,13 @@
   </div>
   <header class="site-header">
     <div class="container nav">
-      <div class="nav-action-slot nav-auth-pending nav-left" id="nav-action-slot">
-        <div class="nav-actions" id="nav-actions-logged-out" style="display:none;">
-          <a class="btn btn-secondary header-chip" href="./account.html?intent=login">Log in</a>
-        </div>
-
-        <div class="nav-actions" id="nav-actions-logged-in" style="display:none;">
-          <a class="btn btn-secondary header-chip nav-account-link" href="./account.html?intent=login">
-            <img src="./creatorrr-logo.png" alt="Creatorrr logo" onerror="this.src='./creatorrr-logo_only_32x32.png'">
-            <span>My account</span>
-          </a>
-          <button class="btn btn-primary header-chip" type="button" id="landing-logout-btn">Log out</button>
-        </div>
-      </div>
+      <a class="brand" href="#top">
+        <img src="./creatorrr-logo_only_32x32.png" alt="Creatorrr logo" onerror="this.src='./creatorrr-logo.png'">
+        <span class="brand-copy">
+          <span>Creatorrr</span>
+          <small>From creators, for creators</small>
+        </span>
+      </a>
 
       <nav class="nav-links">
         <a href="#demo">Demo</a>
@@ -892,13 +868,16 @@
         <a class="nav-link-highlight" href="./account.html?intent=trial">3-day free trial</a>
       </nav>
 
-      <a class="brand" href="#top">
-        <img src="./creatorrr-logo_only_32x32.png" alt="Creatorrr logo" onerror="this.src='./creatorrr-logo.png'">
-        <span class="brand-copy">
-          <span>Creatorrr</span>
-          <small>From creators, for creators</small>
-        </span>
-      </a>
+      <div class="nav-action-slot nav-auth-pending" id="nav-action-slot">
+        <div class="nav-actions" id="nav-actions-logged-out" style="display:none;">
+          <a class="btn btn-secondary header-chip" href="./account.html?intent=login">Log in</a>
+        </div>
+
+        <div class="nav-actions" id="nav-actions-logged-in" style="display:none;">
+          <a class="btn btn-secondary header-chip" href="./account.html?intent=login">Account</a>
+          <button class="btn btn-primary header-chip" type="button" id="landing-logout-btn">Log out</button>
+        </div>
+      </div>
     </div>
   </header>
 
