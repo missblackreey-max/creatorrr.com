@@ -12,6 +12,7 @@ export interface Env {
   RESEND_FROM_NAME?: string;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
+  GOOGLE_OAUTH_ENABLED?: string;
 }
 
 export type LicenseRow = {

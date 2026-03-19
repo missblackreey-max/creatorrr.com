@@ -121,6 +121,10 @@ export function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof ge
   };
 }
 
+function isGoogleOAuthEnabled(env: Env): boolean {
+  return String(env.GOOGLE_OAUTH_ENABLED || "").trim().toLowerCase() === "true";
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
@@ -170,6 +174,8 @@ export default {
     }
 
     if (req.method === "GET" && (url.pathname === "/auth/google/start" || url.pathname === "/auth/google")) {
+      if (!isGoogleOAuthEnabled(env)) return bad(req, "not_found", 404);
+
       const clientId = String(env.GOOGLE_CLIENT_ID || "").trim();
       const clientSecret = String(env.GOOGLE_CLIENT_SECRET || "").trim();
       if (!clientId || !clientSecret) return bad(req, "google_oauth_not_configured", 500);
@@ -221,6 +227,10 @@ export default {
     }
 
     if (req.method === "GET" && url.pathname === "/auth/google/callback") {
+      if (!isGoogleOAuthEnabled(env)) {
+        return redirect(req, oauthRedirectToSite(env, "login", { oauth_error: "not_found" }));
+      }
+
       const clientId = String(env.GOOGLE_CLIENT_ID || "").trim();
       const clientSecret = String(env.GOOGLE_CLIENT_SECRET || "").trim();
       if (!clientId || !clientSecret) {
