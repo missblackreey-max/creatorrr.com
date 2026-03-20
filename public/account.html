@@ -295,6 +295,12 @@
       text-align: center;
     }
 
+    .account-note a {
+      color: var(--gold-1);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
     .auth-copy {
       margin-bottom: 18px;
       max-width: 620px;
@@ -899,6 +905,9 @@
         </div>
 
         <div class="plans-grid" id="plans-grid"></div>
+        <p class="account-note">
+          Paid plans renew automatically by default until you turn auto-renew off. The free 3-day trial does not require a card and does not auto-convert to paid access. By starting a paid plan, you agree to the <a href="./terms.html">Terms of Use</a>, <a href="./privacy.html">Privacy Policy</a>, and <a href="./refunds.html">Refund Policy</a>.
+        </p>
       </section>
 
       <section class="card initially-hidden" id="downloads-section">
@@ -913,13 +922,13 @@
           <div class="platform-card">
             <strong>Windows</strong>
             <span>Current version v1.0.0 for Windows 11 and later</span>
-            <a class="btn btn-primary" href="./Contentorrr-Setup-v1.0.0.exe">Download .exe</a>
+            <a class="btn btn-primary" id="download-windows" href="/Contentorrr-Setup-v1.0.0.exe">Download .exe</a>
           </div>
 
           <div class="platform-card">
             <strong>macOS (Apple Silicon)</strong>
             <span>Current version v1.0.0 for macOS</span>
-            <a class="btn btn-primary" href="./Contentorrr-v1.0.0.dmg">Download .dmg</a>
+            <a class="btn btn-primary" id="download-macos" href="/Contentorrr-v1.0.0.dmg">Download .dmg</a>
           </div>
         </div>
       </section>
@@ -933,6 +942,8 @@
     const LS_WEB_OAUTH_NONCE = "creatorrr.web.oauth.google.nonce.v1";
 
     const APP_VERSION = "v1.0.0";
+    // TODO: Replace with the final public R2/custom-domain base URL once the installers are uploaded.
+    const INSTALLER_BASE_URL = "";
     const MONTHLY_PRICE_LABEL = "$29.90";
     const YEARLY_PRICE_LABEL = "$239";
 
@@ -987,11 +998,23 @@
     const headerLogout = document.getElementById("header-logout");
 
     const downloadsCopy = document.getElementById("downloads-copy");
+    const downloadWindows = document.getElementById("download-windows");
+    const downloadMacos = document.getElementById("download-macos");
 
     let currentAccount = null;
     let preferredPlan = normalizePlan(preselectParam) || "year";
 
+    const normalizedInstallerBaseUrl = INSTALLER_BASE_URL.replace(/\/+$/, "");
+    const windowsInstallerUrl = normalizedInstallerBaseUrl
+      ? `${normalizedInstallerBaseUrl}/Contentorrr-Setup-${APP_VERSION}.exe`
+      : `/Contentorrr-Setup-${APP_VERSION}.exe`;
+    const macosInstallerUrl = normalizedInstallerBaseUrl
+      ? `${normalizedInstallerBaseUrl}/Contentorrr-${APP_VERSION}.dmg`
+      : `/Contentorrr-${APP_VERSION}.dmg`;
+
     downloadsCopy.textContent = `Current version ${APP_VERSION}.`;
+    downloadWindows.href = windowsInstallerUrl;
+    downloadMacos.href = macosInstallerUrl;
 
     function normalizePlan(value) {
       if (value === "trial") return "trial";
@@ -1579,6 +1602,16 @@
             ${license.auto_renew_enabled ? "Turn auto-renew off" : "Turn auto-renew on"}
           </button>
         `);
+        actions.push(`
+          <button
+            class="btn btn-secondary"
+            type="button"
+            id="action-open-portal"
+            data-busy-sensitive="true"
+          >
+            Manage billing in Stripe
+          </button>
+        `);
       }
 
       accountActions.innerHTML = actions.join("");
@@ -1586,6 +1619,11 @@
       const toggleBtn = document.getElementById("action-toggle-auto-renew");
       if (toggleBtn) {
         toggleBtn.addEventListener("click", toggleAutoRenew);
+      }
+
+      const portalBtn = document.getElementById("action-open-portal");
+      if (portalBtn) {
+        portalBtn.addEventListener("click", openBillingPortal);
       }
     }
 
@@ -1856,6 +1894,28 @@
         setSuccess(nextEnabled ? "Auto-renew is now on." : "Auto-renew is now off.");
       } catch (err) {
         const message = err instanceof Error ? err.message : "Could not update auto-renew.";
+        setError(message);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function openBillingPortal() {
+      clearMessages();
+      setBusy(true);
+      try {
+        const token = getWebToken();
+        if (!token) throw new Error("You are not logged in.");
+
+        setStatus("Opening secure billing portal...");
+        const data = await apiPost("/stripe/portal", {}, token);
+        if (!data?.url) {
+          throw new Error("Billing portal URL missing.");
+        }
+
+        window.location.href = data.url;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Could not open billing portal.";
         setError(message);
       } finally {
         setBusy(false);
