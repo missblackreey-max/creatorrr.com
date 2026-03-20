@@ -295,6 +295,12 @@
       text-align: center;
     }
 
+    .account-note a {
+      color: var(--gold-1);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
     .auth-copy {
       margin-bottom: 18px;
       max-width: 620px;
@@ -899,6 +905,9 @@
         </div>
 
         <div class="plans-grid" id="plans-grid"></div>
+        <p class="account-note">
+          Paid plans renew automatically by default until you turn auto-renew off. The free 3-day trial does not require a card and does not auto-convert to paid access. By starting a paid plan, you agree to the <a href="./terms.html">Terms of Use</a>, <a href="./privacy.html">Privacy Policy</a>, and <a href="./refunds.html">Refund Policy</a>.
+        </p>
       </section>
 
       <section class="card initially-hidden" id="downloads-section">
@@ -1593,6 +1602,16 @@
             ${license.auto_renew_enabled ? "Turn auto-renew off" : "Turn auto-renew on"}
           </button>
         `);
+        actions.push(`
+          <button
+            class="btn btn-secondary"
+            type="button"
+            id="action-open-portal"
+            data-busy-sensitive="true"
+          >
+            Manage billing in Stripe
+          </button>
+        `);
       }
 
       accountActions.innerHTML = actions.join("");
@@ -1600,6 +1619,11 @@
       const toggleBtn = document.getElementById("action-toggle-auto-renew");
       if (toggleBtn) {
         toggleBtn.addEventListener("click", toggleAutoRenew);
+      }
+
+      const portalBtn = document.getElementById("action-open-portal");
+      if (portalBtn) {
+        portalBtn.addEventListener("click", openBillingPortal);
       }
     }
 
@@ -1870,6 +1894,28 @@
         setSuccess(nextEnabled ? "Auto-renew is now on." : "Auto-renew is now off.");
       } catch (err) {
         const message = err instanceof Error ? err.message : "Could not update auto-renew.";
+        setError(message);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function openBillingPortal() {
+      clearMessages();
+      setBusy(true);
+      try {
+        const token = getWebToken();
+        if (!token) throw new Error("You are not logged in.");
+
+        setStatus("Opening secure billing portal...");
+        const data = await apiPost("/stripe/portal", {}, token);
+        if (!data?.url) {
+          throw new Error("Billing portal URL missing.");
+        }
+
+        window.location.href = data.url;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Could not open billing portal.";
         setError(message);
       } finally {
         setBusy(false);
