@@ -812,6 +812,10 @@
                   <button class="text-link" id="forgot-password-link" type="button">Forgot password?</button>
                   <button class="text-link" id="switch-to-signup-link" type="button">No account yet?</button>
                 </div>
+
+                <div class="forgot-actions" id="resend-verification-row" hidden>
+                  <button class="text-link" id="resend-verification-link" type="button">Resend verification email</button>
+                </div>
               </form>
             </div>
 
@@ -993,6 +997,8 @@
     const successBox = document.getElementById("success-box");
 
     const forgotPasswordLink = document.getElementById("forgot-password-link");
+    const resendVerificationRow = document.getElementById("resend-verification-row");
+    const resendVerificationLink = document.getElementById("resend-verification-link");
     const switchToSignupLink = document.getElementById("switch-to-signup-link");
     const backToLoginLink = document.getElementById("back-to-login-link");
     const headerLogout = document.getElementById("header-logout");
@@ -1002,6 +1008,7 @@
     const downloadMacos = document.getElementById("download-macos");
 
     let currentAccount = null;
+    let pendingVerificationEmail = "";
     let preferredPlan = normalizePlan(preselectParam) || "year";
 
     const normalizedInstallerBaseUrl = INSTALLER_BASE_URL.replace(/\/+$/, "");
@@ -1052,6 +1059,7 @@
     }
 
     function showTab(mode) {
+      setPendingVerification("");
       const signupActive = mode === "signup";
       const loginActive = mode === "login";
       const forgotActive = mode === "forgot";
@@ -1078,6 +1086,27 @@
     switchToSignupLink.addEventListener("click", () => showTab("signup"));
     forgotPasswordLink.addEventListener("click", () => showTab("forgot"));
     backToLoginLink.addEventListener("click", () => showTab("login"));
+    resendVerificationLink.addEventListener("click", async () => {
+      clearMessages();
+      setBusy(true);
+      try {
+        const email = pendingVerificationEmail || String(loginEmail.value || "").trim();
+        if (!email) throw new Error("Enter your email first.");
+
+        setStatus("Sending verification email...");
+        const data = await apiPost("/auth/resend-verification", { email });
+        if (!data?.email_delivery_configured) {
+          setError("Email delivery is not configured on this server. Set RESEND_API_KEY and RESEND_FROM_EMAIL in the Worker environment, then try again.");
+          return;
+        }
+
+        setSuccess("We sent a fresh verification email. Check your inbox and spam folder.");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not resend verification email.");
+      } finally {
+        setBusy(false);
+      }
+    });
 
     signupPassword.addEventListener("input", updatePasswordHintVisibility);
     updatePasswordHintVisibility();
@@ -1103,10 +1132,16 @@
       setSuccess("");
     }
 
+    function setPendingVerification(email) {
+      pendingVerificationEmail = String(email || "").trim();
+      resendVerificationRow.hidden = !pendingVerificationEmail;
+    }
+
     function setBusy(isBusy) {
       signupContinue.disabled = isBusy;
       loginContinue.disabled = isBusy;
       forgotContinue.disabled = isBusy;
+      resendVerificationLink.disabled = isBusy || !pendingVerificationEmail;
       if (googleContinue) googleContinue.disabled = isBusy;
       headerLogout.disabled = isBusy;
 
@@ -1267,9 +1302,9 @@
       if (verificationSent) {
         setSuccess("Account created. Please check your inbox and verify your email before logging in.");
       } else if (!emailDeliveryConfigured) {
-        setSuccess("Account created, but email delivery is not configured on this server yet. Set RESEND_API_KEY and RESEND_FROM_EMAIL in the Worker environment, then try logging in to resend verification.");
+        setSuccess("Account created, but email delivery is not configured on this server yet. Set RESEND_API_KEY and RESEND_FROM_EMAIL in the Worker environment, then use resend verification from the login screen.");
       } else {
-        setSuccess("Account created, but we could not send the verification email right now. Please try logging in again to resend verification.");
+        setSuccess("Account created, but we could not send the verification email right now. Use resend verification from the login screen.");
       }
       showTab("login");
       loginEmail.value = email;
@@ -2037,17 +2072,16 @@
       } catch (err) {
         const message = err instanceof Error ? err.message : "Could not log in.";
         const errorCode = err && typeof err === "object" ? err.code || err.payload?.error : "";
-        const emailVerificationSent = !!(err && typeof err === "object" && err.payload && err.payload.email_verification_sent);
         const emailDeliveryConfigured = !!(err && typeof err === "object" && err.payload && err.payload.email_delivery_configured);
         if (message.includes("email not verified") || errorCode === "email_not_verified") {
-          if (emailVerificationSent) {
-            setError("Your email is not verified yet. We sent a fresh verification email. Check your inbox and spam folder.");
-          } else if (!emailDeliveryConfigured) {
+          setPendingVerification(email);
+          if (!emailDeliveryConfigured) {
             setError("Your email is not verified yet, and email delivery is not configured on this server. Set RESEND_API_KEY and RESEND_FROM_EMAIL in the Worker environment, then try again.");
           } else {
-            setError("Your email is not verified yet, and we could not send a new verification email right now. Please try again in a moment or use your previous verification link.");
+            setError("Your email is not verified yet. Check your inbox for the original verification email, or use resend verification below.");
           }
         } else {
+          setPendingVerification("");
           setError(message);
         }
       } finally {

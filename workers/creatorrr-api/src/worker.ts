@@ -537,9 +537,7 @@ export default {
       if (hash !== user.pass_hash) return bad(req, "invalid_credentials", 401);
 
       if (!user.email_verified_at) {
-        const emailVerification = await issueEmailVerification(env, user.id, user.email);
         return bad(req, "email_not_verified", 403, {
-          email_verification_sent: emailVerification.sent,
           email_delivery_configured: isEmailDeliveryConfigured(env),
         });
       }
