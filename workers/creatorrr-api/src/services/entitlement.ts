@@ -1,6 +1,15 @@
 import type { EntitlementView, LicenseRow } from "../types";
 import { parseIsoMs } from "../lib/utils";
 
+export function isActiveFreeLicense(lic: Pick<LicenseRow, "plan" | "status"> | null | undefined): boolean {
+  if (!lic) return false;
+
+  const status = String(lic.status || "").toLowerCase().trim();
+  const plan = String(lic.plan || "").toLowerCase().trim();
+
+  return plan === "free" && status === "active";
+}
+
 export function computeEntitlement(lic: LicenseRow | null): EntitlementView {
   if (!lic) {
     return {
@@ -25,6 +34,8 @@ export function computeEntitlement(lic: LicenseRow | null): EntitlementView {
   const hasLiveSubscriptionWindow = periodEndMs !== null && periodEndMs > nowMs;
   const isRecurring = billingInterval === "month" || billingInterval === "year";
 
+  const freeAccessActive = isActiveFreeLicense(lic);
+
   const inTrial =
     hasLiveTrialWindow &&
     (
@@ -44,7 +55,7 @@ export function computeEntitlement(lic: LicenseRow | null): EntitlementView {
     ) &&
     isRecurring;
 
-  const entitled = inTrial || subscriptionActive;
+  const entitled = freeAccessActive || inTrial || subscriptionActive;
 
   let entitledUntil: string | null = null;
   if (inTrial && lic.trial_end_at) entitledUntil = lic.trial_end_at;
