@@ -35,4 +35,38 @@ describe("makeAccountView", () => {
     expect(result.license.subscription_ends_at).toBeNull();
     expect(result.license.ended_at).toBe("2027-03-19T12:53:08.000Z");
   });
+  it("shows free access as an entitled non-renewing plan", () => {
+    const result = makeAccountView(
+      {
+        id: "user_free",
+        email: "ben@creatorrr.com",
+        pass_salt: "salt",
+        pass_hash: "hash",
+        created_at: "2026-03-20T00:00:00.000Z",
+        updated_at: "2026-03-20T00:00:00.000Z",
+        email_verified_at: "2026-03-20T00:00:00.000Z",
+      },
+      {
+        user_id: "user_free",
+        plan: "free",
+        status: "active",
+        created_at: "2026-03-20T00:00:00.000Z",
+        updated_at: "2026-03-20T00:00:00.000Z",
+        billing_interval: "month",
+        current_period_end: "2026-03-31T23:59:59.000Z",
+        cancel_at: "2026-03-31T23:59:59.000Z",
+        canceled_at: null,
+        ended_at: null,
+      },
+    );
+
+    expect(result.license.plan).toBe("free");
+    expect(result.license.entitled).toBe(true);
+    expect(result.license.auto_renew_enabled).toBe(false);
+    expect(result.license.billing_interval).toBeNull();
+    expect(result.license.current_period_end).toBeNull();
+    expect(result.license.cancel_at).toBeNull();
+    expect(result.license.subscription_ends_at).toBeNull();
+  });
+
 });

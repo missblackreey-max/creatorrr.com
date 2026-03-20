@@ -1,6 +1,7 @@
 import { bad } from "../lib/http";
 import { getBearer, normalizeDeviceId, normalizeEmail, nowIso } from "../lib/utils";
 import { jwtVerify } from "../lib/crypto";
+import { isActiveFreeLicense } from "./entitlement";
 import type { AuthContext, Env, LicenseRow, UserRow } from "../types";
 
 export async function ensureDeviceAllowed(
@@ -26,13 +27,16 @@ export async function ensureDeviceAllowed(
     return { ok: true };
   }
 
+  const lic = await getLicenseRow(env, userId);
+  const hasUnlimitedDevices = isActiveFreeLicense(lic);
+
   const countRow = await env.creatorrr_db
     .prepare("SELECT COUNT(*) as c FROM user_devices WHERE user_id=?1")
     .bind(userId)
     .first<any>();
 
   const c = Number(countRow?.c ?? 0);
-  if (c >= 3) return { ok: false, reason: "device_limit_reached" };
+  if (!hasUnlimitedDevices && c >= 3) return { ok: false, reason: "device_limit_reached" };
 
   await env.creatorrr_db
     .prepare(
