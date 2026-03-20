@@ -52,9 +52,9 @@ describe("makeAccountView", () => {
         status: "active",
         created_at: "2026-03-20T00:00:00.000Z",
         updated_at: "2026-03-20T00:00:00.000Z",
-        billing_interval: null,
-        current_period_end: null,
-        cancel_at: null,
+        billing_interval: "month",
+        current_period_end: "2026-03-31T23:59:59.000Z",
+        cancel_at: "2026-03-31T23:59:59.000Z",
         canceled_at: null,
         ended_at: null,
       },
@@ -63,7 +63,9 @@ describe("makeAccountView", () => {
     expect(result.license.plan).toBe("free");
     expect(result.license.entitled).toBe(true);
     expect(result.license.auto_renew_enabled).toBe(false);
+    expect(result.license.billing_interval).toBeNull();
     expect(result.license.current_period_end).toBeNull();
+    expect(result.license.cancel_at).toBeNull();
     expect(result.license.subscription_ends_at).toBeNull();
   });
 

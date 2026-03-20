@@ -51,11 +51,14 @@ export function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof ge
   const status = String(lic?.status || "").trim().toLowerCase();
   const billingInterval = String(lic?.billing_interval || "").trim().toLowerCase();
   const scheduledBillingInterval = String(lic?.scheduled_billing_interval || "").trim().toLowerCase();
+  const freeAccessActive = entitlement.entitled && entitlement.plan === "free";
   const accessEnded = status === "canceled" && !entitlement.entitled;
 
-  const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
+  const hasRecurringPlan = !freeAccessActive && (billingInterval === "month" || billingInterval === "year");
   const autoRenewEnabled = hasRecurringPlan && entitlement.entitled && status !== "canceling" && !lic?.cancel_at;
-  const endedAt = accessEnded
+  const endedAt = freeAccessActive
+    ? null
+    : accessEnded
     ? (
         lic?.ended_at ||
         lic?.canceled_at ||
@@ -64,8 +67,8 @@ export function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof ge
         null
       )
     : (lic?.ended_at || null);
-  const currentPeriodEnd = accessEnded ? null : (lic?.current_period_end || null);
-  const cancelAt = accessEnded ? null : entitlement.cancel_at;
+  const currentPeriodEnd = freeAccessActive ? null : (accessEnded ? null : (lic?.current_period_end || null));
+  const cancelAt = freeAccessActive ? null : (accessEnded ? null : entitlement.cancel_at);
 
   const nextBillingInterval =
     autoRenewEnabled
@@ -102,19 +105,19 @@ export function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof ge
       cancel_at: cancelAt,
       ended_at: endedAt,
 
-      billing_interval: lic?.billing_interval || null,
+      billing_interval: freeAccessActive ? null : (lic?.billing_interval || null),
       current_period_end: currentPeriodEnd,
       trial_start_at: lic?.trial_start_at || null,
       trial_end_at: lic?.trial_end_at || null,
 
-      scheduled_billing_interval: lic?.scheduled_billing_interval || null,
-      scheduled_change_at: lic?.scheduled_change_at || null,
+      scheduled_billing_interval: freeAccessActive ? null : (lic?.scheduled_billing_interval || null),
+      scheduled_change_at: freeAccessActive ? null : (lic?.scheduled_change_at || null),
 
       auto_renew_enabled: autoRenewEnabled,
 
       next_billing_interval: nextBillingInterval,
       next_payment_at: nextPaymentAt,
-      subscription_ends_at: subscriptionEndsAt,
+      subscription_ends_at: freeAccessActive ? null : subscriptionEndsAt,
 
       can_manage_subscription: false,
     },
