@@ -579,13 +579,59 @@
       border: 1px solid rgba(255,255,255,0.08);
       min-height: 100%;
       position: relative;
+      overflow: hidden;
       text-align: center;
+      transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+    }
+
+    .plan-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 3px;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+      opacity: 0.8;
+      pointer-events: none;
+    }
+
+    .plan-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .plan-card-trial {
+      border-color: rgba(247, 213, 106, 0.28);
+      background:
+        radial-gradient(circle at top left, rgba(247, 213, 106, 0.16), transparent 52%),
+        linear-gradient(180deg, rgba(255, 248, 214, 0.07), rgba(255, 255, 255, 0.03));
+      box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.26),
+        0 0 0 1px rgba(247, 213, 106, 0.08) inset;
+    }
+
+    .plan-card-trial::before {
+      background: linear-gradient(90deg, rgba(247, 213, 106, 0.95), rgba(247, 213, 106, 0.28));
+    }
+
+    .plan-card-trial .plan-name,
+    .plan-card-trial .plan-price {
+      color: var(--gold-1);
+    }
+
+    .plan-card-monthly {
+      background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.03));
     }
 
     .plan-card.recommended {
-      background: rgba(247, 213, 106, 0.08);
+      background:
+        radial-gradient(circle at top right, rgba(247, 213, 106, 0.18), transparent 48%),
+        linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.035));
       border-color: rgba(247, 213, 106, 0.30);
-      box-shadow: 0 12px 28px rgba(184, 137, 42, 0.14);
+      box-shadow: 0 18px 40px rgba(184, 137, 42, 0.14);
+    }
+
+    .plan-card.recommended::before {
+      height: 4px;
+      background: linear-gradient(90deg, rgba(247, 213, 106, 1), rgba(184, 137, 42, 0.72));
     }
 
     .plan-card.preselected {
@@ -596,6 +642,10 @@
     .plan-card.current {
       border-color: rgba(95, 207, 138, 0.28);
       background: rgba(95, 207, 138, 0.06);
+    }
+
+    .plan-card.current::before {
+      background: linear-gradient(90deg, rgba(95, 207, 138, 0.92), rgba(95, 207, 138, 0.24));
     }
 
     .plan-badge-row {
@@ -689,6 +739,18 @@
     .plan-action .btn {
       width: 100%;
       max-width: 260px;
+    }
+
+    .btn-trial {
+      color: var(--gold-1);
+      border-color: rgba(247, 213, 106, 0.34);
+      background: linear-gradient(180deg, rgba(247, 213, 106, 0.16), rgba(184, 137, 42, 0.08));
+      box-shadow: 0 12px 26px rgba(184, 137, 42, 0.12);
+    }
+
+    .btn-trial:hover {
+      border-color: rgba(247, 213, 106, 0.5);
+      background: linear-gradient(180deg, rgba(247, 213, 106, 0.22), rgba(184, 137, 42, 0.12));
     }
 
     .download-grid {
@@ -1807,7 +1869,8 @@
         return `<button class="btn btn-ghost" type="button" disabled>${escapeHtml(action.label)}</button>`;
       }
 
-      return `<button class="btn ${action.primary ? "btn-primary" : "btn-secondary"}" type="button" data-plan-action="${escapeHtml(action.action)}" data-plan-key="${escapeHtml(planKey)}" data-busy-sensitive="true">${escapeHtml(action.label)}</button>`;
+      const buttonClass = planKey === "trial" ? "btn-trial" : (action.primary ? "btn-primary" : "btn-secondary");
+      return `<button class="btn ${buttonClass}" type="button" data-plan-action="${escapeHtml(action.action)}" data-plan-key="${escapeHtml(planKey)}" data-busy-sensitive="true">${escapeHtml(action.label)}</button>`;
     }
 
     function renderPlans(account) {
@@ -1849,9 +1912,11 @@
         const preselected = preferredPlan === plan.key;
         const statusLabel = getCurrentNextPeriodLabel(plan.key, account?.license || {});
         const current = statusLabel === "Current" || statusLabel === "Current & next period";
+        const trialHighlight = plan.key === "trial" && (action.kind === "cta" || current);
+        const monthlyClass = plan.key === "month" ? "plan-card-monthly" : "";
 
         return `
-          <div class="plan-card ${recommended ? "recommended" : ""} ${preselected ? "preselected" : ""} ${current ? "current" : ""}">
+          <div class="plan-card ${trialHighlight ? "plan-card-trial" : ""} ${monthlyClass} ${recommended ? "recommended" : ""} ${preselected ? "preselected" : ""} ${current ? "current" : ""}">
             <div class="plan-badge-row">
               <div class="plan-badge-spacer" aria-hidden="true"></div>
               <div class="plan-badge-status">
