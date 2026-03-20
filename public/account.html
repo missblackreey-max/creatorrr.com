@@ -1447,6 +1447,7 @@
 
       if (!user) return "logged_out";
       if (license.entitled && license.in_trial) return "trial_active";
+      if (license.entitled && String(license.plan || "").trim().toLowerCase() === "free") return "free_active";
       if (license.entitled && billingInterval === "month") return "monthly_active";
       if (license.entitled && billingInterval === "year") return "yearly_active";
       if (!license.entitled) return "no_access";
@@ -1457,6 +1458,7 @@
       const billingInterval = normalizeBillingInterval(license?.billing_interval);
 
       if (license?.in_trial) return "3-day trial";
+      if (String(license?.plan || "").trim().toLowerCase() === "free") return "Free";
       if (billingInterval === "month") return "Monthly";
       if (billingInterval === "year") return "Yearly";
       return "None";
@@ -1491,6 +1493,10 @@
           license.current_period_end ||
           ""
         );
+      }
+
+      if (license.entitled && String(license.plan || "").trim().toLowerCase() === "free") {
+        return "Never";
       }
 
       if (!license.entitled && status === "canceled") {
@@ -1552,6 +1558,10 @@
         return `3 day trial active until ${trialEndText}. Besides the locked watermark, you have full access.`;
       }
 
+      if (accessActive && String(license.plan || "").trim().toLowerCase() === "free") {
+        return "Free access active. No renewal required.";
+      }
+
       if (accessActive && hasRecurringPlan && autoRenewEnabled && scheduledInterval && scheduledInterval !== billingInterval) {
         return `Full access active. ${planDisplayName(billingInterval)} plan is active until ${periodEndText}. Next renewal is set to ${sentenceIntervalLabel(scheduledInterval)}.`;
       }
@@ -1579,6 +1589,9 @@
         return "Next payment: $0. Trial only.";
       }
 
+      if (license.entitled && String(license.plan || "").trim().toLowerCase() === "free") {
+        return "Next payment: $0. Free access.";
+      }
       if (!hasRecurringPlan) {
         return "";
       }
@@ -1758,6 +1771,12 @@
 
       if (state === "trial_active") {
         if (planKey === "trial") return { kind: "current", label: "Current plan" };
+        if (planKey === "month") return { kind: "cta", label: "Buy monthly", action: "checkout-month", primary: preferredPlan === "month" };
+        return { kind: "cta", label: "Buy yearly", action: "checkout-year", primary: preferredPlan === "year" };
+      }
+
+      if (state === "free_active") {
+        if (planKey === "trial") return { kind: "disabled", label: "Included" };
         if (planKey === "month") return { kind: "cta", label: "Buy monthly", action: "checkout-month", primary: preferredPlan === "month" };
         return { kind: "cta", label: "Buy yearly", action: "checkout-year", primary: preferredPlan === "year" };
       }
