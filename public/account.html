@@ -913,13 +913,13 @@
           <div class="platform-card">
             <strong>Windows</strong>
             <span>Current version v1.0.0 for Windows 11 and later</span>
-            <a class="btn btn-primary" href="./Contentorrr-Setup-v1.0.0.exe">Download .exe</a>
+            <a class="btn btn-primary" id="download-windows" href="/Contentorrr-Setup-v1.0.0.exe">Download .exe</a>
           </div>
 
           <div class="platform-card">
             <strong>macOS (Apple Silicon)</strong>
             <span>Current version v1.0.0 for macOS</span>
-            <a class="btn btn-primary" href="./Contentorrr-v1.0.0.dmg">Download .dmg</a>
+            <a class="btn btn-primary" id="download-macos" href="/Contentorrr-v1.0.0.dmg">Download .dmg</a>
           </div>
         </div>
       </section>
@@ -933,6 +933,8 @@
     const LS_WEB_OAUTH_NONCE = "creatorrr.web.oauth.google.nonce.v1";
 
     const APP_VERSION = "v1.0.0";
+    // TODO: Replace with the final public R2/custom-domain base URL once the installers are uploaded.
+    const INSTALLER_BASE_URL = "";
     const MONTHLY_PRICE_LABEL = "$29.90";
     const YEARLY_PRICE_LABEL = "$239";
 
@@ -987,11 +989,23 @@
     const headerLogout = document.getElementById("header-logout");
 
     const downloadsCopy = document.getElementById("downloads-copy");
+    const downloadWindows = document.getElementById("download-windows");
+    const downloadMacos = document.getElementById("download-macos");
 
     let currentAccount = null;
     let preferredPlan = normalizePlan(preselectParam) || "year";
 
+    const normalizedInstallerBaseUrl = INSTALLER_BASE_URL.replace(/\/+$/, "");
+    const windowsInstallerUrl = normalizedInstallerBaseUrl
+      ? `${normalizedInstallerBaseUrl}/Contentorrr-Setup-${APP_VERSION}.exe`
+      : `/Contentorrr-Setup-${APP_VERSION}.exe`;
+    const macosInstallerUrl = normalizedInstallerBaseUrl
+      ? `${normalizedInstallerBaseUrl}/Contentorrr-${APP_VERSION}.dmg`
+      : `/Contentorrr-${APP_VERSION}.dmg`;
+
     downloadsCopy.textContent = `Current version ${APP_VERSION}.`;
+    downloadWindows.href = windowsInstallerUrl;
+    downloadMacos.href = macosInstallerUrl;
 
     function normalizePlan(value) {
       if (value === "trial") return "trial";
