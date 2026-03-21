@@ -763,6 +763,22 @@
       background: linear-gradient(90deg, rgba(95, 207, 138, 0.92), rgba(95, 207, 138, 0.24));
     }
 
+    .plan-card.plan-card-armed {
+      border-color: rgba(247, 213, 106, 0.68);
+      background:
+        radial-gradient(circle at top, rgba(247, 213, 106, 0.16), transparent 56%),
+        linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03));
+      box-shadow:
+        0 22px 50px rgba(0, 0, 0, 0.22),
+        0 0 0 1px rgba(247, 213, 106, 0.2) inset;
+      transform: translateY(-4px);
+    }
+
+    .plan-card.plan-card-armed::before {
+      height: 4px;
+      background: linear-gradient(90deg, rgba(247, 213, 106, 1), rgba(184, 137, 42, 0.72));
+    }
+
     .plan-badge-row {
       display: grid;
       grid-template-columns: minmax(88px, 1fr) auto minmax(88px, 1fr);
