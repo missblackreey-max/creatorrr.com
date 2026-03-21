@@ -818,6 +818,7 @@
       font-weight: 760;
       letter-spacing: 0.2px;
       text-transform: uppercase;
+      white-space: nowrap;
     }
 
     .plan-badge.gold {
@@ -1029,6 +1030,10 @@
       .download-head {
         --download-logo-size: 64px;
         gap: 14px;
+      }
+
+      .download-head::after {
+        display: none;
       }
 
       .download-logo {
