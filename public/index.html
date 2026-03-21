@@ -946,8 +946,7 @@
         </div>
 
         <div class="nav-actions" id="nav-actions-logged-in" style="display:none;">
-          <a class="btn btn-secondary header-chip" href="./account.html?intent=login">Account</a>
-          <button class="btn btn-primary header-chip" type="button" id="landing-logout-btn">Log out</button>
+          <a class="btn btn-secondary header-chip" href="./account.html">Account</a>
         </div>
       </div>
     </div>
@@ -1231,7 +1230,6 @@
 
     const loggedOutActions = document.getElementById("nav-actions-logged-out");
     const loggedInActions = document.getElementById("nav-actions-logged-in");
-    const logoutBtn = document.getElementById("landing-logout-btn");
 
     const navActionSlot = document.getElementById("nav-action-slot");
 
@@ -1297,28 +1295,6 @@
         setLoggedInHeader(false);
       }
     }
-
-    async function logoutNow() {
-      const token = getWebToken();
-
-      try {
-        if (token) {
-          await fetch(`${API_BASE}/auth/logout`, {
-            method: "POST",
-            headers: {
-              authorization: `Bearer ${token}`
-            }
-          });
-        }
-      } catch (_) {
-      }
-
-      safeLocalStorageRemove(LS_WEB_TOKEN);
-      setLoggedInHeader(false);
-      window.location.href = "./index.html";
-    }
-
-    logoutBtn.addEventListener("click", logoutNow);
 
     bootstrapPreviewGate();
     document.getElementById("year").textContent = new Date().getFullYear();
