@@ -111,12 +111,13 @@
       text-transform: uppercase;
     }
 
-    .header-actions {
+    .header-action-slot {
       display: flex;
       align-items: center;
       justify-content: flex-end;
-      gap: 10px;
-      flex-wrap: wrap;
+      min-width: 290px;
+      min-height: 46px;
+      margin-left: auto;
     }
 
     .btn {
@@ -142,14 +143,14 @@
       font-weight: 720;
     }
 
-    .header-actions .btn.header-chip {
+    .header-action-slot .btn.header-chip {
       border-color: rgba(255, 255, 255, 0.2);
       color: #f4f4f6;
       background: linear-gradient(180deg, rgba(18, 20, 24, 0.95), rgba(9, 10, 12, 0.92));
       box-shadow: 0 7px 18px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(247, 213, 106, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.22);
     }
 
-    .header-actions .btn.header-chip:hover {
+    .header-action-slot .btn.header-chip:hover {
       border-color: rgba(247, 213, 106, 0.48);
       box-shadow: 0 10px 24px rgba(0, 0, 0, 0.44), 0 0 0 1px rgba(247, 213, 106, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.26);
     }
@@ -1046,19 +1047,20 @@
         flex-wrap: wrap;
       }
 
-      .header-actions {
-        width: 100%;
-        justify-content: flex-end;
+      .header-action-slot {
+        width: auto;
+        min-width: 0;
+        min-height: 36px;
       }
 
-      .header-actions .btn {
+      .header-action-slot .btn {
         width: auto;
         min-height: 38px;
         padding: 0 14px;
         font-size: 13px;
       }
 
-      .header-actions .btn.header-chip {
+      .header-action-slot .btn.header-chip {
         min-height: 36px;
         padding: 0 12px;
         font-size: 14px;
@@ -1093,8 +1095,7 @@
         </span>
       </a>
 
-      <div class="header-actions">
-        <a class="btn btn-secondary header-chip" href="./index.html">Go back</a>
+      <div class="header-action-slot">
         <button class="btn btn-secondary header-chip initially-hidden" id="header-logout" type="button">Log out</button>
       </div>
     </div>
