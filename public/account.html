@@ -880,9 +880,9 @@
     }
 
     .btn-plan-armed {
+      border-width: 2px;
       border-color: rgba(247, 213, 106, 0.82);
-      outline: 2px solid rgba(247, 213, 106, 0.28);
-      outline-offset: 1px;
+      outline: none;
     }
 
     .plan-inline-consent {
@@ -1320,9 +1320,11 @@
     const downloadMacos = document.getElementById("download-macos");
     const planConsentArea = document.getElementById("plan-consent-area");
 
+    const initialIntentPlan = normalizePlan(preselectParam);
+
     let currentAccount = null;
-    let preferredPlan = normalizePlan(preselectParam) || "year";
-    let selectedConsentPlanKey = null;
+    let preferredPlan = initialIntentPlan || "year";
+    let selectedConsentPlanKey = initialIntentPlan;
 
     const windowsInstallerUrl = INSTALLER_WINDOWS_URL;
     const macosInstallerUrl = INSTALLER_MACOS_URL;
@@ -2242,7 +2244,7 @@
         const armed = activeConsentPlanKey === plan.key;
 
         return `
-          <div class="plan-card ${trialHighlight ? "plan-card-trial" : ""} ${monthlyClass} ${recommended ? "recommended" : ""} ${preselected ? "preselected" : ""} ${current ? "current" : ""} ${armed ? "plan-card-armed" : ""}">
+          <div class="plan-card ${trialHighlight ? "plan-card-trial" : ""} ${monthlyClass} ${recommended ? "recommended" : ""} ${preselected ? "preselected" : ""} ${current ? "current" : ""}" data-plan-card="true" data-plan-key="${escapeHtml(plan.key)}">
             <div class="plan-badge-row">
               <div class="plan-badge-spacer" aria-hidden="true"></div>
               <div class="plan-badge-status">
@@ -2270,6 +2272,25 @@
 
       bindInlineConsentInput(account);
 
+      plansGrid.querySelectorAll("[data-plan-card]").forEach((card) => {
+        card.addEventListener("click", (event) => {
+          if (event.target instanceof Element && event.target.closest("button, a, input, label")) return;
+          const planKey = card.getAttribute("data-plan-key");
+          if (!planKey) return;
+
+          preferredPlan = planKey;
+          const planAction = getPlanAction(planKey, currentAccount);
+          selectedConsentPlanKey = !hasAcceptedCurrentLegalTerms(currentAccount) && isLegalConsentAction(planAction)
+            ? planKey
+            : null;
+
+          clearMessages();
+          renderPlans(currentAccount);
+          const consentInput = getLegalConsentInput();
+          if (consentInput) consentInput.focus();
+        });
+      });
+
       plansGrid.querySelectorAll("[data-plan-action]").forEach((el) => {
         el.addEventListener("click", async () => {
           const action = el.getAttribute("data-plan-action");
@@ -2278,6 +2299,7 @@
           const needsInlineConsent = !hasAcceptedCurrentLegalTerms(currentAccount) && isLegalConsentAction(planAction);
 
           if (needsInlineConsent && selectedConsentPlanKey !== planKey) {
+            preferredPlan = String(planKey || preferredPlan);
             selectedConsentPlanKey = planKey;
             clearMessages();
             renderPlans(currentAccount);
