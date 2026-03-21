@@ -60,6 +60,26 @@ export type EntitlementView = {
   cancel_at: string | null;
 };
 
+export type LegalAcceptanceRow = {
+  id: string;
+  user_id: string;
+  terms_version: string;
+  privacy_version: string;
+  refund_version: string;
+  accepted_at: string;
+  acceptance_context: string;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  created_at: string;
+};
+
+export type LegalAcceptancePayload = {
+  accepted?: boolean;
+  terms_version?: string;
+  privacy_version?: string;
+  refund_version?: string;
+};
+
 export type AuthContext = {
   userId: string;
   deviceId: string;

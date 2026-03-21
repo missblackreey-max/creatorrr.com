@@ -13,12 +13,17 @@ import {
   uuid,
 } from "./lib/utils";
 import { jwtSign, makeOpaqueSecret, makeOpaqueToken, makeSalt, pbkdf2, sha256Hex } from "./lib/crypto";
-import type { Env, StripeSubscriptionLike, UserRow } from "./types";
+import type { Env, LegalAcceptancePayload, StripeSubscriptionLike, UserRow } from "./types";
 import { computeEntitlement } from "./services/entitlement";
 import {
   currentDeviceTokenVersion,
+  createLegalAcceptance,
+  CURRENT_PRIVACY_VERSION,
+  CURRENT_REFUND_VERSION,
+  CURRENT_TERMS_VERSION,
   ensureDeviceAllowed,
   getLicenseRow,
+  hasAcceptedCurrentLegalVersions,
   getUserByEmail,
   getUserById,
   getUserByResetTokenHash,
@@ -45,7 +50,11 @@ import {
 import { getGoogleIdTokenInfo, getUserIdByGoogleSub, issueWebToken, oauthRedirectToSite } from "./services/oauth-google";
 import { isEmailDeliveryConfigured, issueEmailVerification, issuePasswordReset } from "./services/email";
 
-export function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof getLicenseRow>>) {
+export function makeAccountView(
+  user: UserRow,
+  lic: Awaited<ReturnType<typeof getLicenseRow>>,
+  legal: { hasAcceptedCurrentVersions: boolean } = { hasAcceptedCurrentVersions: false },
+) {
   const entitlement = computeEntitlement(lic);
 
   const status = String(lic?.status || "").trim().toLowerCase();
@@ -121,7 +130,81 @@ export function makeAccountView(user: UserRow, lic: Awaited<ReturnType<typeof ge
 
       can_manage_subscription: false,
     },
+    legal: {
+      has_accepted_current_versions: legal.hasAcceptedCurrentVersions,
+      current_terms_version: CURRENT_TERMS_VERSION,
+      current_privacy_version: CURRENT_PRIVACY_VERSION,
+      current_refund_version: CURRENT_REFUND_VERSION,
+    },
   };
+}
+
+function getRequestIpAddress(req: Request): string | null {
+  const value = String(req.headers.get("CF-Connecting-IP") || req.headers.get("x-forwarded-for") || "").trim();
+  if (!value) return null;
+  return value.slice(0, 255);
+}
+
+function getRequestUserAgent(req: Request): string | null {
+  const value = String(req.headers.get("user-agent") || "").trim();
+  if (!value) return null;
+  return value.slice(0, 1024);
+}
+
+function hasMatchingCurrentLegalVersions(acceptance: LegalAcceptancePayload | null | undefined): boolean {
+  return (
+    acceptance?.accepted === true &&
+    String(acceptance?.terms_version || "").trim() === CURRENT_TERMS_VERSION &&
+    String(acceptance?.privacy_version || "").trim() === CURRENT_PRIVACY_VERSION &&
+    String(acceptance?.refund_version || "").trim() === CURRENT_REFUND_VERSION
+  );
+}
+
+async function ensureCurrentLegalAcceptance(
+  req: Request,
+  env: Env,
+  userId: string,
+  acceptanceContext: string,
+  legalAcceptance: LegalAcceptancePayload | null | undefined,
+): Promise<{ ok: true; hasAcceptedCurrentVersions: boolean } | { ok: false; response: Response }> {
+  const alreadyAccepted = await hasAcceptedCurrentLegalVersions(env, userId);
+  if (alreadyAccepted) {
+    return { ok: true, hasAcceptedCurrentVersions: true };
+  }
+
+  if (!legalAcceptance || legalAcceptance.accepted !== true) {
+    return {
+      ok: false,
+      response: bad(req, "legal_acceptance_required", 400, {
+        message: "You must accept the current Terms of Use, Privacy Policy, and Refund Policy before continuing.",
+        current_terms_version: CURRENT_TERMS_VERSION,
+        current_privacy_version: CURRENT_PRIVACY_VERSION,
+        current_refund_version: CURRENT_REFUND_VERSION,
+      }),
+    };
+  }
+
+  if (!hasMatchingCurrentLegalVersions(legalAcceptance)) {
+    return {
+      ok: false,
+      response: bad(req, "invalid_legal_acceptance_version", 400, {
+        message: "Legal acceptance versions must exactly match the current Terms of Use, Privacy Policy, and Refund Policy versions.",
+        current_terms_version: CURRENT_TERMS_VERSION,
+        current_privacy_version: CURRENT_PRIVACY_VERSION,
+        current_refund_version: CURRENT_REFUND_VERSION,
+      }),
+    };
+  }
+
+  await createLegalAcceptance(env, {
+    userId,
+    acceptanceContext,
+    acceptedAt: nowIso(),
+    ipAddress: getRequestIpAddress(req),
+    userAgent: getRequestUserAgent(req),
+  });
+
+  return { ok: true, hasAcceptedCurrentVersions: true };
 }
 
 function isGoogleOAuthEnabled(env: Env): boolean {
@@ -656,9 +739,11 @@ export default {
         }
       }
 
+      const hasAcceptedCurrentVersions = await hasAcceptedCurrentLegalVersions(env, auth.ctx.userId);
+
       return json(req, {
         ok: true,
-        ...makeAccountView(user, lic),
+        ...makeAccountView(user, lic, { hasAcceptedCurrentVersions }),
         stripe_sync_error: stripeSyncError,
       });
     }
@@ -675,6 +760,9 @@ export default {
     if (req.method === "POST" && url.pathname === "/license/trial/start") {
       const auth = await requireAuth(req, env);
       if (!auth.ok) return auth.response;
+
+      const body = await readJson<{ legal_acceptance?: LegalAcceptancePayload }>(req);
+      if (!body) return bad(req, "invalid_json");
 
       const lic = await getLicenseRow(env, auth.ctx.userId);
 
@@ -701,7 +789,13 @@ export default {
       if (hasLiveTrial) {
         const user = await getUserById(env, auth.ctx.userId);
         if (!user) return bad(req, "user_not_found", 404);
-        return json(req, { ok: true, ...makeAccountView(user, lic) });
+        const hasAcceptedCurrentVersions = await hasAcceptedCurrentLegalVersions(env, auth.ctx.userId);
+        return json(req, {
+          ok: true,
+          ...makeAccountView(user, lic, {
+            hasAcceptedCurrentVersions,
+          }),
+        });
       }
 
       if (hasUsedTrial) {
@@ -709,6 +803,15 @@ export default {
           message: "Free trial already used on this account.",
         });
       }
+
+      const legalAcceptance = await ensureCurrentLegalAcceptance(
+        req,
+        env,
+        auth.ctx.userId,
+        "license_trial_start",
+        body.legal_acceptance,
+      );
+      if (!legalAcceptance.ok) return legalAcceptance.response;
 
       const now = nowIso();
       const trialEndAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
@@ -763,7 +866,12 @@ export default {
       if (!user) return bad(req, "user_not_found", 404);
 
       const updatedLic = await getLicenseRow(env, auth.ctx.userId);
-      return json(req, { ok: true, ...makeAccountView(user, updatedLic) });
+      return json(req, {
+        ok: true,
+        ...makeAccountView(user, updatedLic, {
+          hasAcceptedCurrentVersions: legalAcceptance.hasAcceptedCurrentVersions,
+        }),
+      });
     }
 
     if (req.method === "POST" && url.pathname === "/stripe/checkout") {
@@ -773,7 +881,7 @@ export default {
       const auth = await requireAuth(req, env);
       if (!auth.ok) return auth.response;
 
-      const body = await readJson<{ interval?: string }>(req);
+      const body = await readJson<{ interval?: string; legal_acceptance?: LegalAcceptancePayload }>(req);
       if (!body) return bad(req, "invalid_json");
 
       const interval = String(body.interval || "").trim().toLowerCase();
@@ -831,6 +939,15 @@ export default {
             : "You already have yearly access. Use Renew monthly from your account.",
         });
       }
+
+      const legalAcceptanceCheck = await ensureCurrentLegalAcceptance(
+        req,
+        env,
+        auth.ctx.userId,
+        "stripe_checkout",
+        body.legal_acceptance,
+      );
+      if (!legalAcceptanceCheck.ok) return legalAcceptanceCheck.response;
 
       const email = await getUserEmail(env, auth.ctx.userId);
       if (!email) return bad(req, "user_email_not_found", 404);

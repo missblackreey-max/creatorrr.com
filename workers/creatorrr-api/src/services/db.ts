@@ -1,8 +1,12 @@
 import { bad } from "../lib/http";
-import { getBearer, normalizeDeviceId, normalizeEmail, nowIso } from "../lib/utils";
+import { getBearer, normalizeDeviceId, normalizeEmail, nowIso, uuid } from "../lib/utils";
 import { jwtVerify } from "../lib/crypto";
 import { isActiveFreeLicense } from "./entitlement";
-import type { AuthContext, Env, LicenseRow, UserRow } from "../types";
+import type { AuthContext, Env, LegalAcceptanceRow, LicenseRow, UserRow } from "../types";
+
+export const CURRENT_TERMS_VERSION = "2026-03-21";
+export const CURRENT_PRIVACY_VERSION = "2026-03-21";
+export const CURRENT_REFUND_VERSION = "2026-03-21";
 
 export async function ensureDeviceAllowed(
   env: Env,
@@ -219,4 +223,95 @@ export async function getUserEmail(env: Env, userId: string): Promise<string | n
 
   if (!row?.email) return null;
   return normalizeEmail(row.email);
+}
+
+export async function getLatestCurrentLegalAcceptance(
+  env: Env,
+  userId: string,
+): Promise<LegalAcceptanceRow | null> {
+  return await env.creatorrr_db
+    .prepare(`
+      SELECT
+        id,
+        user_id,
+        terms_version,
+        privacy_version,
+        refund_version,
+        accepted_at,
+        acceptance_context,
+        ip_address,
+        user_agent,
+        created_at
+      FROM legal_acceptances
+      WHERE user_id=?1
+        AND terms_version=?2
+        AND privacy_version=?3
+        AND refund_version=?4
+      ORDER BY accepted_at DESC, created_at DESC
+      LIMIT 1
+    `)
+    .bind(userId, CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION, CURRENT_REFUND_VERSION)
+    .first<LegalAcceptanceRow>();
+}
+
+export async function hasAcceptedCurrentLegalVersions(env: Env, userId: string): Promise<boolean> {
+  const row = await getLatestCurrentLegalAcceptance(env, userId);
+  return !!row;
+}
+
+export async function createLegalAcceptance(
+  env: Env,
+  input: {
+    userId: string;
+    acceptanceContext: string;
+    acceptedAt?: string;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+  },
+): Promise<LegalAcceptanceRow> {
+  const acceptedAt = input.acceptedAt || nowIso();
+  const createdAt = nowIso();
+  const id = uuid();
+
+  await env.creatorrr_db
+    .prepare(`
+      INSERT INTO legal_acceptances (
+        id,
+        user_id,
+        terms_version,
+        privacy_version,
+        refund_version,
+        accepted_at,
+        acceptance_context,
+        ip_address,
+        user_agent,
+        created_at
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+    `)
+    .bind(
+      id,
+      input.userId,
+      CURRENT_TERMS_VERSION,
+      CURRENT_PRIVACY_VERSION,
+      CURRENT_REFUND_VERSION,
+      acceptedAt,
+      input.acceptanceContext,
+      input.ipAddress || null,
+      input.userAgent || null,
+      createdAt,
+    )
+    .run();
+
+  return {
+    id,
+    user_id: input.userId,
+    terms_version: CURRENT_TERMS_VERSION,
+    privacy_version: CURRENT_PRIVACY_VERSION,
+    refund_version: CURRENT_REFUND_VERSION,
+    accepted_at: acceptedAt,
+    acceptance_context: input.acceptanceContext,
+    ip_address: input.ipAddress || null,
+    user_agent: input.userAgent || null,
+    created_at: createdAt,
+  };
 }
