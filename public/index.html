@@ -148,7 +148,7 @@
       color: var(--text);
     }
 
-    .nav-link-highlight:hover {
+    .nav-links .nav-link-highlight:hover {
       color: #0b0b0b;
     }
 
@@ -472,6 +472,40 @@
       display: flex;
       flex-direction: column;
       min-height: 100%;
+      overflow: hidden;
+      transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+    }
+
+    .price-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 3px;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+      opacity: 0.8;
+      pointer-events: none;
+    }
+
+    .price-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .price-card-trial {
+      background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.03));
+    }
+
+    .price-card-monthly {
+      background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.03));
+    }
+
+    .price-card-premium {
+      border-color: rgba(247, 213, 106, 0.28);
+      background:
+        radial-gradient(circle at top left, rgba(247, 213, 106, 0.16), transparent 52%),
+        linear-gradient(180deg, rgba(255, 248, 214, 0.07), rgba(255, 255, 255, 0.03));
+      box-shadow:
+        0 24px 70px rgba(0, 0, 0, 0.42),
+        0 0 0 1px rgba(247, 213, 106, 0.08) inset;
     }
 
     .pricing-badge {
@@ -608,8 +642,14 @@
     .price-card-featured {
       border-color: rgba(247, 213, 106, 0.34);
       box-shadow:
-        0 24px 70px rgba(0, 0, 0, 0.45),
-        0 0 0 1px rgba(247, 213, 106, 0.08) inset;
+        0 28px 80px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(247, 213, 106, 0.08) inset,
+        0 18px 40px rgba(184, 137, 42, 0.14);
+    }
+
+    .price-card-featured::before {
+      height: 4px;
+      background: linear-gradient(90deg, rgba(247, 213, 106, 1), rgba(184, 137, 42, 0.72));
     }
 
     .pricing-features {
@@ -636,6 +676,31 @@
 
     .pricing-link:hover {
       color: var(--text);
+    }
+
+    .btn-trial {
+      color: #0b0b0b;
+      border-color: rgba(247, 213, 106, 0.5);
+      background: linear-gradient(180deg, var(--gold-1), var(--gold-2));
+      box-shadow: 0 14px 30px rgba(184, 137, 42, 0.20);
+    }
+
+    .btn-trial:hover {
+      color: #0b0b0b;
+      border-color: rgba(247, 213, 106, 0.58);
+      background: linear-gradient(180deg, #f9df82, #cd9c3c);
+    }
+
+    .btn-premium {
+      color: var(--gold-1);
+      border-color: rgba(247, 213, 106, 0.34);
+      background: linear-gradient(180deg, rgba(247, 213, 106, 0.16), rgba(184, 137, 42, 0.08));
+      box-shadow: 0 12px 26px rgba(184, 137, 42, 0.12);
+    }
+
+    .btn-premium:hover {
+      border-color: rgba(247, 213, 106, 0.5);
+      background: linear-gradient(180deg, rgba(247, 213, 106, 0.22), rgba(184, 137, 42, 0.12));
     }
 
     .muted { color: var(--muted); }
@@ -997,7 +1062,7 @@
           <p>Start with a 3-day free trial (locked watermark, no credit card). If you are ready for the full version: Choose the monthly or yearly plan. </p>
         </div>
         <div class="pricing-grid pricing-grid--pricing">
-          <article class="price-card">
+          <article class="price-card price-card-trial">
             <h3>3-day trial</h3>
             <p class="pricing-subtitle">Locked watermark, no credit card needed.</p>
 
@@ -1016,11 +1081,11 @@
             </div>
 
             <div class="pricing-actions">
-              <a class="btn btn-secondary" href="./account.html?intent=trial">Start 3-day trial</a>
+              <a class="btn btn-trial" href="./account.html?intent=trial">Start 3-day trial</a>
             </div>
           </article>
 
-          <article class="price-card">
+          <article class="price-card price-card-monthly">
             <h3>Monthly</h3>
             <p class="pricing-subtitle">Full version, billed monthly</p>
 
@@ -1043,7 +1108,7 @@
             </div>
           </article>
 
-          <article class="price-card price-card-featured">
+          <article class="price-card price-card-featured price-card-premium">
             <div class="pricing-badge">Save 33%</div>
             <h3>Yearly</h3>
             <p class="pricing-subtitle">Full version, best for serious creators.</p>
@@ -1063,7 +1128,7 @@
             </div>
 
             <div class="pricing-actions">
-              <a class="btn btn-primary" href="./account.html?intent=yearly">Buy yearly</a>
+              <a class="btn btn-premium" href="./account.html?intent=yearly">Buy yearly</a>
             </div>
           </article>
         </div>
