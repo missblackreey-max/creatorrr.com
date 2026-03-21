@@ -599,22 +599,23 @@
     }
 
     .plan-card-trial {
-      border-color: rgba(247, 213, 106, 0.28);
-      background:
-        radial-gradient(circle at top left, rgba(247, 213, 106, 0.16), transparent 52%),
-        linear-gradient(180deg, rgba(255, 248, 214, 0.07), rgba(255, 255, 255, 0.03));
+      border-color: rgba(247, 213, 106, 0.55);
+      background: linear-gradient(180deg, #f8dc82, #d7aa47);
       box-shadow:
-        0 24px 60px rgba(0, 0, 0, 0.26),
-        0 0 0 1px rgba(247, 213, 106, 0.08) inset;
+        0 24px 60px rgba(184, 137, 42, 0.2),
+        0 0 0 1px rgba(255, 250, 229, 0.2) inset;
+      color: #0b0b0b;
     }
 
     .plan-card-trial::before {
-      background: linear-gradient(90deg, rgba(247, 213, 106, 0.95), rgba(247, 213, 106, 0.28));
+      background: linear-gradient(90deg, rgba(255, 248, 214, 0.95), rgba(255, 248, 214, 0.42));
     }
 
     .plan-card-trial .plan-name,
-    .plan-card-trial .plan-price {
-      color: var(--gold-1);
+    .plan-card-trial .plan-price,
+    .plan-card-trial .plan-meta,
+    .plan-card-trial .plan-copy {
+      color: #0b0b0b;
     }
 
     .plan-card-monthly {
@@ -623,15 +624,22 @@
 
     .plan-card.recommended {
       background:
-        radial-gradient(circle at top right, rgba(247, 213, 106, 0.18), transparent 48%),
-        linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.035));
+        radial-gradient(circle at top left, rgba(247, 213, 106, 0.16), transparent 52%),
+        linear-gradient(180deg, rgba(255, 248, 214, 0.07), rgba(255, 255, 255, 0.03));
       border-color: rgba(247, 213, 106, 0.30);
-      box-shadow: 0 18px 40px rgba(184, 137, 42, 0.14);
+      box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.26),
+        0 0 0 1px rgba(247, 213, 106, 0.08) inset;
     }
 
     .plan-card.recommended::before {
       height: 4px;
       background: linear-gradient(90deg, rgba(247, 213, 106, 1), rgba(184, 137, 42, 0.72));
+    }
+
+    .plan-card.recommended .plan-name,
+    .plan-card.recommended .plan-price {
+      color: var(--gold-1);
     }
 
     .plan-card.preselected {
@@ -742,15 +750,16 @@
     }
 
     .btn-trial {
-      color: var(--gold-1);
-      border-color: rgba(247, 213, 106, 0.34);
-      background: linear-gradient(180deg, rgba(247, 213, 106, 0.16), rgba(184, 137, 42, 0.08));
-      box-shadow: 0 12px 26px rgba(184, 137, 42, 0.12);
+      color: #0b0b0b;
+      border-color: rgba(247, 213, 106, 0.5);
+      background: linear-gradient(180deg, var(--gold-1), var(--gold-2));
+      box-shadow: 0 14px 30px rgba(184, 137, 42, 0.20);
     }
 
     .btn-trial:hover {
-      border-color: rgba(247, 213, 106, 0.5);
-      background: linear-gradient(180deg, rgba(247, 213, 106, 0.22), rgba(184, 137, 42, 0.12));
+      color: #0b0b0b;
+      border-color: rgba(247, 213, 106, 0.58);
+      background: linear-gradient(180deg, #f9df82, #cd9c3c);
     }
 
     .download-grid {
