@@ -318,6 +318,10 @@
       border: 1px solid rgba(255,255,255,0.08);
     }
 
+    .tabs[hidden] {
+      display: none;
+    }
+
     .tab {
       min-height: 42px;
       border-radius: 999px;
@@ -442,6 +446,10 @@
       margin-top: 16px;
     }
 
+    .btn-inline-secondary {
+      min-height: 42px;
+    }
+
     .form-note {
       margin-top: 12px;
       color: var(--muted-2);
@@ -497,6 +505,40 @@
 
     .text-link:hover {
       color: var(--text);
+    }
+
+    .consent-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .consent-check input {
+      width: 18px;
+      min-width: 18px;
+      height: 18px;
+      min-height: 18px;
+      margin: 2px 0 0;
+      accent-color: var(--gold-1);
+      cursor: pointer;
+    }
+
+    .consent-check span {
+      min-width: 0;
+    }
+
+    .consent-check a {
+      color: var(--gold-1);
+      text-decoration: underline;
+      text-underline-offset: 2px;
     }
 
     .oauth-action {
@@ -959,13 +1001,13 @@
       <section class="card initially-hidden" id="auth-section">
         <div class="auth-hero">
           <div>
-            <span class="eyebrow">Your Account</span>
-            <h1>Log in</h1>
-            <p class="auth-copy">
+            <span class="eyebrow" id="auth-eyebrow">Your Account</span>
+            <h1 id="auth-title">Log in</h1>
+            <p class="auth-copy" id="auth-copy">
               Use one account for checkout, billing, and the Contentorrr desktop app.
             </p>
 
-            <div class="tabs" role="tablist" aria-label="Authentication mode">
+            <div class="tabs" id="auth-tabs" role="tablist" aria-label="Authentication mode">
               <button class="tab active" id="tab-login" type="button">Log in</button>
               <button class="tab" id="tab-signup" type="button">Create account</button>
             </div>
@@ -1003,10 +1045,6 @@
                 <div class="tiny-row tiny-row-spread">
                   <button class="text-link" id="forgot-password-link" type="button">Forgot password?</button>
                   <button class="text-link" id="switch-to-signup-link" type="button">No account yet?</button>
-                </div>
-
-                <div class="forgot-actions" id="resend-verification-row" hidden>
-                  <button class="text-link" id="resend-verification-link" type="button">Resend verification email</button>
                 </div>
               </form>
             </div>
@@ -1076,14 +1114,11 @@
 
                 <div class="form-actions">
                   <button class="btn btn-primary" id="forgot-continue" type="submit">Send reset link</button>
+                  <button class="btn btn-secondary btn-inline-secondary" id="back-to-login-link" type="button">Back to login</button>
                 </div>
 
                 <div class="form-note">
                   Enter the email address tied to your account. If it exists, you will receive a reset link.
-                </div>
-
-                <div class="forgot-actions">
-                  <button class="text-link" id="back-to-login-link" type="button">Back to login</button>
                 </div>
               </form>
             </div>
@@ -1131,9 +1166,11 @@
         </div>
 
         <div class="plans-grid" id="plans-grid"></div>
-        <p class="account-note">
-          Paid plans renew automatically by default until you turn auto-renew off. The free 3-day trial does not require a card and does not auto-convert to paid access. By starting a paid plan, you agree to the <a href="./terms.html">Terms of Use</a>, <a href="./privacy.html">Privacy Policy</a>, and <a href="./refunds.html">Refund Policy</a>.
-        </p>
+        <label class="consent-check" id="paid-plan-consent">
+          <input id="paid-plan-consent-input" type="checkbox" />
+          <span>Paid plans renew automatically until canceled. I agree to the <a href="./terms.html">Terms</a>, <a href="./privacy.html">Privacy Policy</a>, and <a href="./refunds.html">Refund Policy</a>.</span>
+        </label>
+        <p class="account-note">The 3-day trial stays card-free and does not turn into a paid plan automatically.</p>
       </section>
 
       <section class="card initially-hidden" id="downloads-section">
@@ -1146,14 +1183,14 @@
 
         <div class="download-grid">
           <div class="platform-card">
-            <strong>Windows</strong>
+            <strong>Windows 11</strong>
             <span>Current version v1.0.0 for Windows 11 and later</span>
             <a class="btn btn-primary" id="download-windows" href="/Contentorrr-Setup-v1.0.0.exe">Download .exe</a>
           </div>
 
           <div class="platform-card">
             <strong>macOS (Apple Silicon)</strong>
-            <span>Current version v1.0.0 for macOS</span>
+            <span>Current version v1.0.0 for Apple Silicon Macs</span>
             <a class="btn btn-primary" id="download-macos" href="/Contentorrr-v1.0.0.dmg">Download .dmg</a>
           </div>
         </div>
@@ -1180,6 +1217,10 @@
 
     const tabSignup = document.getElementById("tab-signup");
     const tabLogin = document.getElementById("tab-login");
+    const authEyebrow = document.getElementById("auth-eyebrow");
+    const authTitle = document.getElementById("auth-title");
+    const authCopy = document.getElementById("auth-copy");
+    const authTabs = document.getElementById("auth-tabs");
 
     const panelSignup = document.getElementById("panel-signup");
     const panelLogin = document.getElementById("panel-login");
@@ -1221,8 +1262,6 @@
 
     const forgotPasswordLink = document.getElementById("forgot-password-link");
     const passwordToggles = Array.from(document.querySelectorAll("[data-password-toggle]"));
-    const resendVerificationRow = document.getElementById("resend-verification-row");
-    const resendVerificationLink = document.getElementById("resend-verification-link");
     const switchToSignupLink = document.getElementById("switch-to-signup-link");
     const backToLoginLink = document.getElementById("back-to-login-link");
     const headerLogout = document.getElementById("header-logout");
@@ -1230,9 +1269,9 @@
     const downloadsCopy = document.getElementById("downloads-copy");
     const downloadWindows = document.getElementById("download-windows");
     const downloadMacos = document.getElementById("download-macos");
+    const paidPlanConsentInput = document.getElementById("paid-plan-consent-input");
 
     let currentAccount = null;
-    let pendingVerificationEmail = "";
     let preferredPlan = normalizePlan(preselectParam) || "year";
 
     const normalizedInstallerBaseUrl = INSTALLER_BASE_URL.replace(/\/+$/, "");
@@ -1283,17 +1322,31 @@
     }
 
     function showTab(mode) {
-      setPendingVerification("");
       const signupActive = mode === "signup";
       const loginActive = mode === "login";
       const forgotActive = mode === "forgot";
 
       tabSignup.classList.toggle("active", signupActive);
       tabLogin.classList.toggle("active", loginActive);
+      authTabs.hidden = forgotActive;
 
       panelSignup.classList.toggle("active", signupActive);
       panelLogin.classList.toggle("active", loginActive);
       panelForgot.classList.toggle("active", forgotActive);
+
+      if (forgotActive) {
+        authEyebrow.textContent = "Password reset";
+        authTitle.textContent = "Forgot password?";
+        authCopy.textContent = "Enter your account email and we will send you a reset link.";
+      } else if (signupActive) {
+        authEyebrow.textContent = "Your Account";
+        authTitle.textContent = "Create account";
+        authCopy.textContent = "Use one account for checkout, billing, and the Contentorrr desktop app.";
+      } else {
+        authEyebrow.textContent = "Your Account";
+        authTitle.textContent = "Log in";
+        authCopy.textContent = "Use one account for checkout, billing, and the Contentorrr desktop app.";
+      }
 
       if (signupActive) {
         updatePasswordHintVisibility();
@@ -1310,27 +1363,6 @@
     switchToSignupLink.addEventListener("click", () => showTab("signup"));
     forgotPasswordLink.addEventListener("click", () => showTab("forgot"));
     backToLoginLink.addEventListener("click", () => showTab("login"));
-    resendVerificationLink.addEventListener("click", async () => {
-      clearMessages();
-      setBusy(true);
-      try {
-        const email = pendingVerificationEmail || String(loginEmail.value || "").trim();
-        if (!email) throw new Error("Enter your email first.");
-
-        setStatus("Sending verification email...");
-        const data = await apiPost("/auth/resend-verification", { email });
-        if (!data?.email_delivery_configured) {
-          setError("Email delivery is not configured on this server. Set RESEND_API_KEY and RESEND_FROM_EMAIL in the Worker environment, then try again.");
-          return;
-        }
-
-        setSuccess("We sent a fresh verification email. Check your inbox and spam folder.");
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not resend verification email.");
-      } finally {
-        setBusy(false);
-      }
-    });
 
     signupPassword.addEventListener("input", updatePasswordHintVisibility);
     updatePasswordHintVisibility();
@@ -1414,16 +1446,10 @@
       updateFeedbackState();
     }
 
-    function setPendingVerification(email) {
-      pendingVerificationEmail = String(email || "").trim();
-      resendVerificationRow.hidden = !pendingVerificationEmail;
-    }
-
     function setBusy(isBusy) {
       signupContinue.disabled = isBusy;
       loginContinue.disabled = isBusy;
       forgotContinue.disabled = isBusy;
-      resendVerificationLink.disabled = isBusy || !pendingVerificationEmail;
       if (googleContinue) googleContinue.disabled = isBusy;
       headerLogout.disabled = isBusy;
 
@@ -1582,11 +1608,11 @@
       const verificationSent = !!data?.email_verification_sent;
       const emailDeliveryConfigured = !!data?.email_delivery_configured;
       if (verificationSent) {
-        setSuccess("Account created. Please check your inbox and verify your email before logging in.");
+        setSuccess("Account created. Double-check that your email address is correct, then open the verification email in your inbox or junk folder before logging in.");
       } else if (!emailDeliveryConfigured) {
-        setSuccess("Account created, but email delivery is not configured on this server yet. Set RESEND_API_KEY and RESEND_FROM_EMAIL in the Worker environment, then use resend verification from the login screen.");
+        setSuccess("Account created, but verification email delivery is not configured on this server yet. Please contact support before trying to log in.");
       } else {
-        setSuccess("Account created, but we could not send the verification email right now. Use resend verification from the login screen.");
+        setSuccess("Account created, but we could not send the verification email right now. Please try again in a moment or contact support.");
       }
       showTab("login");
       loginEmail.value = email;
@@ -1968,25 +1994,25 @@
           if (hasUsedTrialOnAccount(account)) {
             return { kind: "disabled", label: "Expired" };
           }
-          return { kind: "cta", label: "Start 3-day trial", action: "start-trial", primary: preferredPlan === "trial" };
+          return { kind: "cta", label: "Start 3-day trial", action: "start-trial", primary: false };
         }
 
         if (planKey === "month") {
-          return { kind: "cta", label: "Buy monthly", action: "checkout-month", primary: preferredPlan === "month" };
+          return { kind: "cta", label: "Buy monthly", action: "checkout-month", primary: false };
         }
-        return { kind: "cta", label: "Buy yearly", action: "checkout-year", primary: preferredPlan === "year" };
+        return { kind: "cta", label: "Buy yearly", action: "checkout-year", primary: false };
       }
 
       if (state === "trial_active") {
         if (planKey === "trial") return { kind: "current", label: "Current plan" };
-        if (planKey === "month") return { kind: "cta", label: "Buy monthly", action: "checkout-month", primary: preferredPlan === "month" };
-        return { kind: "cta", label: "Buy yearly", action: "checkout-year", primary: preferredPlan === "year" };
+        if (planKey === "month") return { kind: "cta", label: "Buy monthly", action: "checkout-month", primary: false };
+        return { kind: "cta", label: "Buy yearly", action: "checkout-year", primary: false };
       }
 
       if (state === "free_active") {
         if (planKey === "trial") return { kind: "disabled", label: "Included" };
-        if (planKey === "month") return { kind: "cta", label: "Buy monthly", action: "checkout-month", primary: preferredPlan === "month" };
-        return { kind: "cta", label: "Buy yearly", action: "checkout-year", primary: preferredPlan === "year" };
+        if (planKey === "month") return { kind: "cta", label: "Buy monthly", action: "checkout-month", primary: false };
+        return { kind: "cta", label: "Buy yearly", action: "checkout-year", primary: false };
       }
 
       if (state === "monthly_active") {
@@ -2017,6 +2043,10 @@
 
       const buttonClass = planKey === "trial" ? "btn-trial" : (planKey === "year" ? "btn-premium" : (action.primary ? "btn-primary" : "btn-secondary"));
       return `<button class="btn ${buttonClass}" type="button" data-plan-action="${escapeHtml(action.action)}" data-plan-key="${escapeHtml(planKey)}" data-busy-sensitive="true">${escapeHtml(action.label)}</button>`;
+    }
+
+    function hasPaidPlanConsent() {
+      return !!paidPlanConsentInput?.checked;
     }
 
     function renderPlans(account) {
@@ -2119,6 +2149,10 @@
 
     async function continueCheckout(interval) {
       clearMessages();
+      if (!hasPaidPlanConsent()) {
+        setError("Please confirm that paid plans renew automatically until canceled before continuing to checkout.");
+        return;
+      }
       setBusy(true);
       try {
         const token = getWebToken();
@@ -2378,14 +2412,12 @@
         const errorCode = err && typeof err === "object" ? err.code || err.payload?.error : "";
         const emailDeliveryConfigured = !!(err && typeof err === "object" && err.payload && err.payload.email_delivery_configured);
         if (message.includes("email not verified") || errorCode === "email_not_verified") {
-          setPendingVerification(email);
           if (!emailDeliveryConfigured) {
             setError("Your email is not verified yet, and email delivery is not configured on this server. Set RESEND_API_KEY and RESEND_FROM_EMAIL in the Worker environment, then try again.");
           } else {
-            setError("Your email is not verified yet. Check your inbox for the original verification email, or use resend verification below.");
+            setError("Your email is not verified yet. Please check your inbox and junk folder for the verification email.");
           }
         } else {
-          setPendingVerification("");
           setError(message);
         }
       } finally {
