@@ -1166,10 +1166,7 @@
         </div>
 
         <div class="plans-grid" id="plans-grid"></div>
-        <label class="consent-check" id="paid-plan-consent">
-          <input id="paid-plan-consent-input" type="checkbox" />
-          <span>I agree to the <a href="./terms.html">Terms</a>, <a href="./privacy.html">Privacy Policy</a>, and <a href="./refunds.html">Refund Policy</a>.</span>
-        </label>
+        <div id="plan-consent-area"></div>
         <p class="account-note">The 3-day trial stays card-free and does not turn into a paid plan automatically.</p>
       </section>
 
@@ -1209,6 +1206,8 @@
     const INSTALLER_BASE_URL = "";
     const MONTHLY_PRICE_LABEL = "$29.90";
     const YEARLY_PRICE_LABEL = "$239";
+    const LEGAL_ACCEPTANCE_VERSION = "2026-03-21";
+    const LS_LEGAL_ACCEPTANCE_PREFIX = "creatorrr.web.legal.acceptance";
 
     const params = new URLSearchParams(window.location.search);
     const checkoutState = String(params.get("checkout") || "").trim().toLowerCase();
@@ -1269,7 +1268,7 @@
     const downloadsCopy = document.getElementById("downloads-copy");
     const downloadWindows = document.getElementById("download-windows");
     const downloadMacos = document.getElementById("download-macos");
-    const paidPlanConsentInput = document.getElementById("paid-plan-consent-input");
+    const planConsentArea = document.getElementById("plan-consent-area");
 
     let currentAccount = null;
     let preferredPlan = normalizePlan(preselectParam) || "year";
@@ -1914,6 +1913,73 @@
       return trialTimestampsUsed || paidAccessEverUsed;
     }
 
+    function getLegalAcceptanceStorageKey(account) {
+      const userId = String(account?.user?.id || "").trim();
+      if (!userId) return "";
+      return `${LS_LEGAL_ACCEPTANCE_PREFIX}.${userId}`;
+    }
+
+    function hasAcceptedCurrentLegalTerms(account) {
+      const key = getLegalAcceptanceStorageKey(account);
+      if (!key) return false;
+
+      const raw = safeLocalStorageGet(key);
+      if (!raw) return false;
+
+      try {
+        const payload = JSON.parse(raw);
+        return String(payload?.version || "").trim() === LEGAL_ACCEPTANCE_VERSION;
+      } catch {
+        return raw === LEGAL_ACCEPTANCE_VERSION;
+      }
+    }
+
+    function rememberCurrentLegalTermsAcceptance(account) {
+      const key = getLegalAcceptanceStorageKey(account);
+      if (!key) return;
+
+      safeLocalStorageSet(key, JSON.stringify({
+        version: LEGAL_ACCEPTANCE_VERSION,
+        accepted_at: new Date().toISOString()
+      }));
+    }
+
+    function getLegalConsentInput() {
+      return document.getElementById("legal-consent-input");
+    }
+
+    function hasLegalConsentForAction(account) {
+      if (hasAcceptedCurrentLegalTerms(account)) return true;
+      return !!getLegalConsentInput()?.checked;
+    }
+
+    function renderConsentControls(account) {
+      if (!planConsentArea) return;
+
+      const state = deriveAccountState(account);
+      if (state === "monthly_active" || state === "yearly_active") {
+        planConsentArea.innerHTML = "";
+        planConsentArea.hidden = true;
+        return;
+      }
+
+      const needsLegalConsent = !hasAcceptedCurrentLegalTerms(account);
+
+      if (!needsLegalConsent) {
+        planConsentArea.innerHTML = "";
+        planConsentArea.hidden = true;
+        return;
+      }
+
+      planConsentArea.hidden = false;
+      planConsentArea.innerHTML = `
+        <label class="consent-check" id="legal-consent">
+          <input id="legal-consent-input" type="checkbox" />
+          <span>I agree to the <a href="./terms.html">Terms of Use</a>, <a href="./privacy.html">Privacy Policy</a>, and <a href="./refunds.html">Refund Policy</a>.</span>
+        </label>
+      `;
+    }
+
     function renderAccount(account) {
       currentAccount = account;
       showLoggedInUi();
@@ -2045,11 +2111,9 @@
       return `<button class="btn ${buttonClass}" type="button" data-plan-action="${escapeHtml(action.action)}" data-plan-key="${escapeHtml(planKey)}" data-busy-sensitive="true">${escapeHtml(action.label)}</button>`;
     }
 
-    function hasPaidPlanConsent() {
-      return !!paidPlanConsentInput?.checked;
-    }
-
     function renderPlans(account) {
+      renderConsentControls(account);
+
       const trialAction = getPlanAction("trial", account);
       const trialBadge = trialAction.kind === "cta" ? "Try now" : "";
 
@@ -2149,8 +2213,8 @@
 
     async function continueCheckout(interval) {
       clearMessages();
-      if (!hasPaidPlanConsent()) {
-        setError("Please confirm that paid plans renew automatically until canceled before continuing to checkout.");
+      if (!hasLegalConsentForAction(currentAccount)) {
+        setError("Please agree to the Terms of Use, Privacy Policy, and Refund Policy before continuing.");
         return;
       }
       setBusy(true);
@@ -2165,6 +2229,7 @@
           throw new Error("Checkout URL missing.");
         }
 
+        rememberCurrentLegalTermsAcceptance(currentAccount);
         window.location.href = data.url;
       } catch (err) {
         const status = err && typeof err === "object" ? err.status : undefined;
@@ -2180,6 +2245,10 @@
 
     async function startFreeTrial() {
       clearMessages();
+      if (!hasLegalConsentForAction(currentAccount)) {
+        setError("Please agree to the Terms of Use, Privacy Policy, and Refund Policy before continuing.");
+        return;
+      }
       setBusy(true);
       try {
         const token = getWebToken();
@@ -2188,6 +2257,7 @@
         setStatus("Starting your 3-day trial...");
         const data = await apiPost("/license/trial/start", {}, token);
 
+        rememberCurrentLegalTermsAcceptance(currentAccount || data);
         renderAccount(data);
         renderPlans(data);
         window.location.href = "./billing/success.html?mode=trial";
