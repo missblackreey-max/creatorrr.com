@@ -1958,27 +1958,13 @@
       }));
     }
 
-    function shouldShowPaidConsent(account) {
-      const state = deriveAccountState(account);
-      return state === "no_access" || state === "trial_active" || state === "free_active";
-    }
-
     function getLegalConsentInput() {
       return document.getElementById("legal-consent-input");
-    }
-
-    function getPaidConsentInput() {
-      return document.getElementById("paid-consent-input");
     }
 
     function hasLegalConsentForAction(account) {
       if (hasAcceptedCurrentLegalTerms(account)) return true;
       return !!getLegalConsentInput()?.checked;
-    }
-
-    function hasPaidConsentForAction(account) {
-      if (!shouldShowPaidConsent(account)) return true;
-      return !!getPaidConsentInput()?.checked;
     }
 
     function renderConsentControls(account) {
@@ -1992,39 +1978,19 @@
       }
 
       const needsLegalConsent = !hasAcceptedCurrentLegalTerms(account);
-      const showPaidConsent = shouldShowPaidConsent(account);
 
-      if (!needsLegalConsent && !showPaidConsent) {
+      if (!needsLegalConsent) {
         planConsentArea.innerHTML = "";
         planConsentArea.hidden = true;
         return;
       }
 
-      const blocks = [];
-
-      if (needsLegalConsent) {
-        blocks.push(`
-          <label class="consent-check" id="legal-consent">
-            <input id="legal-consent-input" type="checkbox" />
-            <span>I agree to the <a href="./terms.html">Terms of Use</a>, <a href="./privacy.html">Privacy Policy</a>, and <a href="./refunds.html">Refund Policy</a>.</span>
-          </label>
-        `);
-      }
-
-      if (showPaidConsent) {
-        blocks.push(`
-          <label class="consent-check" id="paid-consent">
-            <input id="paid-consent-input" type="checkbox" />
-            <span>I understand that monthly and yearly plans renew automatically until canceled.</span>
-          </label>
-        `);
-      }
-
       planConsentArea.hidden = false;
       planConsentArea.innerHTML = `
-        <div class="consent-stack">
-          ${blocks.join("")}
-        </div>
+        <label class="consent-check" id="legal-consent">
+          <input id="legal-consent-input" type="checkbox" />
+          <span>I agree to the <a href="./terms.html">Terms of Use</a>, <a href="./privacy.html">Privacy Policy</a>, and <a href="./refunds.html">Refund Policy</a>.</span>
+        </label>
       `;
     }
 
@@ -2263,10 +2229,6 @@
       clearMessages();
       if (!hasLegalConsentForAction(currentAccount)) {
         setError("Please agree to the Terms of Use, Privacy Policy, and Refund Policy before continuing.");
-        return;
-      }
-      if (!hasPaidConsentForAction(currentAccount)) {
-        setError("Please confirm that monthly and yearly plans renew automatically until canceled before continuing.");
         return;
       }
       setBusy(true);
