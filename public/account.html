@@ -359,7 +359,79 @@
       font-family: inherit;
     }
 
-    input:focus {
+    .password-field {
+      position: relative;
+      margin-top: 6px;
+    }
+
+    .password-field input {
+      margin-top: 0;
+      padding-right: 52px;
+    }
+
+    .password-toggle {
+      position: absolute;
+      top: 50%;
+      right: 6px;
+      transform: translateY(-50%);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted-2);
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease;
+    }
+
+    .password-toggle:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.06);
+    }
+
+    .password-toggle:focus-visible {
+      outline: 2px solid rgba(247, 213, 106, 0.65);
+      outline-offset: 2px;
+      color: var(--text);
+    }
+
+    .password-toggle svg {
+      width: 20px;
+      height: 20px;
+      display: block;
+      pointer-events: none;
+    }
+
+    .password-toggle .icon-eye-off {
+      display: none;
+    }
+
+    .password-toggle[aria-pressed="true"] .icon-eye {
+      display: none;
+    }
+
+    .password-toggle[aria-pressed="true"] .icon-eye-off {
+      display: block;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    input:focus,
+    .password-field:focus-within input {
       border-color: rgba(247, 213, 106, 0.42);
       box-shadow: 0 0 0 3px rgba(247, 213, 106, 0.08);
     }
@@ -906,7 +978,22 @@
                 </label>
                 <label>
                   Password
-                  <input id="login-password" name="password" type="password" autocomplete="current-password" required />
+                  <div class="password-field">
+                    <input id="login-password" name="password" type="password" autocomplete="current-password" required />
+                    <button class="password-toggle" type="button" data-password-toggle data-target="login-password" aria-label="Show password" aria-pressed="false">
+                      <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1.5 12s3.8-6.5 10.5-6.5S22.5 12 22.5 12s-3.8 6.5-10.5 6.5S1.5 12 1.5 12Z"></path>
+                        <circle cx="12" cy="12" r="3.25"></circle>
+                      </svg>
+                      <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3l18 18"></path>
+                        <path d="M10.6 6.2A9.9 9.9 0 0 1 12 6c6.7 0 10.5 6 10.5 6a17.2 17.2 0 0 1-4 4.8"></path>
+                        <path d="M6.7 6.7C3.7 8.5 1.5 12 1.5 12s3.8 6.5 10.5 6.5c1.8 0 3.5-.4 4.9-1.1"></path>
+                        <path d="M9.9 9.9a3.25 3.25 0 0 0 4.2 4.2"></path>
+                      </svg>
+                      <span class="sr-only">Show password</span>
+                    </button>
+                  </div>
                 </label>
 
                 <div class="form-actions">
@@ -932,7 +1019,22 @@
                 </label>
                 <label>
                   Set password
-                  <input id="signup-password" name="new-password" type="password" autocomplete="new-password" minlength="8" required />
+                  <div class="password-field">
+                    <input id="signup-password" name="new-password" type="password" autocomplete="new-password" minlength="8" required />
+                    <button class="password-toggle" type="button" data-password-toggle data-target="signup-password" aria-label="Show password" aria-pressed="false">
+                      <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1.5 12s3.8-6.5 10.5-6.5S22.5 12 22.5 12s-3.8 6.5-10.5 6.5S1.5 12 1.5 12Z"></path>
+                        <circle cx="12" cy="12" r="3.25"></circle>
+                      </svg>
+                      <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3l18 18"></path>
+                        <path d="M10.6 6.2A9.9 9.9 0 0 1 12 6c6.7 0 10.5 6 10.5 6a17.2 17.2 0 0 1-4 4.8"></path>
+                        <path d="M6.7 6.7C3.7 8.5 1.5 12 1.5 12s3.8 6.5 10.5 6.5c1.8 0 3.5-.4 4.9-1.1"></path>
+                        <path d="M9.9 9.9a3.25 3.25 0 0 0 4.2 4.2"></path>
+                      </svg>
+                      <span class="sr-only">Show password</span>
+                    </button>
+                  </div>
                 </label>
 
                 <div class="password-hint" id="signup-password-hint">
@@ -941,7 +1043,22 @@
 
                 <label>
                   Repeat password
-                  <input id="signup-password-confirm" name="new-password-confirm" type="password" autocomplete="new-password" minlength="8" required />
+                  <div class="password-field">
+                    <input id="signup-password-confirm" name="new-password-confirm" type="password" autocomplete="new-password" minlength="8" required />
+                    <button class="password-toggle" type="button" data-password-toggle data-target="signup-password-confirm" aria-label="Show password" aria-pressed="false">
+                      <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1.5 12s3.8-6.5 10.5-6.5S22.5 12 22.5 12s-3.8 6.5-10.5 6.5S1.5 12 1.5 12Z"></path>
+                        <circle cx="12" cy="12" r="3.25"></circle>
+                      </svg>
+                      <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3l18 18"></path>
+                        <path d="M10.6 6.2A9.9 9.9 0 0 1 12 6c6.7 0 10.5 6 10.5 6a17.2 17.2 0 0 1-4 4.8"></path>
+                        <path d="M6.7 6.7C3.7 8.5 1.5 12 1.5 12s3.8 6.5 10.5 6.5c1.8 0 3.5-.4 4.9-1.1"></path>
+                        <path d="M9.9 9.9a3.25 3.25 0 0 0 4.2 4.2"></path>
+                      </svg>
+                      <span class="sr-only">Show password</span>
+                    </button>
+                  </div>
                 </label>
 
                 <div class="form-actions">
@@ -1103,6 +1220,7 @@
     const authFeedback = document.querySelector(".auth-feedback");
 
     const forgotPasswordLink = document.getElementById("forgot-password-link");
+    const passwordToggles = Array.from(document.querySelectorAll("[data-password-toggle]"));
     const resendVerificationRow = document.getElementById("resend-verification-row");
     const resendVerificationLink = document.getElementById("resend-verification-link");
     const switchToSignupLink = document.getElementById("switch-to-signup-link");
@@ -1216,6 +1334,34 @@
 
     signupPassword.addEventListener("input", updatePasswordHintVisibility);
     updatePasswordHintVisibility();
+
+    function syncPasswordToggle(button, input) {
+      const isVisible = input.type === "text";
+      const actionLabel = isVisible ? "Hide password" : "Show password";
+      button.setAttribute("aria-pressed", String(isVisible));
+      button.setAttribute("aria-label", actionLabel);
+      const srOnlyText = button.querySelector(".sr-only");
+      if (srOnlyText) srOnlyText.textContent = actionLabel;
+    }
+
+    passwordToggles.forEach((button) => {
+      const targetId = button.dataset.target;
+      const input = targetId ? document.getElementById(targetId) : null;
+      if (!(input instanceof HTMLInputElement)) return;
+
+      syncPasswordToggle(button, input);
+      button.addEventListener("click", () => {
+        const selectionStart = input.selectionStart;
+        const selectionEnd = input.selectionEnd;
+        const nextType = input.type === "password" ? "text" : "password";
+        input.type = nextType;
+        syncPasswordToggle(button, input);
+        input.focus({ preventScroll: true });
+        if (typeof selectionStart === "number" && typeof selectionEnd === "number") {
+          input.setSelectionRange(selectionStart, selectionEnd);
+        }
+      });
+    });
 
     function updateFeedbackState() {
       const hasMessage = [statusBox, errorBox, successBox].some((el) => el.style.display !== "none");
