@@ -63,11 +63,15 @@
     }
 
     .nav {
-      display: flex;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
       align-items: center;
-      justify-content: space-between;
       gap: 16px;
       min-height: 74px;
+    }
+
+    .nav-auth-pending {
+      visibility: hidden;
     }
 
     .brand {
@@ -105,9 +109,18 @@
     .nav-actions {
       display: flex;
       align-items: center;
-      justify-content: flex-end;
       gap: 10px;
       flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .nav-action-slot {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      min-width: 290px;
+      min-height: 46px;
+      justify-self: end;
     }
 
     .btn {
@@ -370,14 +383,23 @@
       }
 
       .nav {
+        display: flex;
         min-height: auto;
         padding: 14px 0;
         flex-wrap: wrap;
+        justify-content: space-between;
       }
 
-      .nav-actions {
-        width: 100%;
-        justify-content: flex-end;
+      .nav-auth-pending {
+        visibility: hidden;
+      }
+
+      .nav-action-slot {
+        position: static;
+        min-width: 0;
+        min-height: 36px;
+        width: auto;
+        margin-left: auto;
       }
 
       .btn {
@@ -410,8 +432,14 @@
         </span>
       </a>
 
-      <div class="nav-actions">
-        <a class="btn btn-secondary header-chip" href="../account.html?mode=login&intent=login">Account</a>
+      <div class="nav-action-slot nav-auth-pending" id="nav-action-slot">
+        <div class="nav-actions" id="nav-actions-logged-out" style="display:none;">
+          <a class="btn btn-secondary header-chip" href="../account.html?intent=login">Log in</a>
+        </div>
+
+        <div class="nav-actions" id="nav-actions-logged-in" style="display:none;">
+          <a class="btn btn-secondary header-chip" href="../account.html">Account</a>
+        </div>
       </div>
     </div>
   </header>
@@ -495,6 +523,9 @@
     const noticeBox = document.getElementById("notice-box");
     const downloadWindows = document.getElementById("download-windows");
     const downloadMacos = document.getElementById("download-macos");
+    const loggedOutActions = document.getElementById("nav-actions-logged-out");
+    const loggedInActions = document.getElementById("nav-actions-logged-in");
+    const navActionSlot = document.getElementById("nav-action-slot");
 
     const windowsInstallerUrl = INSTALLER_WINDOWS_URL;
     const macosInstallerUrl = INSTALLER_MACOS_URL;
@@ -512,6 +543,12 @@
 
     function setStatusMessage(html) {
       statusBox.innerHTML = html;
+    }
+
+    function setLoggedInHeader(isLoggedIn) {
+      loggedOutActions.style.display = isLoggedIn ? "none" : "flex";
+      loggedInActions.style.display = isLoggedIn ? "flex" : "none";
+      navActionSlot.classList.remove("nav-auth-pending");
     }
 
     function setNotice(text) {
@@ -587,10 +624,12 @@
 
         const data = await safeReadJson(res);
         if (!res.ok) {
+          setLoggedInHeader(false);
           applySuccessCopy(fallbackMode);
           return;
         }
 
+        setLoggedInHeader(true);
         const license = data?.license || {};
 
         if (license?.entitled && license?.in_trial) {
@@ -610,8 +649,13 @@
 
         applySuccessCopy(fallbackMode);
       } catch {
+        setLoggedInHeader(false);
         applySuccessCopy(normalizeMode(params.get("mode")));
       }
+    }
+
+    if (!safeLocalStorageGet(LS_WEB_TOKEN)) {
+      setLoggedInHeader(false);
     }
 
     verifyAccessInBrowser();
