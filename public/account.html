@@ -1220,7 +1220,9 @@
     const INSTALLER_BASE_URL = "";
     const MONTHLY_PRICE_LABEL = "$29.90";
     const YEARLY_PRICE_LABEL = "$239";
-    const LEGAL_ACCEPTANCE_VERSION = "2026-03-21";
+    const CURRENT_TERMS_VERSION = "2026-03-21";
+    const CURRENT_PRIVACY_VERSION = "2026-03-21";
+    const CURRENT_REFUND_VERSION = "2026-03-21";
     const LS_LEGAL_ACCEPTANCE_PREFIX = "creatorrr.web.legal.acceptance";
 
     const params = new URLSearchParams(window.location.search);
@@ -1933,7 +1935,15 @@
       return `${LS_LEGAL_ACCEPTANCE_PREFIX}.${userId}`;
     }
 
+    function getLegalAcceptanceCacheVersion() {
+      return `${CURRENT_TERMS_VERSION}|${CURRENT_PRIVACY_VERSION}|${CURRENT_REFUND_VERSION}`;
+    }
+
     function hasAcceptedCurrentLegalTerms(account) {
+      return !!account?.legal?.has_accepted_current_versions;
+    }
+
+    function hasCachedCurrentLegalTermsAcceptance(account) {
       const key = getLegalAcceptanceStorageKey(account);
       if (!key) return false;
 
@@ -1942,9 +1952,9 @@
 
       try {
         const payload = JSON.parse(raw);
-        return String(payload?.version || "").trim() === LEGAL_ACCEPTANCE_VERSION;
+        return String(payload?.version || "").trim() === getLegalAcceptanceCacheVersion();
       } catch {
-        return raw === LEGAL_ACCEPTANCE_VERSION;
+        return raw === getLegalAcceptanceCacheVersion();
       }
     }
 
@@ -1953,7 +1963,7 @@
       if (!key) return;
 
       safeLocalStorageSet(key, JSON.stringify({
-        version: LEGAL_ACCEPTANCE_VERSION,
+        version: getLegalAcceptanceCacheVersion(),
         accepted_at: new Date().toISOString()
       }));
     }
@@ -1965,6 +1975,16 @@
     function hasLegalConsentForAction(account) {
       if (hasAcceptedCurrentLegalTerms(account)) return true;
       return !!getLegalConsentInput()?.checked;
+    }
+
+    function buildLegalAcceptancePayload(account) {
+      if (hasAcceptedCurrentLegalTerms(account)) return undefined;
+      return {
+        accepted: true,
+        terms_version: CURRENT_TERMS_VERSION,
+        privacy_version: CURRENT_PRIVACY_VERSION,
+        refund_version: CURRENT_REFUND_VERSION
+      };
     }
 
     function renderConsentControls(account) {
@@ -1988,10 +2008,22 @@
       planConsentArea.hidden = false;
       planConsentArea.innerHTML = `
         <label class="consent-check" id="legal-consent">
-          <input id="legal-consent-input" type="checkbox" />
+          <input id="legal-consent-input" type="checkbox" ${hasCachedCurrentLegalTermsAcceptance(account) ? "checked" : ""} />
           <span>I agree to the <a href="./terms.html">Terms of Use</a>, <a href="./privacy.html">Privacy Policy</a>, and <a href="./refunds.html">Refund Policy</a>.</span>
         </label>
       `;
+
+      const input = getLegalConsentInput();
+      if (input) {
+        input.addEventListener("change", () => {
+          if (input.checked) {
+            rememberCurrentLegalTermsAcceptance(account);
+            return;
+          }
+          const key = getLegalAcceptanceStorageKey(account);
+          if (key) safeLocalStorageRemove(key);
+        });
+      }
     }
 
     function renderAccount(account) {
@@ -2136,7 +2168,7 @@
           key: "trial",
           name: "3-day trial",
           price: "$0",
-          meta: "No credit card required",
+          meta: "No credit card required, does not renew automatically",
           copy: "Your 3 day test run with full access and the locked watermark.",
           badge: trialBadge
         },
@@ -2144,7 +2176,7 @@
           key: "month",
           name: "Monthly",
           price: MONTHLY_PRICE_LABEL,
-          meta: "Pay via Stripe/credit card",
+          meta: "Charged today, renews every month until canceled",
           copy: "Full access without the fixed watermark. Best if you want to stay flexible.",
           badge: ""
         },
@@ -2152,7 +2184,7 @@
           key: "year",
           name: "Yearly",
           price: YEARLY_PRICE_LABEL,
-          meta: "Only $19.92/month effective",
+          meta: "Charged today, renews every year until canceled",
           copy: "Full access without the fixed watermark. Best value if you produce a lot of content.",
           badge: "Save 33%"
         }
@@ -2237,7 +2269,11 @@
         if (!token) throw new Error("You are not logged in.");
 
         setStatus("Preparing secure checkout...");
-        const data = await apiPost("/stripe/checkout", { interval }, token);
+        const legalAcceptance = buildLegalAcceptancePayload(currentAccount);
+        const data = await apiPost("/stripe/checkout", {
+          interval,
+          ...(legalAcceptance ? { legal_acceptance: legalAcceptance } : {})
+        }, token);
 
         if (!data?.url) {
           throw new Error("Checkout URL missing.");
@@ -2269,7 +2305,10 @@
         if (!token) throw new Error("You are not logged in.");
 
         setStatus("Starting your 3-day trial...");
-        const data = await apiPost("/license/trial/start", {}, token);
+        const legalAcceptance = buildLegalAcceptancePayload(currentAccount);
+        const data = await apiPost("/license/trial/start", {
+          ...(legalAcceptance ? { legal_acceptance: legalAcceptance } : {})
+        }, token);
 
         rememberCurrentLegalTermsAcceptance(currentAccount || data);
         renderAccount(data);
