@@ -763,6 +763,22 @@
       background: linear-gradient(90deg, rgba(95, 207, 138, 0.92), rgba(95, 207, 138, 0.24));
     }
 
+    .plan-card.plan-card-armed {
+      border-color: rgba(247, 213, 106, 0.68);
+      background:
+        radial-gradient(circle at top, rgba(247, 213, 106, 0.16), transparent 56%),
+        linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03));
+      box-shadow:
+        0 22px 50px rgba(0, 0, 0, 0.22),
+        0 0 0 1px rgba(247, 213, 106, 0.2) inset;
+      transform: translateY(-4px);
+    }
+
+    .plan-card.plan-card-armed::before {
+      height: 4px;
+      background: linear-gradient(90deg, rgba(247, 213, 106, 1), rgba(184, 137, 42, 0.72));
+    }
+
     .plan-badge-row {
       display: grid;
       grid-template-columns: minmax(88px, 1fr) auto minmax(88px, 1fr);
@@ -851,9 +867,41 @@
       justify-content: center;
     }
 
+    .plan-action-stack {
+      width: 100%;
+      max-width: 260px;
+      display: grid;
+      gap: 12px;
+    }
+
     .plan-action .btn {
       width: 100%;
       max-width: 260px;
+    }
+
+    .btn-plan-armed {
+      box-shadow:
+        0 0 0 2px rgba(247, 213, 106, 0.26),
+        0 16px 34px rgba(184, 137, 42, 0.18);
+      border-color: rgba(247, 213, 106, 0.7);
+      transform: translateY(-1px);
+    }
+
+    .plan-selection-hint {
+      font-size: 12px;
+      line-height: 1.45;
+      color: #f7dfa2;
+      text-align: left;
+    }
+
+    .plan-inline-consent {
+      display: grid;
+      gap: 10px;
+      text-align: left;
+      padding: 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(247, 213, 106, 0.18);
     }
 
     .btn-trial {
@@ -1288,6 +1336,7 @@
 
     let currentAccount = null;
     let preferredPlan = normalizePlan(preselectParam) || "year";
+    let selectedConsentPlanKey = null;
 
     const windowsInstallerUrl = INSTALLER_WINDOWS_URL;
     const macosInstallerUrl = INSTALLER_MACOS_URL;
@@ -1982,43 +2031,52 @@
       };
     }
 
-    function renderConsentControls(account) {
+    function renderConsentControls() {
       if (!planConsentArea) return;
+      planConsentArea.innerHTML = "";
+      planConsentArea.hidden = true;
+    }
 
-      const state = deriveAccountState(account);
-      if (state === "monthly_active" || state === "yearly_active") {
-        planConsentArea.innerHTML = "";
-        planConsentArea.hidden = true;
-        return;
-      }
+    function isLegalConsentAction(action) {
+      return Boolean(
+        action &&
+        action.kind === "cta" &&
+        ["start-trial", "checkout-month", "checkout-year"].includes(String(action.action || ""))
+      );
+    }
 
-      const needsLegalConsent = !hasAcceptedCurrentLegalTerms(account);
-
-      if (!needsLegalConsent) {
-        planConsentArea.innerHTML = "";
-        planConsentArea.hidden = true;
-        return;
-      }
-
-      planConsentArea.hidden = false;
-      planConsentArea.innerHTML = `
-        <label class="consent-check" id="legal-consent">
-          <input id="legal-consent-input" type="checkbox" ${hasCachedCurrentLegalTermsAcceptance(account) ? "checked" : ""} />
-          <span>I agree to the <a href="./terms.html">Terms of Use</a>, <a href="./privacy.html">Privacy Policy</a>, and <a href="./refunds.html">Refund Policy</a>.</span>
-        </label>
-      `;
-
+    function bindInlineConsentInput(account) {
       const input = getLegalConsentInput();
-      if (input) {
-        input.addEventListener("change", () => {
-          if (input.checked) {
-            rememberCurrentLegalTermsAcceptance(account);
-            return;
-          }
-          const key = getLegalAcceptanceStorageKey(account);
-          if (key) safeLocalStorageRemove(key);
-        });
-      }
+      if (!input) return;
+      input.addEventListener("change", () => {
+        if (input.checked) {
+          rememberCurrentLegalTermsAcceptance(account);
+          return;
+        }
+        const key = getLegalAcceptanceStorageKey(account);
+        if (key) safeLocalStorageRemove(key);
+      });
+    }
+
+    function getActiveConsentPlanKey(account) {
+      if (hasAcceptedCurrentLegalTerms(account)) return null;
+      if (!selectedConsentPlanKey) return null;
+      const action = getPlanAction(selectedConsentPlanKey, account);
+      return isLegalConsentAction(action) ? selectedConsentPlanKey : null;
+    }
+
+    function renderInlineConsent(account, planKey, action) {
+      if (hasAcceptedCurrentLegalTerms(account)) return "";
+      if (selectedConsentPlanKey !== planKey || !isLegalConsentAction(action)) return "";
+      return `
+        <div class="plan-inline-consent" data-inline-consent-for="${escapeHtml(planKey)}">
+          <div class="plan-selection-hint">Confirm this plan to continue securely.</div>
+          <label class="consent-check" id="legal-consent">
+            <input id="legal-consent-input" type="checkbox" ${hasCachedCurrentLegalTermsAcceptance(account) ? "checked" : ""} />
+            <span>I agree to the <a href="./terms.html">Terms of Use</a>, <a href="./privacy.html">Privacy Policy</a>, and <a href="./refunds.html">Refund Policy</a>.</span>
+          </label>
+        </div>
+      `;
     }
 
     function renderAccount(account) {
@@ -2139,7 +2197,7 @@
       return { kind: "disabled", label: "Unavailable" };
     }
 
-    function renderPlanButton(planKey, action) {
+    function renderPlanButton(planKey, action, armed) {
       if (action.kind === "current") {
         return `<button class="btn btn-secondary" type="button" disabled>${escapeHtml(action.label)}</button>`;
       }
@@ -2149,12 +2207,13 @@
       }
 
       const buttonClass = planKey === "trial" ? "btn-trial" : (planKey === "year" ? "btn-premium" : (action.primary ? "btn-primary" : "btn-secondary"));
-      return `<button class="btn ${buttonClass}" type="button" data-plan-action="${escapeHtml(action.action)}" data-plan-key="${escapeHtml(planKey)}" data-busy-sensitive="true">${escapeHtml(action.label)}</button>`;
+      return `<button class="btn ${buttonClass} ${armed ? "btn-plan-armed" : ""}" type="button" data-plan-action="${escapeHtml(action.action)}" data-plan-key="${escapeHtml(planKey)}" data-busy-sensitive="true">${escapeHtml(action.label)}</button>`;
     }
 
     function renderPlans(account) {
       renderConsentControls(account);
 
+      const activeConsentPlanKey = getActiveConsentPlanKey(account);
       const trialAction = getPlanAction("trial", account);
       const trialBadge = trialAction.kind === "cta" ? "Try now" : "";
 
@@ -2195,9 +2254,10 @@
         const current = statusLabel === "Current" || statusLabel === "Current & next period";
         const trialHighlight = plan.key === "trial" && (action.kind === "cta" || current);
         const monthlyClass = plan.key === "month" ? "plan-card-monthly" : "";
+        const armed = activeConsentPlanKey === plan.key;
 
         return `
-          <div class="plan-card ${trialHighlight ? "plan-card-trial" : ""} ${monthlyClass} ${recommended ? "recommended" : ""} ${preselected ? "preselected" : ""} ${current ? "current" : ""}">
+          <div class="plan-card ${trialHighlight ? "plan-card-trial" : ""} ${monthlyClass} ${recommended ? "recommended" : ""} ${preselected ? "preselected" : ""} ${current ? "current" : ""} ${armed ? "plan-card-armed" : ""}">
             <div class="plan-badge-row">
               <div class="plan-badge-spacer" aria-hidden="true"></div>
               <div class="plan-badge-status">
@@ -2214,15 +2274,32 @@
             <p class="plan-copy">${escapeHtml(plan.copy)}</p>
 
             <div class="plan-action">
-              ${renderPlanButton(plan.key, action)}
+              <div class="plan-action-stack">
+                ${renderPlanButton(plan.key, action, armed)}
+                ${renderInlineConsent(account, plan.key, action)}
+              </div>
             </div>
           </div>
         `;
       }).join("");
 
+      bindInlineConsentInput(account);
+
       plansGrid.querySelectorAll("[data-plan-action]").forEach((el) => {
         el.addEventListener("click", async () => {
           const action = el.getAttribute("data-plan-action");
+          const planKey = el.getAttribute("data-plan-key");
+          const planAction = getPlanAction(String(planKey || ""), currentAccount);
+          const needsInlineConsent = !hasAcceptedCurrentLegalTerms(currentAccount) && isLegalConsentAction(planAction);
+
+          if (needsInlineConsent && selectedConsentPlanKey !== planKey) {
+            selectedConsentPlanKey = planKey;
+            clearMessages();
+            renderPlans(currentAccount);
+            const consentInput = getLegalConsentInput();
+            if (consentInput) consentInput.focus();
+            return;
+          }
 
           if (action === "start-trial") {
             await startFreeTrial();
