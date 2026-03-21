@@ -880,28 +880,14 @@
     }
 
     .btn-plan-armed {
-      box-shadow:
-        0 0 0 2px rgba(247, 213, 106, 0.26),
-        0 16px 34px rgba(184, 137, 42, 0.18);
-      border-color: rgba(247, 213, 106, 0.7);
-      transform: translateY(-1px);
-    }
-
-    .plan-selection-hint {
-      font-size: 12px;
-      line-height: 1.45;
-      color: #f7dfa2;
-      text-align: left;
+      border-color: rgba(247, 213, 106, 0.82);
+      outline: 2px solid rgba(247, 213, 106, 0.28);
+      outline-offset: 1px;
     }
 
     .plan-inline-consent {
       display: grid;
-      gap: 10px;
       text-align: left;
-      padding: 12px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(247, 213, 106, 0.18);
     }
 
     .btn-trial {
@@ -2070,7 +2056,6 @@
       if (selectedConsentPlanKey !== planKey || !isLegalConsentAction(action)) return "";
       return `
         <div class="plan-inline-consent" data-inline-consent-for="${escapeHtml(planKey)}">
-          <div class="plan-selection-hint">Confirm this plan to continue securely.</div>
           <label class="consent-check" id="legal-consent">
             <input id="legal-consent-input" type="checkbox" ${hasCachedCurrentLegalTermsAcceptance(account) ? "checked" : ""} />
             <span>I agree to the <a href="./terms.html">Terms of Use</a>, <a href="./privacy.html">Privacy Policy</a>, and <a href="./refunds.html">Refund Policy</a>.</span>
