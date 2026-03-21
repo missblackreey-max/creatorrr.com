@@ -83,6 +83,33 @@ export async function revokeAllUserDevices(env: Env, userId: string): Promise<vo
     .run();
 }
 
+export async function revokeOtherUserDevices(
+  env: Env,
+  userId: string,
+  keepDeviceId: string,
+): Promise<void> {
+  const did = normalizeDeviceId(keepDeviceId);
+  if (!did) return;
+
+  const now = nowIso();
+
+  await env.creatorrr_db
+    .prepare("DELETE FROM user_devices WHERE user_id=?1 AND device_id<>?2")
+    .bind(userId, did)
+    .run();
+
+  await env.creatorrr_db
+    .prepare(
+      `
+        INSERT INTO user_devices (user_id, device_id, token_version, created_at, last_seen_at)
+        VALUES (?1, ?2, 0, ?3, ?3)
+        ON CONFLICT(user_id, device_id) DO UPDATE SET last_seen_at=excluded.last_seen_at
+      `,
+    )
+    .bind(userId, did, now)
+    .run();
+}
+
 export async function requireAuth(
   req: Request,
   env: Env,

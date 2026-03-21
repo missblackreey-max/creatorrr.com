@@ -32,6 +32,7 @@ import {
   requireAuth,
   revokeAllUserDevices,
   revokeCurrentDevice,
+  revokeOtherUserDevices,
 } from "./services/db";
 import {
   createStripeCheckoutSession,
@@ -661,6 +662,34 @@ export default {
       if (!auth.ok) return auth.response;
       await revokeCurrentDevice(env, auth.ctx.userId, auth.ctx.deviceId);
       return json(req, { ok: true });
+    }
+
+    if (req.method === "POST" && url.pathname === "/auth/logout-other-devices") {
+      const body = await readJson<{ email?: string; password?: string; deviceId?: string }>(req);
+      if (!body) return bad(req, "invalid_json");
+
+      const email = normalizeEmail(String(body.email || ""));
+      const password = String(body.password || "");
+      const deviceId = normalizeDeviceId(String(body.deviceId || ""));
+
+      if (!email || !password) return bad(req, "invalid_input");
+      if (!deviceId) return bad(req, "missing_device_id", 400);
+
+      const user = await getUserByEmail(env, email);
+      if (!user) return bad(req, "invalid_credentials", 401);
+
+      const hash = await pbkdf2(password, user.pass_salt);
+      if (hash !== user.pass_hash) return bad(req, "invalid_credentials", 401);
+
+      if (!user.email_verified_at) {
+        return bad(req, "email_not_verified", 403, {
+          email_delivery_configured: isEmailDeliveryConfigured(env),
+        });
+      }
+
+      await revokeOtherUserDevices(env, user.id, deviceId);
+
+      return json(req, { ok: true, device_id: deviceId });
     }
 
     if (req.method === "POST" && url.pathname === "/auth/forgot-password") {
