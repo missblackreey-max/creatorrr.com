@@ -697,6 +697,19 @@
       background: linear-gradient(180deg, #f9df82, #cd9c3c);
     }
 
+    .btn-premium {
+      color: var(--gold-1);
+      border-color: rgba(247, 213, 106, 0.34);
+      background: linear-gradient(180deg, rgba(247, 213, 106, 0.16), rgba(184, 137, 42, 0.08));
+      box-shadow: 0 12px 26px rgba(184, 137, 42, 0.12);
+    }
+
+    .btn-premium:hover {
+      color: var(--gold-1);
+      border-color: rgba(247, 213, 106, 0.5);
+      background: linear-gradient(180deg, rgba(247, 213, 106, 0.22), rgba(184, 137, 42, 0.12));
+    }
+
     .muted { color: var(--muted); }
     .muted-2 { color: var(--muted-2); }
 
@@ -1122,7 +1135,7 @@
             </div>
 
             <div class="pricing-actions">
-              <a class="btn btn-primary" href="./account.html?intent=yearly">Buy yearly</a>
+              <a class="btn btn-premium" href="./account.html?intent=yearly">Buy yearly</a>
             </div>
           </article>
         </div>

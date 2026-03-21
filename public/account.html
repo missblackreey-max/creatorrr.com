@@ -746,6 +746,19 @@
       background: linear-gradient(180deg, #f9df82, #cd9c3c);
     }
 
+    .btn-premium {
+      color: var(--gold-1);
+      border-color: rgba(247, 213, 106, 0.34);
+      background: linear-gradient(180deg, rgba(247, 213, 106, 0.16), rgba(184, 137, 42, 0.08));
+      box-shadow: 0 12px 26px rgba(184, 137, 42, 0.12);
+    }
+
+    .btn-premium:hover {
+      color: var(--gold-1);
+      border-color: rgba(247, 213, 106, 0.5);
+      background: linear-gradient(180deg, rgba(247, 213, 106, 0.22), rgba(184, 137, 42, 0.12));
+    }
+
     .download-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1862,7 +1875,7 @@
         return `<button class="btn btn-ghost" type="button" disabled>${escapeHtml(action.label)}</button>`;
       }
 
-      const buttonClass = planKey === "trial" ? "btn-trial" : (action.primary ? "btn-primary" : "btn-secondary");
+      const buttonClass = planKey === "trial" ? "btn-trial" : (planKey === "year" ? "btn-premium" : (action.primary ? "btn-primary" : "btn-secondary"));
       return `<button class="btn ${buttonClass}" type="button" data-plan-action="${escapeHtml(action.action)}" data-plan-key="${escapeHtml(planKey)}" data-busy-sensitive="true">${escapeHtml(action.label)}</button>`;
     }
 
