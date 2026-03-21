@@ -1166,9 +1166,9 @@
         </div>
 
         <div class="plans-grid" id="plans-grid"></div>
-        <label class="consent-check" id="paid-plan-consent">
-          <input id="paid-plan-consent-input" type="checkbox" />
-          <span>I agree to the <a href="./terms.html">Terms</a>, <a href="./privacy.html">Privacy Policy</a>, and <a href="./refunds.html">Refund Policy</a>.</span>
+        <label class="consent-check" id="plan-consent">
+          <input id="plan-consent-input" type="checkbox" />
+          <span>I agree to the <a href="./terms.html">Terms of Use</a>, <a href="./privacy.html">Privacy Policy</a>, and <a href="./refunds.html">Refund Policy</a>.</span>
         </label>
         <p class="account-note">The 3-day trial stays card-free and does not turn into a paid plan automatically.</p>
       </section>
@@ -1269,7 +1269,7 @@
     const downloadsCopy = document.getElementById("downloads-copy");
     const downloadWindows = document.getElementById("download-windows");
     const downloadMacos = document.getElementById("download-macos");
-    const paidPlanConsentInput = document.getElementById("paid-plan-consent-input");
+    const planConsentInput = document.getElementById("plan-consent-input");
 
     let currentAccount = null;
     let preferredPlan = normalizePlan(preselectParam) || "year";
@@ -2045,8 +2045,8 @@
       return `<button class="btn ${buttonClass}" type="button" data-plan-action="${escapeHtml(action.action)}" data-plan-key="${escapeHtml(planKey)}" data-busy-sensitive="true">${escapeHtml(action.label)}</button>`;
     }
 
-    function hasPaidPlanConsent() {
-      return !!paidPlanConsentInput?.checked;
+    function hasRequiredPlanConsent() {
+      return !!planConsentInput?.checked;
     }
 
     function renderPlans(account) {
@@ -2149,8 +2149,8 @@
 
     async function continueCheckout(interval) {
       clearMessages();
-      if (!hasPaidPlanConsent()) {
-        setError("Please confirm that paid plans renew automatically until canceled before continuing to checkout.");
+      if (!hasRequiredPlanConsent()) {
+        setError("Please agree to the Terms of Use, Privacy Policy, and Refund Policy before continuing.");
         return;
       }
       setBusy(true);
@@ -2180,6 +2180,10 @@
 
     async function startFreeTrial() {
       clearMessages();
+      if (!hasRequiredPlanConsent()) {
+        setError("Please agree to the Terms of Use, Privacy Policy, and Refund Policy before continuing.");
+        return;
+      }
       setBusy(true);
       try {
         const token = getWebToken();
