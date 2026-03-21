@@ -420,12 +420,12 @@
           <div class="platform-card">
             <strong>Windows</strong>
             <span>Current version v1.0.0 for Windows 11 and later</span>
-            <a class="btn btn-primary" id="download-windows" href="/Contentorrr-Setup-v1.0.0.exe">Download .exe</a>
+            <a class="btn btn-primary" id="download-windows" href="https://downloads.creatorrr.com/Contentorrr_1.0.0_x64-setup.exe">Download .exe</a>
           </div>
           <div class="platform-card">
             <strong>macOS (Apple Silicon)</strong>
             <span>Current version v1.0.0 for macOS</span>
-            <a class="btn btn-primary" id="download-macos" href="/Contentorrr-v1.0.0.dmg">Download .dmg</a>
+            <a class="btn btn-primary" id="download-macos" href="https://downloads.creatorrr.com/Contentorrr_1.0.0_aarch64.dmg">Download .dmg</a>
           </div>
         </div>
       </section>
@@ -435,8 +435,8 @@
   <script>
     const API_BASE = "https://api.creatorrr.com";
     const APP_VERSION = "v1.0.0";
-    // TODO: Replace with the final public R2/custom-domain base URL once the installers are uploaded.
-    const INSTALLER_BASE_URL = "";
+    const INSTALLER_WINDOWS_URL = "https://downloads.creatorrr.com/Contentorrr_1.0.0_x64-setup.exe";
+    const INSTALLER_MACOS_URL = "https://downloads.creatorrr.com/Contentorrr_1.0.0_aarch64.dmg";
     const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
     const params = new URLSearchParams(window.location.search);
 
@@ -447,13 +447,8 @@
     const downloadWindows = document.getElementById("download-windows");
     const downloadMacos = document.getElementById("download-macos");
 
-    const normalizedInstallerBaseUrl = INSTALLER_BASE_URL.replace(/\/+$/, "");
-    const windowsInstallerUrl = normalizedInstallerBaseUrl
-      ? `${normalizedInstallerBaseUrl}/Contentorrr-Setup-${APP_VERSION}.exe`
-      : `/Contentorrr-Setup-${APP_VERSION}.exe`;
-    const macosInstallerUrl = normalizedInstallerBaseUrl
-      ? `${normalizedInstallerBaseUrl}/Contentorrr-${APP_VERSION}.dmg`
-      : `/Contentorrr-${APP_VERSION}.dmg`;
+    const windowsInstallerUrl = INSTALLER_WINDOWS_URL;
+    const macosInstallerUrl = INSTALLER_MACOS_URL;
 
     downloadWindows.href = windowsInstallerUrl;
     downloadMacos.href = macosInstallerUrl;
