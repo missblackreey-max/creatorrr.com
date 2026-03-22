@@ -1318,6 +1318,7 @@
     const API_BASE = "https://api.creatorrr.com";
     const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
     const LS_WEB_DEVICE_ID = "creatorrr.web.device.id.v1";
+    const WEBSITE_ACCOUNT_DEVICE_ID = "creatorrr-web-account-v1";
     const LS_WEB_OAUTH_NONCE = "creatorrr.web.oauth.google.nonce.v1";
 
     const APP_VERSION = "v1.0.0";
@@ -1622,11 +1623,8 @@
     }
 
     function getOrCreateDeviceId() {
-      const existing = safeLocalStorageGet(LS_WEB_DEVICE_ID);
-      if (existing) return existing;
-      const did = randomUuidV4();
-      safeLocalStorageSet(LS_WEB_DEVICE_ID, did);
-      return did;
+      safeLocalStorageSet(LS_WEB_DEVICE_ID, WEBSITE_ACCOUNT_DEVICE_ID);
+      return WEBSITE_ACCOUNT_DEVICE_ID;
     }
 
     function parseHashParams() {
