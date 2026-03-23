@@ -346,7 +346,7 @@
           <a class="btn btn-primary" href="https://downloads.creatorrr.com/Contentorrr_Challenge_Video.mp4">Download video</a>
           <div class="download-meta">
             <code>Contentorrr_Challenge_Video.mp4</code>
-            <small id="challenge-video-size">File size: checking...</small>
+            <small>Contentorrr_Challenge_Video.mp4 · 187.8 MB</small>
           </div>
         </div>
 
@@ -413,38 +413,6 @@
   </footer>
 
   <script>
-    const CHALLENGE_VIDEO_URL = "https://downloads.creatorrr.com/Contentorrr_Challenge_Video.mp4";
-
-    function formatFileSize(bytes) {
-      const value = Number(bytes);
-      if (!Number.isFinite(value) || value <= 0) return null;
-      const units = ["B", "KB", "MB", "GB"];
-      let size = value;
-      let unitIndex = 0;
-      while (size >= 1024 && unitIndex < units.length - 1) {
-        size /= 1024;
-        unitIndex += 1;
-      }
-      const precision = size >= 100 || unitIndex === 0 ? 0 : size >= 10 ? 1 : 2;
-      return `${size.toFixed(precision)} ${units[unitIndex]}`;
-    }
-
-    async function hydrateFileSize(url, elementId) {
-      const element = document.getElementById(elementId);
-      if (!element) return;
-      try {
-        const response = await fetch(url, { method: 'HEAD' });
-        const length = response.headers.get('content-length');
-        const formatted = formatFileSize(length);
-        if (formatted) {
-          element.textContent = `File size: ${formatted}`;
-          return;
-        }
-      } catch {}
-      element.textContent = 'File size: shown after download starts';
-    }
-
-    hydrateFileSize(CHALLENGE_VIDEO_URL, 'challenge-video-size');
     document.getElementById('year').textContent = String(new Date().getFullYear());
   </script>
 </body>
