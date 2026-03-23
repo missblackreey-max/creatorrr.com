@@ -32,6 +32,7 @@
     }
 
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 96px; }
 
     body {
       margin: 0;
@@ -360,6 +361,13 @@
       line-height: 1.45;
     }
 
+    .download-filesize {
+      margin-top: 8px;
+      color: var(--muted-2);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
     .footer-note {
       margin-top: 16px;
       color: var(--muted-2);
@@ -368,6 +376,7 @@
     }
 
     @media (max-width: 920px) {
+      html { scroll-padding-top: 132px; }
       .download-head {
         gap: 14px;
         align-items: flex-start;
@@ -500,11 +509,13 @@
             <strong>Windows</strong>
             <span>Current version v1.0.0 for Windows 11 and later</span>
             <a class="btn btn-primary" id="download-windows" href="https://downloads.creatorrr.com/Contentorrr_1.0.0_x64-setup.exe">Download .exe</a>
+            <div class="download-filesize" id="download-windows-size">File size: checking...</div>
           </div>
           <div class="platform-card">
             <strong>macOS (Apple Silicon)</strong>
             <span>Current version v1.0.0 for macOS</span>
             <a class="btn btn-primary" id="download-macos" href="https://downloads.creatorrr.com/Contentorrr_1.0.0_aarch64.dmg">Download .dmg</a>
+            <div class="download-filesize" id="download-macos-size">File size: checking...</div>
           </div>
         </div>
       </section>
@@ -525,6 +536,8 @@
     const noticeBox = document.getElementById("notice-box");
     const downloadWindows = document.getElementById("download-windows");
     const downloadMacos = document.getElementById("download-macos");
+    const downloadWindowsSize = document.getElementById("download-windows-size");
+    const downloadMacosSize = document.getElementById("download-macos-size");
     const loggedOutActions = document.getElementById("nav-actions-logged-out");
     const loggedInActions = document.getElementById("nav-actions-logged-in");
     const navActionSlot = document.getElementById("nav-action-slot");
@@ -534,6 +547,37 @@
 
     downloadWindows.href = windowsInstallerUrl;
     downloadMacos.href = macosInstallerUrl;
+
+    function formatFileSize(bytes) {
+      const value = Number(bytes);
+      if (!Number.isFinite(value) || value <= 0) return null;
+      const units = ["B", "KB", "MB", "GB"];
+      let size = value;
+      let unitIndex = 0;
+      while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex += 1;
+      }
+      const precision = size >= 100 || unitIndex === 0 ? 0 : size >= 10 ? 1 : 2;
+      return `${size.toFixed(precision)} ${units[unitIndex]}`;
+    }
+
+    async function hydrateFileSize(url, element) {
+      if (!element) return;
+      try {
+        const response = await fetch(url, { method: "HEAD" });
+        const length = response.headers.get("content-length");
+        const formatted = formatFileSize(length);
+        if (formatted) {
+          element.textContent = `File size: ${formatted}`;
+          return;
+        }
+      } catch {}
+      element.textContent = "File size: shown after download starts";
+    }
+
+    hydrateFileSize(windowsInstallerUrl, downloadWindowsSize);
+    hydrateFileSize(macosInstallerUrl, downloadMacosSize);
 
     function normalizeMode(value) {
       const mode = String(value || "").trim().toLowerCase();

@@ -29,7 +29,7 @@
     }
 
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; scroll-padding-top: 96px; }
     body {
       margin: 0;
       color: var(--text);
@@ -201,6 +201,32 @@
       margin-top: 22px;
     }
 
+    .resource-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 22px;
+    }
+
+    .download-meta {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .download-meta code {
+      font-size: 13px;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    .download-meta small {
+      color: var(--muted-2);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
     .table-wrap {
       margin-top: 18px;
       overflow-x: auto;
@@ -213,21 +239,6 @@
     th, td { padding: 14px 16px; text-align: left; vertical-align: top; border-bottom: 1px solid rgba(255,255,255,0.08); }
     th { color: var(--text); font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; }
     td { color: var(--muted); font-size: 14px; line-height: 1.55; }
-
-    .mini-button {
-      margin-top: 16px;
-      min-height: 38px;
-      padding: 0 14px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(255,255,255,0.04);
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .mini-button:hover { border-color: rgba(247,213,106,0.42); }
 
     .video-shell {
       margin-top: 18px;
@@ -280,9 +291,11 @@
     }
 
     @media (max-width: 720px) {
+      html { scroll-padding-top: 132px; }
       .nav { min-height: auto; padding: 14px 0; flex-wrap: wrap; }
       .nav-links { width: 100%; }
       .btn, .button-row .btn { width: 100%; }
+      .resource-row { align-items: flex-start; }
     }
   </style>
 </head>
@@ -329,12 +342,13 @@
       <section class="section-card" id="resources">
         <span class="eyebrow">3. Resources</span>
         <h2>Video and table</h2>
-        <div class="button-row">
+        <div class="resource-row">
           <a class="btn btn-primary" href="https://downloads.creatorrr.com/Contentorrr_Challenge_Video.mp4">Download video</a>
+          <div class="download-meta">
+            <code>Contentorrr_Challenge_Video.mp4</code>
+            <small id="challenge-video-size">File size: checking...</small>
+          </div>
         </div>
-        <p style="margin-top:16px;"><code>Contentorrr_Challenge_Video.mp4</code></p>
-
-        <button class="mini-button" type="button" id="copy-csv">Copy CSV</button>
 
         <div class="table-wrap">
           <table>
@@ -399,31 +413,38 @@
   </footer>
 
   <script>
-    const csvText = `clip,title,tags
-1,Big & Wet Ships,"wet,big,huge"
-2,Wide & Open Fields from Above,"wideopen,spreadout,POV"
-3,"Long, Green & Ready","long,green,juicy"
-4,Hairy Bull on the Move,"hairy,bull,thick"
-5,Cutie Licking Her Paw,"cutie,licking,paw"
-6,Ready for Dinner Table Action,"table,castle,dinner"
-7,That Escalated Quickly,"down,orange,rolling"
-8,Double Trouble,"cat,black,white"
-Trailer,8 in 1,"sfw,stuff,challenge"`;
+    const CHALLENGE_VIDEO_URL = "https://downloads.creatorrr.com/Contentorrr_Challenge_Video.mp4";
 
-    const copyCsvButton = document.getElementById('copy-csv');
-    copyCsvButton.addEventListener('click', async () => {
-      const originalLabel = copyCsvButton.textContent;
-      try {
-        await navigator.clipboard.writeText(csvText);
-        copyCsvButton.textContent = 'Copied';
-      } catch {
-        copyCsvButton.textContent = 'Copy failed';
+    function formatFileSize(bytes) {
+      const value = Number(bytes);
+      if (!Number.isFinite(value) || value <= 0) return null;
+      const units = ["B", "KB", "MB", "GB"];
+      let size = value;
+      let unitIndex = 0;
+      while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex += 1;
       }
-      window.setTimeout(() => {
-        copyCsvButton.textContent = originalLabel;
-      }, 1400);
-    });
+      const precision = size >= 100 || unitIndex === 0 ? 0 : size >= 10 ? 1 : 2;
+      return `${size.toFixed(precision)} ${units[unitIndex]}`;
+    }
 
+    async function hydrateFileSize(url, elementId) {
+      const element = document.getElementById(elementId);
+      if (!element) return;
+      try {
+        const response = await fetch(url, { method: 'HEAD' });
+        const length = response.headers.get('content-length');
+        const formatted = formatFileSize(length);
+        if (formatted) {
+          element.textContent = `File size: ${formatted}`;
+          return;
+        }
+      } catch {}
+      element.textContent = 'File size: shown after download starts';
+    }
+
+    hydrateFileSize(CHALLENGE_VIDEO_URL, 'challenge-video-size');
     document.getElementById('year').textContent = String(new Date().getFullYear());
   </script>
 </body>
