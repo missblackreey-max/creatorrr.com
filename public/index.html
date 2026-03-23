@@ -682,126 +682,6 @@
       color: var(--text);
     }
 
-    .challenge-strip {
-      padding-top: 8px;
-    }
-
-    .challenge-strip-card {
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 18px;
-      align-items: center;
-      padding: 24px;
-      background:
-        radial-gradient(circle at top left, rgba(247, 213, 106, 0.12), transparent 48%),
-        linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
-      border: 1px solid rgba(247, 213, 106, 0.18);
-      box-shadow: var(--shadow);
-      border-radius: var(--radius-lg);
-    }
-
-    .challenge-strip-copy h2,
-    .challenge-proof-copy h2 {
-      margin: 0 0 10px;
-      font-size: clamp(26px, 4vw, 38px);
-      line-height: 1.05;
-      letter-spacing: -1px;
-    }
-
-    .challenge-strip-copy p,
-    .challenge-proof-copy p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 15px;
-      line-height: 1.6;
-    }
-
-    .challenge-strip-points {
-      display: grid;
-      gap: 10px;
-      margin-top: 16px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .challenge-strip-points div::before {
-      content: "• ";
-      color: rgba(247, 213, 106, 0.95);
-    }
-
-    .challenge-proof {
-      display: grid;
-      gap: 18px;
-    }
-
-    .challenge-proof-box {
-      padding: 18px;
-      border-radius: 18px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.08);
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.55;
-    }
-
-    .challenge-proof-box strong {
-      display: block;
-      margin-bottom: 6px;
-      color: var(--text);
-      font-size: 15px;
-    }
-
-    .challenge-proof-box code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      color: rgba(247, 213, 106, 0.96);
-      word-break: break-word;
-    }
-
-    .proof-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 18px;
-    }
-
-    .proof-card {
-      overflow: hidden;
-      padding: 0;
-    }
-
-    .proof-card .demo-top {
-      padding: 22px 24px 0;
-      text-align: center;
-    }
-
-    .proof-card .demo-top p {
-      margin: 8px auto 0;
-      max-width: 58ch;
-      color: var(--muted);
-      font-size: 15px;
-      line-height: 1.55;
-    }
-
-    .video-placeholder {
-      height: 100%;
-      min-height: 360px;
-      display: grid;
-      place-items: center;
-      padding: 24px;
-      text-align: center;
-      color: var(--muted);
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)),
-        radial-gradient(circle at 50% 50%, rgba(247, 213, 106, 0.09), transparent 58%),
-        #101010;
-    }
-
-    .video-placeholder strong {
-      display: block;
-      margin-bottom: 8px;
-      color: var(--text);
-      font-size: 18px;
-    }
-
     .btn-trial {
       color: #0b0b0b;
       border-color: rgba(247, 213, 106, 0.5);
@@ -849,11 +729,6 @@
 
       .hero h1 {
         white-space: normal;
-      }
-
-      .challenge-strip-card,
-      .proof-grid {
-        grid-template-columns: 1fr;
       }
 
     }
@@ -1064,7 +939,7 @@
       </a>
 
       <nav class="nav-links">
-        <a href="#proof">Proof</a>
+        <a href="#demo">Demo</a>
         <a href="#workflow">Workflow</a>
         <a href="#pricing">Pricing</a>
         <a href="./challenge/">Challenge</a>
@@ -1103,7 +978,7 @@
 
           <div class="hero-actions">
             <a class="btn btn-primary" href="./account.html?intent=trial">Start 3-day free trial</a>
-            <a class="btn btn-secondary" href="#proof">Watch the demo</a>
+            <a class="btn btn-secondary" href="#demo">Watch the demo</a>
             <a class="btn btn-secondary" href="./challenge/">Take the challenge</a>
           </div>
         </div>
@@ -1133,46 +1008,25 @@
     </section>
 
 
-    <section id="proof">
+    <section id="demo">
       <div class="container">
-        <div class="proof-grid">
-          <article class="demo-card proof-card">
-            <div class="demo-top">
-              <h2>Watch the product demo</h2>
-              <p>See the core workflow: one source video becomes clips, screenshots, trailers, tags, and a growing media library.</p>
+        <article class="demo-card">
+          <div class="demo-top">
+            <h2>Watch this demo:</h2>
+          </div>
+          <div class="hero-video">
+            <div class="video-frame">
+              <iframe
+                title="Contentorrr demo video"
+                src="https://www.youtube.com/embed/U5lR1jnxdBo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen
+              ></iframe>
             </div>
-            <div class="hero-video">
-              <div class="video-frame">
-                <iframe
-                  title="Contentorrr demo video"
-                  src="https://www.youtube.com/embed/U5lR1jnxdBo"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowfullscreen
-                ></iframe>
-              </div>
-            </div>
-          </article>
-
-          <article class="demo-card proof-card">
-            <div class="demo-top challenge-proof-copy">
-              <h2>Then watch the challenge run</h2>
-              <p>Swap in your upcoming YouTube recording here to show how quickly the exact challenge gets done inside Contentorrr.</p>
-            </div>
-            <div class="hero-video">
-              <div class="video-frame">
-                <div class="video-placeholder">
-                  <div>
-                    <strong>Your timed challenge video goes here</strong>
-                    Replace this placeholder with the YouTube embed URL once the recording is ready.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </article>
-        </div>
+          </div>
+        </article>
       </div>
     </section>
-
 
     <section id="workflow">
       <div class="container">
@@ -1208,34 +1062,6 @@
       </div>
     </section>
 
-
-    <section class="challenge-strip" id="challenge">
-      <div class="container">
-        <article class="challenge-strip-card">
-          <div class="challenge-strip-copy">
-            <span class="eyebrow">The Contentorrr challenge</span>
-            <h2>One 7-minute source video. Nine deliverables. Minimal brief.</h2>
-            <p>Download the same SFW, royalty-free challenge file, cut eight 8-second clips, export eight screenshots, build one 8-second trailer, and hand back the bare minimum list of file paths, names, and tags. Then let Contentorrr turn that same session into a much richer metadata set automatically.</p>
-            <div class="challenge-strip-points">
-              <div>Manual goal: clips + screenshots + trailer + tiny delivery list.</div>
-              <div>Contentorrr goal: the same assets plus much more metadata, faster.</div>
-              <div>Challenge page includes download link, titles, tags, and the exact brief.</div>
-            </div>
-          </div>
-
-          <div class="challenge-proof">
-            <div class="challenge-proof-box">
-              <strong>Challenge source video</strong>
-              Same Cloudflare R2 download host as the installers: <code>https://downloads.creatorrr.com/Contentorrr_Challenge_Video.mp4</code>
-            </div>
-            <div class="hero-actions" style="margin-top:0;">
-              <a class="btn btn-primary" href="./challenge/">Open challenge page</a>
-              <a class="btn btn-secondary" href="https://downloads.creatorrr.com/Contentorrr_Challenge_Video.mp4">Download challenge video</a>
-            </div>
-          </div>
-        </article>
-      </div>
-    </section>
 
     <section id="pricing">
       <div class="container">
@@ -1334,7 +1160,6 @@
       </div>
 
       <div class="footer-links">
-        <a href="./challenge/">Challenge</a>
         <a href="./contentorrr_v1.0.pdf">Contentorrr guide</a>
         <a href="./privacy.html">Privacy Policy</a>
         <a href="./terms.html">Terms of Use</a>
