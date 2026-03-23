@@ -32,7 +32,7 @@
     }
 
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; scroll-padding-top: 96px; }
 
     body {
       margin: 0;
@@ -730,9 +730,11 @@
       .hero h1 {
         white-space: normal;
       }
+
     }
 
     @media (max-width: 780px) {
+      html { scroll-padding-top: 132px; }
       .nav {
         display: flex;
         min-height: auto;
@@ -941,6 +943,7 @@
         <a href="#demo">Demo</a>
         <a href="#workflow">Workflow</a>
         <a href="#pricing">Pricing</a>
+        <a href="./challenge/">Challenge</a>
         <a class="nav-link-highlight" href="./account.html?intent=trial">3-day free trial</a>
       </nav>
 
@@ -977,6 +980,7 @@
           <div class="hero-actions">
             <a class="btn btn-primary" href="./account.html?intent=trial">Start 3-day free trial</a>
             <a class="btn btn-secondary" href="#demo">Watch the demo</a>
+            <a class="btn btn-secondary" href="./challenge/">Take the challenge</a>
           </div>
         </div>
 
@@ -1003,6 +1007,7 @@
         </div>
       </div>
     </section>
+
 
     <section id="demo">
       <div class="container">
@@ -1057,6 +1062,7 @@
         </div>
       </div>
     </section>
+
 
     <section id="pricing">
       <div class="container">

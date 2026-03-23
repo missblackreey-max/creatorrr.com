@@ -34,7 +34,7 @@
     }
 
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; scroll-padding-top: 96px; }
 
     body {
       margin: 0;
@@ -1003,6 +1003,13 @@
       line-height: 1.45;
     }
 
+    .download-filesize {
+      margin-top: 8px;
+      color: var(--muted-2);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
     .footer-note {
       margin-top: 16px;
       color: var(--muted-2);
@@ -1034,6 +1041,7 @@
     }
 
     @media (max-width: 760px) {
+      html { scroll-padding-top: 132px; }
       .download-head {
         --download-logo-size: 64px;
         gap: 14px;
@@ -1302,12 +1310,14 @@
             <strong>Windows 11</strong>
             <span>Current version v1.0.0 for Windows 11 and later</span>
             <a class="btn btn-primary" id="download-windows" href="https://downloads.creatorrr.com/Contentorrr_1.0.0_x64-setup.exe">Download .exe</a>
+            <div class="download-filesize">87.4 MB</div>
           </div>
 
           <div class="platform-card">
             <strong>macOS (Apple Silicon)</strong>
             <span>Current version v1.0.0 for Apple Silicon Macs</span>
             <a class="btn btn-primary" id="download-macos" href="https://downloads.creatorrr.com/Contentorrr_1.0.0_aarch64.dmg">Download .dmg</a>
+            <div class="download-filesize">58.6 MB</div>
           </div>
         </div>
       </section>
