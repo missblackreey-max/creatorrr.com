@@ -1856,7 +1856,7 @@
       }
 
       if (license.entitled && String(license.plan || "").trim().toLowerCase() === "free") {
-        return "Never";
+        return "∞";
       }
 
       if (!license.entitled && status === "canceled") {
@@ -2241,9 +2241,9 @@
       }
 
       if (state === "free_active") {
-        if (planKey === "trial") return { kind: "disabled", label: "Included" };
-        if (planKey === "month") return { kind: "cta", label: "Buy monthly", action: "checkout-month", primary: false };
-        return { kind: "cta", label: "Buy yearly", action: "checkout-year", primary: false };
+        if (planKey === "trial") return { kind: "disabled", label: "Expired" };
+        if (planKey === "month") return { kind: "disabled", label: "Included" };
+        return { kind: "disabled", label: "Included" };
       }
 
       if (state === "monthly_active") {
