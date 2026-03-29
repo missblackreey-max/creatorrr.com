@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" href="../creatorrr-logo-nolink.png" sizes="790x790" />
 <link rel="apple-touch-icon" href="../creatorrr-logo-nolink.png" />
 <meta name="description"
-content="Try the Contentorrr challenge yourself: download the video, use your current workflow, measure your time, and compare your result with Contentorrr." />
+content="Take the updated Contentorrr speed challenge: create 18 deliverables (watermarked and unwatermarked clips + trailers), apply platform tags, and compare your time with Contentorrr." />
 
 <style>
 :root {
@@ -251,6 +251,7 @@ line-height:1.55;
 }
 
 .video-shell{
+position:relative;
 margin-top:18px;
 aspect-ratio:16/9;
 border-radius:20px;
@@ -259,16 +260,28 @@ border:1px solid rgba(255,255,255,0.08);
 background:#101010;
 display:grid;
 place-items:center;
-padding:24px;
+padding:0;
 text-align:center;
 color:var(--muted);
 }
 
-.video-shell strong{
+.video-shell iframe{
+border:0;
 display:block;
-margin-bottom:8px;
+}
+
+.video-shell strong{
+position:absolute;
+left:12px;
+top:12px;
+z-index:2;
+background:rgba(0,0,0,0.62);
+padding:6px 10px;
+border-radius:999px;
 color:var(--text);
-font-size:18px;
+font-size:12px;
+letter-spacing:.04em;
+text-transform:uppercase;
 }
 
 .site-footer{padding:0 0 54px;color:var(--muted);}
@@ -325,11 +338,11 @@ font-weight:600;
 <h2>How it works</h2>
 
 <p>
-Treat the video provided here like one of your own scenes.
+Treat the video provided here like your raw source asset.
 </p>
 
 <p>
-Use your current workflow, measure your time, and compare your result with Contentorrr.
+Your goal is speed and structure: produce every required deliverable, tag it correctly, and compare your final time with Contentorrr.
 </p>
 </section>
 
@@ -338,19 +351,24 @@ Use your current workflow, measure your time, and compare your result with Conte
 <h2>Use your current workflow</h2>
 
 <div class="list">
-  <div>Download the challenge video.</div>
-  <div>Prepare your current editing and metadata workflow.</div>
+  <div>Download the merged source video (8 scenes in one full video).</div>
+  <div>Prepare your normal editing/export workflow.</div>
   <div><b>⏱️ Start the timer when you import or drop the video into your tool.</b></div>
-  <div>Create 8 clips (8 seconds each), 8 screenshots, and 1 trailer (8 seconds).</div>
-  <div>Use the titles and tags from the table below. You may copy and paste them.</div>
-  <div><b>🏁 Stop the timer when all media files and the metadata list are finished and in the right place.</b></div>
+  <div>Create 8 clips of 8 seconds each as watermarked versions (for X).</div>
+  <div>Every watermarked export must place <code>Contentorrr Challenge</code> in the top-right corner.</div>
+  <div>Create the same 8 clips as unwatermarked versions (for Reddit).</div>
+  <div>Create 2 trailers from the same source: 1 watermarked and 1 unwatermarked.</div>
+  <div>Apply the same top-right <code>Contentorrr Challenge</code> watermark to the watermarked trailer.</div>
+  <div>Tag all 18 assets as <code>SFW</code>, add <code>X</code> to watermarked assets, and add <code>Reddit</code> to unwatermarked assets.</div>
+  <div>Deliver 18 assets + the full original video, with a filename/path list for every file.</div>
+  <div><b>🏁 Stop the timer when files + path list + tags are complete.</b></div>
 </div>
 
 </section>
 
 <section class="section-card" id="resources">
 <span class="eyebrow">3. Resources</span>
-<h2>Video and metadata</h2>
+<h2>Video, metadata, and watermark spec</h2>
 
 <div class="resource-row">
 <a class="btn btn-primary" 
@@ -368,23 +386,33 @@ Download video
 <table>
 <thead>
 <tr>
-<th>Clip</th>
-<th>Title</th>
+<th>Asset</th>
+<th>Variant</th>
+<th>Requirement</th>
 <th>Tags</th>
+<th>Example filename/path</th>
 </tr>
 </thead>
 <tbody>
-
-<tr><td>1</td><td>Big & Wet Ships</td><td>wet,big,huge ship</td></tr>
-<tr><td>2</td><td>Wide & Open Fields from Above</td><td>wideopen,spreadout,POV</td></tr>
-<tr><td>3</td><td>Long, Green & Ready</td><td>long,green,juicy</td></tr>
-<tr><td>4</td><td>Hairy Bull on the Move</td><td>hairy,bull,thick</td></tr>
-<tr><td>5</td><td>Cutie Licking Her Paw</td><td>cutie,licking,paw</td></tr>
-<tr><td>6</td><td>Ready for Dinner Table Action</td><td>table,castle,dinner</td></tr>
-<tr><td>7</td><td>That Escalated Quickly</td><td>down,orange,rolling</td></tr>
-<tr><td>8</td><td>Double Trouble</td><td>cat,black,white</td></tr>
-<tr><td>Trailer</td><td>8 in 1</td><td>sfw,stuff,challenge</td></tr>
-
+<tr><td>Clip 01</td><td>Watermarked</td><td>8s clip for X + top-right "Contentorrr Challenge" watermark</td><td>SFW,X</td><td><code>/exports/x/clip01_wm.mp4</code></td></tr>
+<tr><td>Clip 01</td><td>Unwatermarked</td><td>8s clip for Reddit</td><td>SFW,Reddit</td><td><code>/exports/reddit/clip01_clean.mp4</code></td></tr>
+<tr><td>Clip 02</td><td>Watermarked</td><td>8s clip for X + top-right "Contentorrr Challenge" watermark</td><td>SFW,X</td><td><code>/exports/x/clip02_wm.mp4</code></td></tr>
+<tr><td>Clip 02</td><td>Unwatermarked</td><td>8s clip for Reddit</td><td>SFW,Reddit</td><td><code>/exports/reddit/clip02_clean.mp4</code></td></tr>
+<tr><td>Clip 03</td><td>Watermarked</td><td>8s clip for X + top-right "Contentorrr Challenge" watermark</td><td>SFW,X</td><td><code>/exports/x/clip03_wm.mp4</code></td></tr>
+<tr><td>Clip 03</td><td>Unwatermarked</td><td>8s clip for Reddit</td><td>SFW,Reddit</td><td><code>/exports/reddit/clip03_clean.mp4</code></td></tr>
+<tr><td>Clip 04</td><td>Watermarked</td><td>8s clip for X + top-right "Contentorrr Challenge" watermark</td><td>SFW,X</td><td><code>/exports/x/clip04_wm.mp4</code></td></tr>
+<tr><td>Clip 04</td><td>Unwatermarked</td><td>8s clip for Reddit</td><td>SFW,Reddit</td><td><code>/exports/reddit/clip04_clean.mp4</code></td></tr>
+<tr><td>Clip 05</td><td>Watermarked</td><td>8s clip for X + top-right "Contentorrr Challenge" watermark</td><td>SFW,X</td><td><code>/exports/x/clip05_wm.mp4</code></td></tr>
+<tr><td>Clip 05</td><td>Unwatermarked</td><td>8s clip for Reddit</td><td>SFW,Reddit</td><td><code>/exports/reddit/clip05_clean.mp4</code></td></tr>
+<tr><td>Clip 06</td><td>Watermarked</td><td>8s clip for X + top-right "Contentorrr Challenge" watermark</td><td>SFW,X</td><td><code>/exports/x/clip06_wm.mp4</code></td></tr>
+<tr><td>Clip 06</td><td>Unwatermarked</td><td>8s clip for Reddit</td><td>SFW,Reddit</td><td><code>/exports/reddit/clip06_clean.mp4</code></td></tr>
+<tr><td>Clip 07</td><td>Watermarked</td><td>8s clip for X + top-right "Contentorrr Challenge" watermark</td><td>SFW,X</td><td><code>/exports/x/clip07_wm.mp4</code></td></tr>
+<tr><td>Clip 07</td><td>Unwatermarked</td><td>8s clip for Reddit</td><td>SFW,Reddit</td><td><code>/exports/reddit/clip07_clean.mp4</code></td></tr>
+<tr><td>Clip 08</td><td>Watermarked</td><td>8s clip for X + top-right "Contentorrr Challenge" watermark</td><td>SFW,X</td><td><code>/exports/x/clip08_wm.mp4</code></td></tr>
+<tr><td>Clip 08</td><td>Unwatermarked</td><td>8s clip for Reddit</td><td>SFW,Reddit</td><td><code>/exports/reddit/clip08_clean.mp4</code></td></tr>
+<tr><td>Trailer</td><td>Watermarked</td><td>8s trailer for X + top-right "Contentorrr Challenge" watermark</td><td>SFW,X</td><td><code>/exports/x/trailer_wm.mp4</code></td></tr>
+<tr><td>Trailer</td><td>Unwatermarked</td><td>8s trailer for Reddit</td><td>SFW,Reddit</td><td><code>/exports/reddit/trailer_clean.mp4</code></td></tr>
+<tr><td>Full video</td><td>Original merged source</td><td>Reference deliverable</td><td>SFW</td><td><code>/source/Contentorrr_Challenge_Video.mp4</code></td></tr>
 </tbody>
 </table>
 </div>
@@ -395,14 +423,12 @@ Download video
 <h2>Same challenge. Same input.</h2>
 
 <p>
-Below is the same challenge completed using Contentorrr.
+Below is the updated challenge run completed using Contentorrr (1:48.8).
 </p>
 
 <div class="video-shell">
-<div>
-<strong>YouTube result video goes here</strong>
-Add your Contentorrr challenge recording here.
-</div>
+<strong>Contentorrr challenge run</strong>
+<iframe width="100%" height="100%" src="https://www.youtube.com/embed/PJ9A2j8AwWg" title="Contentorrr challenge run" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 </div>
 
 </section>
@@ -424,7 +450,7 @@ Add your Contentorrr challenge recording here.
 
 <p style="max-width:58ch;font-size:14px;">
 Creatorrr builds creator workflow tools.
-Contentorrr turns one source video into clips, trailers, screenshots, metadata and a structured media library.
+Contentorrr turns one source video into clips, watermarked and unwatermarked variants, trailers, metadata and a structured media library.
 </p>
 
 <div style="margin-top:14px;font-size:13px;">
