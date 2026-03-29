@@ -319,6 +319,11 @@
       gap: 18px;
     }
 
+    .hero-side {
+      display: grid;
+      gap: 14px;
+    }
+
     .workflow {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -350,6 +355,11 @@
       color: var(--muted);
       font-size: 14px;
       line-height: 1.5;
+    }
+
+    .mini-card-flat {
+      align-items: flex-start;
+      text-align: left;
     }
 
 
@@ -986,25 +996,32 @@
           </div>
         </div>
 
-        <div class="mini-grid">
-          <article class="mini-card">
-            <strong>⚙️ Not just another editor</strong>
-            <span>3 in 1: Clipping, tagging, and content management in one workflow.</span>
-          </article>
+        <div class="hero-side">
+          <div class="mini-grid">
+            <article class="mini-card">
+              <strong>⚙️ Not just another editor</strong>
+              <span>3 in 1: Clipping, tagging, and content management in one workflow.</span>
+            </article>
 
-          <article class="mini-card">
-            <strong>🔒 Privacy first</strong>
-            <span>Local desktop app. Your content never leaves your machine.</span>
-          </article>
+            <article class="mini-card">
+              <strong>🔒 Privacy first</strong>
+              <span>Local desktop app. Your content never leaves your machine.</span>
+            </article>
 
-          <article class="mini-card">
-            <strong>⚡ Built for speed</strong>
-            <span>Ultra-scrubbing, auto-naming, and fast exports. Every action removes wasted time.</span>
-          </article>
+            <article class="mini-card">
+              <strong>⚡ Built for speed</strong>
+              <span>Ultra-scrubbing, auto-naming, and fast exports. Every action removes wasted time.</span>
+            </article>
 
-          <article class="mini-card">
-            <strong>🔥 NSFW-friendly</strong>
-            <span>Built by NSFW creators for creators posting on multiple platforms.</span>
+            <article class="mini-card">
+              <strong>🔥 NSFW-friendly</strong>
+              <span>Built by NSFW creators for creators posting on multiple platforms.</span>
+            </article>
+          </div>
+
+          <article class="mini-card mini-card-flat">
+            <strong>🔁 Import what you already have</strong>
+            <span>Bring in existing content sets, clips, tags, and metadata from a similar workflow.</span>
           </article>
         </div>
       </div>
