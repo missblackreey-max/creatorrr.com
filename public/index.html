@@ -915,7 +915,8 @@
 
   </style>
 </head>
-<body class="gate-locked">
+<body>
+  <!--
   <div class="launch-curtain" id="launch-curtain" role="dialog" aria-modal="true" aria-labelledby="launch-curtain-title">
     <div class="launch-curtain-card">
       <h2 id="launch-curtain-title">Coming soon</h2>
@@ -929,6 +930,7 @@
       <div class="curtain-error" id="curtain-error"></div>
     </div>
   </div>
+  -->
   <header class="site-header">
     <div class="container nav">
       <a class="brand" href="#top">
@@ -1172,6 +1174,9 @@
   <script>
     const API_BASE = "https://api.creatorrr.com";
 
+    /*
+      Preview gate disabled.
+      To restore, uncomment the launch-curtain markup and this preview-gate block.
     const PREVIEW_USER = "beny";
     const PREVIEW_PASSWORD = "999!";
     const LS_PREVIEW_GATE = "creatorrr.preview.unlocked.v1";
@@ -1233,6 +1238,7 @@
         setCurtainError("Wrong credentials. Please try again.");
       });
     }
+    */
 
     const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
 
@@ -1304,7 +1310,7 @@
       }
     }
 
-    bootstrapPreviewGate();
+    // bootstrapPreviewGate();
     document.getElementById("year").textContent = new Date().getFullYear();
     checkHeaderAuthState();
   </script>
