@@ -7,11 +7,25 @@
     return text.slice(0, max);
   }
 
+  function safeQueryString(search) {
+    if (!search) return "";
+
+    const params = new URLSearchParams(search);
+    const safeParams = new URLSearchParams();
+
+    for (const [key] of params.entries()) {
+      safeParams.append(key, "1");
+    }
+
+    const normalizedQuery = safeParams.toString();
+    return normalizedQuery ? safeString(`?${normalizedQuery}`, 1024) : "";
+  }
+
   function payload() {
     const referrer = document.referrer ? safeString(document.referrer, 1024) : null;
     return {
       path: safeString(window.location.pathname || "/", 512),
-      query: safeString(window.location.search || "", 1024),
+      query: safeQueryString(window.location.search),
       referrer,
       title: safeString(document.title || "", 512),
       tz: safeString(Intl.DateTimeFormat().resolvedOptions().timeZone || "", 128) || null,
