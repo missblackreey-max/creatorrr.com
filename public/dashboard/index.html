@@ -224,6 +224,9 @@
 
         const data = await res.json().catch(() => null);
         if (!res.ok || !data?.ok) {
+          if (res.status === 404) {
+            throw new Error("dashboard_api_not_found");
+          }
           throw new Error(data?.error || `request_failed_${res.status}`);
         }
 
@@ -253,7 +256,10 @@
           return;
         }
         statusEl.className = "status err";
-        statusEl.textContent = `Access denied or data unavailable.\n${err instanceof Error ? err.message : "unknown_error"}`;
+        const msg = err instanceof Error ? err.message : "unknown_error";
+        statusEl.textContent = msg === "dashboard_api_not_found"
+          ? "Dashboard API was not found (404). Deploy the latest API worker, then refresh."
+          : `Access denied or data unavailable.\n${msg}`;
         gridEl.innerHTML = "";
       }
     }
