@@ -79,6 +79,16 @@
       font-weight: 700;
     }
 
+    .btn.secondary {
+      border-color: rgba(255,255,255,0.28);
+      background: linear-gradient(180deg, rgba(18,20,24,0.92), rgba(10,11,13,0.9));
+      box-shadow: 0 8px 18px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.18);
+    }
+
+    .btn.secondary:hover {
+      border-color: rgba(247,213,106,0.5);
+    }
+
     .btn.primary {
       color: #0b0b0b;
       background: linear-gradient(180deg, var(--gold-1), var(--gold-2));
@@ -147,7 +157,7 @@
         <span>Founder Dashboard</span>
       </div>
       <div class="top-actions">
-        <a class="btn" href="../account.html">Account</a>
+        <a class="btn secondary" href="../account.html">Account</a>
         <button class="btn primary" id="refresh-btn" type="button">Refresh</button>
       </div>
     </div>
@@ -256,8 +266,9 @@
         }
         statusEl.className = "status err";
         const msg = err instanceof Error ? err.message : "unknown_error";
-        statusEl.textContent = msg.startsWith("dashboard_api_not_found:")
-          ? `Dashboard API returned 404 on: ${msg.split(":")[1]}`
+        const missingPrefix = "dashboard_api_not_found:";
+        statusEl.textContent = msg.startsWith(missingPrefix)
+          ? `Dashboard API returned 404 on: ${msg.slice(missingPrefix.length)}`
           : `Access denied or data unavailable.\n${msg}`;
         gridEl.innerHTML = "";
       }
