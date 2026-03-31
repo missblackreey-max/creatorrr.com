@@ -164,9 +164,7 @@
 
   <script>
     const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
-    const API_BASE = window.location.hostname === "localhost"
-      ? "http://127.0.0.1:8787"
-      : "https://api.creatorrr.com";
+    const API_BASE = "https://api.creatorrr.com";
 
     const statusEl = document.getElementById("status");
     const gridEl = document.getElementById("kpi-grid");
@@ -217,16 +215,17 @@
       statusEl.textContent = "Loading founder metrics...";
 
       try {
-        const res = await fetch(`${API_BASE}/dashboard/overview`, {
+        const endpoint = `${API_BASE}/dashboard/overview`;
+        const res = await fetch(endpoint, {
           method: "GET",
           headers: { authorization: `Bearer ${token}` },
         });
-
         const data = await res.json().catch(() => null);
+
+        if (res.status === 404) {
+          throw new Error(`dashboard_api_not_found:${endpoint}`);
+        }
         if (!res.ok || !data?.ok) {
-          if (res.status === 404) {
-            throw new Error("dashboard_api_not_found");
-          }
           throw new Error(data?.error || `request_failed_${res.status}`);
         }
 
@@ -257,8 +256,8 @@
         }
         statusEl.className = "status err";
         const msg = err instanceof Error ? err.message : "unknown_error";
-        statusEl.textContent = msg === "dashboard_api_not_found"
-          ? "Dashboard API was not found (404). Deploy the latest API worker, then refresh."
+        statusEl.textContent = msg.startsWith("dashboard_api_not_found:")
+          ? `Dashboard API returned 404 on: ${msg.split(":")[1]}`
           : `Access denied or data unavailable.\n${msg}`;
         gridEl.innerHTML = "";
       }

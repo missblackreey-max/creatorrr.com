@@ -14,6 +14,8 @@ export interface Env {
   GOOGLE_CLIENT_SECRET?: string;
   GOOGLE_OAUTH_ENABLED?: string;
   DASHBOARD_OWNER_EMAILS?: string;
+  DASHBOARD_MONTHLY_PRICE_USD?: string;
+  DASHBOARD_YEARLY_PRICE_USD?: string;
 }
 
 export type LicenseRow = {

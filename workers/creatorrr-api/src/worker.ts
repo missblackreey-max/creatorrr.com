@@ -239,6 +239,11 @@ async function requireDashboardOwner(
   return { ok: true, userId: user.id, email: userEmail };
 }
 
+function dashboardPriceUsd(raw: string | undefined, fallback: number): number {
+  const n = Number(String(raw || "").trim());
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
@@ -824,7 +829,11 @@ export default {
 
       const totalUsers = await countValue("SELECT COUNT(*) AS c FROM users");
       const verifiedUsers = await countValue("SELECT COUNT(*) AS c FROM users WHERE email_verified_at IS NOT NULL");
-      const usersLast7Days = await countValue("SELECT COUNT(*) AS c FROM users WHERE created_at >= datetime('now','-7 days')");
+      const usersLast7Days = await countValue(`
+        SELECT COUNT(*) AS c
+        FROM users
+        WHERE julianday(created_at) >= julianday('now', '-7 days')
+      `);
       const payingSubscribers = await countValue(`
         SELECT COUNT(*) AS c
         FROM licenses
@@ -849,7 +858,9 @@ export default {
           AND plan <> 'free'
       `);
 
-      const estimatedMrr = (monthSubs * 24.99) + ((yearSubs * 249.99) / 12);
+      const monthlyPriceUsd = dashboardPriceUsd(env.DASHBOARD_MONTHLY_PRICE_USD, 29.9);
+      const yearlyPriceUsd = dashboardPriceUsd(env.DASHBOARD_YEARLY_PRICE_USD, 239);
+      const estimatedMrr = (monthSubs * monthlyPriceUsd) + ((yearSubs * yearlyPriceUsd) / 12);
       const verificationRate = totalUsers > 0 ? verifiedUsers / totalUsers : 0;
 
       return json(req, {
@@ -867,6 +878,8 @@ export default {
           payment_risk_users: paymentRisk,
           month_subscribers: monthSubs,
           year_subscribers: yearSubs,
+          monthly_price_usd: monthlyPriceUsd,
+          yearly_price_usd: yearlyPriceUsd,
           estimated_mrr_usd: Number(estimatedMrr.toFixed(2)),
         },
       });
