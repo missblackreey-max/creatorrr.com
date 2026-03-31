@@ -148,6 +148,7 @@
       .kpi-grid { grid-template-columns: 1fr; }
     }
   </style>
+  <script src="/analytics.js" defer></script>
 </head>
 <body>
   <div class="wrap">
@@ -170,6 +171,21 @@
       <h2 style="margin-top:0;">Revenue & Growth Snapshot</h2>
       <div class="kpi-grid" id="kpi-grid"></div>
     </section>
+
+    <section class="card">
+      <h2 style="margin-top:0;">Traffic (last 30 days)</h2>
+      <div class="kpi-grid" id="traffic-grid"></div>
+      <div style="display:grid; gap:12px; margin-top:12px;">
+        <div>
+          <h3 style="margin:0 0 8px 0;">Top countries</h3>
+          <div class="muted" id="countries-list" style="white-space: pre-line;">Loading...</div>
+        </div>
+        <div>
+          <h3 style="margin:0 0 8px 0;">Top pages</h3>
+          <div class="muted" id="pages-list" style="white-space: pre-line;">Loading...</div>
+        </div>
+      </div>
+    </section>
   </div>
 
   <script>
@@ -178,6 +194,9 @@
 
     const statusEl = document.getElementById("status");
     const gridEl = document.getElementById("kpi-grid");
+    const trafficGridEl = document.getElementById("traffic-grid");
+    const countriesListEl = document.getElementById("countries-list");
+    const pagesListEl = document.getElementById("pages-list");
     const refreshBtn = document.getElementById("refresh-btn");
 
     function getToken() {
@@ -214,6 +233,13 @@
       return node;
     }
 
+    function makePairsList(rows, keyLabel) {
+      if (!Array.isArray(rows) || rows.length === 0) return "No data yet.";
+      return rows
+        .map((row) => `${row[keyLabel]}: ${fmtNumber(row.visits)}`)
+        .join("\n");
+    }
+
     async function loadDashboard() {
       const token = getToken();
       if (!token) {
@@ -225,18 +251,28 @@
       statusEl.textContent = "Loading founder metrics...";
 
       try {
-        const endpoint = `${API_BASE}/dashboard/overview`;
-        const res = await fetch(endpoint, {
+        const overviewEndpoint = `${API_BASE}/dashboard/overview`;
+        const overviewRes = await fetch(overviewEndpoint, {
           method: "GET",
           headers: { authorization: `Bearer ${token}` },
         });
-        const data = await res.json().catch(() => null);
+        const data = await overviewRes.json().catch(() => null);
 
-        if (res.status === 404) {
-          throw new Error(`dashboard_api_not_found:${endpoint}`);
+        const trafficEndpoint = `${API_BASE}/dashboard/traffic`;
+        const trafficRes = await fetch(trafficEndpoint, {
+          method: "GET",
+          headers: { authorization: `Bearer ${token}` },
+        });
+        const traffic = await trafficRes.json().catch(() => null);
+
+        if (overviewRes.status === 404) {
+          throw new Error(`dashboard_api_not_found:${overviewEndpoint}`);
         }
-        if (!res.ok || !data?.ok) {
-          throw new Error(data?.error || `request_failed_${res.status}`);
+        if (!overviewRes.ok || !data?.ok) {
+          throw new Error(data?.error || `request_failed_${overviewRes.status}`);
+        }
+        if (!trafficRes.ok || !traffic?.ok) {
+          throw new Error(traffic?.error || `request_failed_${trafficRes.status}`);
         }
 
         const m = data.metrics || {};
@@ -256,6 +292,18 @@
           tile("Owner Access", data.owner_email || "-")
         );
 
+        const t = traffic.totals || {};
+        trafficGridEl.innerHTML = "";
+        trafficGridEl.append(
+          tile("Pageviews", fmtNumber(t.pageviews)),
+          tile("Unique Visitors", fmtNumber(t.unique_visitors)),
+          tile("Human Visits", fmtNumber(t.human_pageviews)),
+          tile("Bot Visits", fmtNumber(t.bot_pageviews))
+        );
+
+        countriesListEl.textContent = makePairsList(traffic.countries || [], "country");
+        pagesListEl.textContent = makePairsList(traffic.top_pages || [], "path");
+
         const generatedAt = data.generated_at ? new Date(data.generated_at).toLocaleString() : "now";
         statusEl.className = "status ok";
         statusEl.textContent = `Private founder view active. Last refresh: ${generatedAt}`;
@@ -271,6 +319,9 @@
           ? `Dashboard API returned 404 on: ${msg.slice(missingPrefix.length)}`
           : `Access denied or data unavailable.\n${msg}`;
         gridEl.innerHTML = "";
+        trafficGridEl.innerHTML = "";
+        countriesListEl.textContent = "Unavailable";
+        pagesListEl.textContent = "Unavailable";
       }
     }
 

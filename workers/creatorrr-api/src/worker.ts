@@ -220,6 +220,18 @@ function getDashboardOwnerEmails(env: Env): string[] {
     .filter(Boolean);
 }
 
+function getDashboardHiddenUserIds(env: Env): string[] {
+  const defaultHiddenIds = [
+    "99055ec5-9c39-405e-84c6-3dd2bf1bb63e",
+    "280b3bac-977d-41a4-985b-347bbb03221b",
+  ];
+  const raw = String(env.DASHBOARD_HIDDEN_USER_IDS || defaultHiddenIds.join(","));
+  return raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+}
+
 async function requireDashboardOwner(
   req: Request,
   env: Env,
@@ -242,6 +254,25 @@ async function requireDashboardOwner(
 function dashboardPriceUsd(raw: string | undefined, fallback: number): number {
   const n = Number(String(raw || "").trim());
   return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function getCountryCode(req: Request): string {
+  const country = String((req as Request & { cf?: { country?: string } }).cf?.country || "").trim().toUpperCase();
+  if (!country || country.length > 3) return "ZZ";
+  return country;
+}
+
+function detectLikelyBot(req: Request): { isBot: boolean; botScore: number | null } {
+  const cf = (req as Request & { cf?: { botManagement?: { score?: number; verifiedBot?: boolean } } }).cf;
+  const verifiedBot = !!cf?.botManagement?.verifiedBot;
+  const scoreRaw = Number(cf?.botManagement?.score);
+  const botScore = Number.isFinite(scoreRaw) ? scoreRaw : null;
+  if (verifiedBot) return { isBot: true, botScore };
+  if (botScore !== null) return { isBot: botScore < 30, botScore };
+
+  const ua = String(req.headers.get("user-agent") || "").toLowerCase();
+  const uaLooksBot = /(bot|crawler|spider|curl|wget|headless)/i.test(ua);
+  return { isBot: uaLooksBot, botScore: null };
 }
 
 export default {
@@ -817,46 +848,112 @@ export default {
       return json(req, { ok: true, ...computeEntitlement(lic) });
     }
 
+    if (req.method === "POST" && url.pathname === "/analytics/pageview") {
+      const body = await readJson<{
+        path?: string;
+        query?: string;
+        referrer?: string | null;
+        title?: string | null;
+        tz?: string | null;
+        screen?: string | null;
+        lang?: string | null;
+      }>(req);
+
+      if (!body) return bad(req, "invalid_json");
+
+      const path = String(body.path || "").trim();
+      if (!path.startsWith("/")) return bad(req, "invalid_path");
+
+      const ip = getRequestIpAddress(req);
+      const ipHash = ip ? await sha256Hex(ip) : null;
+      const { isBot, botScore } = detectLikelyBot(req);
+      const visitId = uuid();
+
+      await env.creatorrr_db.prepare(
+        `INSERT INTO analytics_pageviews (
+          id, created_at, path, query, referrer, title, country, user_agent, ip_hash, is_bot, bot_score, timezone, screen, language
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)`,
+      ).bind(
+        visitId,
+        nowIso(),
+        path.slice(0, 512),
+        String(body.query || "").slice(0, 1024),
+        body.referrer ? String(body.referrer).slice(0, 1024) : null,
+        body.title ? String(body.title).slice(0, 512) : null,
+        getCountryCode(req),
+        getRequestUserAgent(req),
+        ipHash,
+        isBot ? 1 : 0,
+        botScore,
+        body.tz ? String(body.tz).slice(0, 128) : null,
+        body.screen ? String(body.screen).slice(0, 64) : null,
+        body.lang ? String(body.lang).slice(0, 64) : null,
+      ).run();
+
+      return json(req, { ok: true });
+    }
+
     if (req.method === "GET" && url.pathname === "/dashboard/overview") {
       const owner = await requireDashboardOwner(req, env);
       if (!owner.ok) return owner.response;
 
-      const countValue = async (sql: string): Promise<number> => {
-        const row = await env.creatorrr_db.prepare(sql).first<{ c?: number | string | null }>();
+      const hiddenUserIds = getDashboardHiddenUserIds(env);
+      const hiddenPlaceholders = hiddenUserIds.map((_, idx) => `?${idx + 1}`).join(", ");
+      const userExclusionClause = hiddenUserIds.length > 0 ? ` WHERE id NOT IN (${hiddenPlaceholders})` : "";
+      const licenseExclusionClause = hiddenUserIds.length > 0 ? ` AND user_id NOT IN (${hiddenPlaceholders})` : "";
+
+      const countValue = async (sql: string, bindValues: string[] = []): Promise<number> => {
+        const row = await env.creatorrr_db.prepare(sql).bind(...bindValues).first<{ c?: number | string | null }>();
         const n = Number(row?.c ?? 0);
         return Number.isFinite(n) ? n : 0;
       };
 
-      const totalUsers = await countValue("SELECT COUNT(*) AS c FROM users");
-      const verifiedUsers = await countValue("SELECT COUNT(*) AS c FROM users WHERE email_verified_at IS NOT NULL");
+      const totalUsers = await countValue(`SELECT COUNT(*) AS c FROM users${userExclusionClause}`, hiddenUserIds);
+      const verifiedUsers = await countValue(
+        `SELECT COUNT(*) AS c FROM users WHERE email_verified_at IS NOT NULL${hiddenUserIds.length > 0 ? ` AND id NOT IN (${hiddenPlaceholders})` : ""}`,
+        hiddenUserIds,
+      );
       const usersLast7Days = await countValue(`
         SELECT COUNT(*) AS c
         FROM users
         WHERE julianday(created_at) >= julianday('now', '-7 days')
-      `);
+        ${hiddenUserIds.length > 0 ? `AND id NOT IN (${hiddenPlaceholders})` : ""}
+      `, hiddenUserIds);
       const payingSubscribers = await countValue(`
         SELECT COUNT(*) AS c
         FROM licenses
         WHERE status IN ('active', 'trialing', 'past_due', 'unpaid', 'canceling')
           AND plan <> 'free'
-      `);
-      const trialingUsers = await countValue("SELECT COUNT(*) AS c FROM licenses WHERE status='trialing'");
-      const cancelingUsers = await countValue("SELECT COUNT(*) AS c FROM licenses WHERE status='canceling'");
-      const paymentRisk = await countValue("SELECT COUNT(*) AS c FROM licenses WHERE status IN ('past_due','unpaid')");
+          ${licenseExclusionClause}
+      `, hiddenUserIds);
+      const trialingUsers = await countValue(
+        `SELECT COUNT(*) AS c FROM licenses WHERE status='trialing'${licenseExclusionClause}`,
+        hiddenUserIds,
+      );
+      const cancelingUsers = await countValue(
+        `SELECT COUNT(*) AS c FROM licenses WHERE status='canceling'${licenseExclusionClause}`,
+        hiddenUserIds,
+      );
+      const paymentRisk = await countValue(
+        `SELECT COUNT(*) AS c FROM licenses WHERE status IN ('past_due','unpaid')${licenseExclusionClause}`,
+        hiddenUserIds,
+      );
       const monthSubs = await countValue(`
         SELECT COUNT(*) AS c
         FROM licenses
         WHERE status IN ('active', 'trialing', 'past_due', 'unpaid', 'canceling')
           AND billing_interval='month'
           AND plan <> 'free'
-      `);
+          ${licenseExclusionClause}
+      `, hiddenUserIds);
       const yearSubs = await countValue(`
         SELECT COUNT(*) AS c
         FROM licenses
         WHERE status IN ('active', 'trialing', 'past_due', 'unpaid', 'canceling')
           AND billing_interval='year'
           AND plan <> 'free'
-      `);
+          ${licenseExclusionClause}
+      `, hiddenUserIds);
 
       const monthlyPriceUsd = dashboardPriceUsd(env.DASHBOARD_MONTHLY_PRICE_USD, 29.9);
       const yearlyPriceUsd = dashboardPriceUsd(env.DASHBOARD_YEARLY_PRICE_USD, 239);
@@ -882,6 +979,69 @@ export default {
           yearly_price_usd: yearlyPriceUsd,
           estimated_mrr_usd: Number(estimatedMrr.toFixed(2)),
         },
+      });
+    }
+
+    if (req.method === "GET" && url.pathname === "/dashboard/traffic") {
+      const owner = await requireDashboardOwner(req, env);
+      if (!owner.ok) return owner.response;
+
+      const totalsRow = await env.creatorrr_db.prepare(`
+        SELECT
+          COUNT(*) AS pageviews_30d,
+          COUNT(DISTINCT ip_hash) AS unique_visitors_30d,
+          SUM(CASE WHEN is_bot=1 THEN 1 ELSE 0 END) AS bot_pageviews_30d,
+          SUM(CASE WHEN is_bot=0 THEN 1 ELSE 0 END) AS human_pageviews_30d
+        FROM analytics_pageviews
+        WHERE julianday(created_at) >= julianday('now', '-30 days')
+      `).first<{
+        pageviews_30d?: number | string | null;
+        unique_visitors_30d?: number | string | null;
+        bot_pageviews_30d?: number | string | null;
+        human_pageviews_30d?: number | string | null;
+      }>();
+
+      const countryRows = await env.creatorrr_db.prepare(`
+        SELECT country, COUNT(*) AS visits
+        FROM analytics_pageviews
+        WHERE julianday(created_at) >= julianday('now', '-30 days')
+        GROUP BY country
+        ORDER BY visits DESC
+        LIMIT 10
+      `).all<{ country?: string | null; visits?: number | string | null }>();
+
+      const pathRows = await env.creatorrr_db.prepare(`
+        SELECT path, COUNT(*) AS visits
+        FROM analytics_pageviews
+        WHERE julianday(created_at) >= julianday('now', '-30 days')
+        GROUP BY path
+        ORDER BY visits DESC
+        LIMIT 10
+      `).all<{ path?: string | null; visits?: number | string | null }>();
+
+      const numberOrZero = (value: unknown): number => {
+        const n = Number(value ?? 0);
+        return Number.isFinite(n) ? n : 0;
+      };
+
+      return json(req, {
+        ok: true,
+        generated_at: nowIso(),
+        window_days: 30,
+        totals: {
+          pageviews: numberOrZero(totalsRow?.pageviews_30d),
+          unique_visitors: numberOrZero(totalsRow?.unique_visitors_30d),
+          bot_pageviews: numberOrZero(totalsRow?.bot_pageviews_30d),
+          human_pageviews: numberOrZero(totalsRow?.human_pageviews_30d),
+        },
+        countries: (countryRows.results || []).map((row) => ({
+          country: String(row.country || "ZZ"),
+          visits: numberOrZero(row.visits),
+        })),
+        top_pages: (pathRows.results || []).map((row) => ({
+          path: String(row.path || "/"),
+          visits: numberOrZero(row.visits),
+        })),
       });
     }
 
