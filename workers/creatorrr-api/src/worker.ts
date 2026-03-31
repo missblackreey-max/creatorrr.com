@@ -212,6 +212,38 @@ function isGoogleOAuthEnabled(env: Env): boolean {
   return String(env.GOOGLE_OAUTH_ENABLED || "").trim().toLowerCase() === "true";
 }
 
+function getDashboardOwnerEmails(env: Env): string[] {
+  const raw = String(env.DASHBOARD_OWNER_EMAILS || "ben@creatorrr.com,ben@creatorrrr.com");
+  return raw
+    .split(",")
+    .map((value) => normalizeEmail(value))
+    .filter(Boolean);
+}
+
+async function requireDashboardOwner(
+  req: Request,
+  env: Env,
+): Promise<{ ok: true; userId: string; email: string } | { ok: false; response: Response }> {
+  const auth = await requireAuth(req, env);
+  if (!auth.ok) return auth;
+
+  const user = await getUserById(env, auth.ctx.userId);
+  if (!user) return { ok: false, response: bad(req, "user_not_found", 404) };
+
+  const userEmail = normalizeEmail(String(user.email || ""));
+  if (!userEmail) return { ok: false, response: bad(req, "access_denied", 403) };
+
+  const owners = new Set(getDashboardOwnerEmails(env));
+  if (!owners.has(userEmail)) return { ok: false, response: bad(req, "access_denied", 403) };
+
+  return { ok: true, userId: user.id, email: userEmail };
+}
+
+function dashboardPriceUsd(raw: string | undefined, fallback: number): number {
+  const n = Number(String(raw || "").trim());
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
@@ -783,6 +815,74 @@ export default {
 
       const lic = await getLicenseRow(env, auth.ctx.userId);
       return json(req, { ok: true, ...computeEntitlement(lic) });
+    }
+
+    if (req.method === "GET" && url.pathname === "/dashboard/overview") {
+      const owner = await requireDashboardOwner(req, env);
+      if (!owner.ok) return owner.response;
+
+      const countValue = async (sql: string): Promise<number> => {
+        const row = await env.creatorrr_db.prepare(sql).first<{ c?: number | string | null }>();
+        const n = Number(row?.c ?? 0);
+        return Number.isFinite(n) ? n : 0;
+      };
+
+      const totalUsers = await countValue("SELECT COUNT(*) AS c FROM users");
+      const verifiedUsers = await countValue("SELECT COUNT(*) AS c FROM users WHERE email_verified_at IS NOT NULL");
+      const usersLast7Days = await countValue(`
+        SELECT COUNT(*) AS c
+        FROM users
+        WHERE julianday(created_at) >= julianday('now', '-7 days')
+      `);
+      const payingSubscribers = await countValue(`
+        SELECT COUNT(*) AS c
+        FROM licenses
+        WHERE status IN ('active', 'trialing', 'past_due', 'unpaid', 'canceling')
+          AND plan <> 'free'
+      `);
+      const trialingUsers = await countValue("SELECT COUNT(*) AS c FROM licenses WHERE status='trialing'");
+      const cancelingUsers = await countValue("SELECT COUNT(*) AS c FROM licenses WHERE status='canceling'");
+      const paymentRisk = await countValue("SELECT COUNT(*) AS c FROM licenses WHERE status IN ('past_due','unpaid')");
+      const monthSubs = await countValue(`
+        SELECT COUNT(*) AS c
+        FROM licenses
+        WHERE status IN ('active', 'trialing', 'past_due', 'unpaid', 'canceling')
+          AND billing_interval='month'
+          AND plan <> 'free'
+      `);
+      const yearSubs = await countValue(`
+        SELECT COUNT(*) AS c
+        FROM licenses
+        WHERE status IN ('active', 'trialing', 'past_due', 'unpaid', 'canceling')
+          AND billing_interval='year'
+          AND plan <> 'free'
+      `);
+
+      const monthlyPriceUsd = dashboardPriceUsd(env.DASHBOARD_MONTHLY_PRICE_USD, 29.9);
+      const yearlyPriceUsd = dashboardPriceUsd(env.DASHBOARD_YEARLY_PRICE_USD, 239);
+      const estimatedMrr = (monthSubs * monthlyPriceUsd) + ((yearSubs * yearlyPriceUsd) / 12);
+      const verificationRate = totalUsers > 0 ? verifiedUsers / totalUsers : 0;
+
+      return json(req, {
+        ok: true,
+        owner_email: owner.email,
+        generated_at: nowIso(),
+        metrics: {
+          total_users: totalUsers,
+          verified_users: verifiedUsers,
+          verification_rate: verificationRate,
+          new_users_last_7_days: usersLast7Days,
+          paying_subscribers: payingSubscribers,
+          trialing_users: trialingUsers,
+          canceling_users: cancelingUsers,
+          payment_risk_users: paymentRisk,
+          month_subscribers: monthSubs,
+          year_subscribers: yearSubs,
+          monthly_price_usd: monthlyPriceUsd,
+          yearly_price_usd: yearlyPriceUsd,
+          estimated_mrr_usd: Number(estimatedMrr.toFixed(2)),
+        },
+      });
     }
 
 
