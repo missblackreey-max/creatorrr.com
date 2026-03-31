@@ -213,7 +213,7 @@ function isGoogleOAuthEnabled(env: Env): boolean {
 }
 
 function getDashboardOwnerEmails(env: Env): string[] {
-  const raw = String(env.DASHBOARD_OWNER_EMAILS || "ben@creatorrr.com");
+  const raw = String(env.DASHBOARD_OWNER_EMAILS || "ben@creatorrr.com,ben@creatorrrr.com");
   return raw
     .split(",")
     .map((value) => normalizeEmail(value))
