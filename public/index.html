@@ -411,6 +411,36 @@
       padding: 18px 24px 24px;
     }
 
+    .compare-copy {
+      padding: 0 24px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+      max-width: 72ch;
+      margin: 0 auto;
+    }
+
+    .compare-video-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      width: 100%;
+    }
+
+    .video-compare-item {
+      display: grid;
+      gap: 10px;
+    }
+
+    .video-label {
+      text-align: center;
+      font-size: 13px;
+      font-weight: 650;
+      letter-spacing: 0.2px;
+      color: var(--muted-2);
+    }
+
     .video-frame {
       width: 100%;
       height: 100%;
@@ -822,6 +852,10 @@
         align-items: stretch;
       }
 
+      .compare-video-grid {
+        grid-template-columns: 1fr;
+      }
+
       .video-frame,
       .video-frame iframe {
         min-height: 240px;
@@ -1036,10 +1070,43 @@
 
 
     <section id="demo">
-      <div class="container">
+      <div class="container" style="display:grid;gap:18px;">
         <article class="demo-card">
           <div class="demo-top">
-            <h2>5-Minute Demo:</h2>
+            <h2>More than 5x faster!</h2>
+          </div>
+          <p class="compare-copy">From full video to full promo pack in a fraction of the time. This is why we built Contentorrr: to speed up the complete workflow while automatically adding metadata and keeping everything perfectly organized.</p>
+          <div class="hero-video" style="aspect-ratio:auto;">
+            <div class="compare-video-grid">
+              <div class="video-compare-item">
+                <span class="video-label">Old workflow (CapCut + Sheets) · 10:42.9</span>
+                <div class="video-frame">
+                  <iframe
+                    title="Old workflow challenge run"
+                    src="https://www.youtube.com/embed/vZN3CwVc_JY"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen
+                  ></iframe>
+                </div>
+              </div>
+              <div class="video-compare-item">
+                <span class="video-label">Contentorrr workflow · 1:48.8</span>
+                <div class="video-frame">
+                  <iframe
+                    title="Contentorrr workflow challenge run"
+                    src="https://www.youtube.com/embed/PJ9A2j8AwWg"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen
+                  ></iframe>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="demo-card">
+          <div class="demo-top">
+            <h2>Chill 5-minute demo</h2>
           </div>
           <div class="hero-video">
             <div class="video-frame">
