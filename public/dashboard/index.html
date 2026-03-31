@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Founder Dashboard | Creatorrr</title>
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+  <link rel="icon" type="image/png" href="../creatorrr-logo-nolink.png" sizes="790x790" />
+  <style>
+    :root {
+      --bg: #060606;
+      --card: rgba(255, 255, 255, 0.05);
+      --line: rgba(255, 255, 255, 0.12);
+      --text: #f5f5f5;
+      --muted: rgba(245, 245, 245, 0.72);
+      --gold-1: #f7d56a;
+      --gold-2: #b8892a;
+      --green: #5fcf8a;
+      --red: #ff7d7d;
+      --max: 1120px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1000px 600px at 82% -10%, rgba(247, 213, 106, 0.08), transparent 60%),
+        radial-gradient(900px 520px at 8% 0%, rgba(184, 137, 42, 0.08), transparent 55%),
+        linear-gradient(180deg, #050505 0%, #080808 35%, #050505 100%);
+      min-height: 100vh;
+    }
+
+    .wrap {
+      width: min(calc(100% - 32px), var(--max));
+      margin: 0 auto;
+      padding: 28px 0 44px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+    }
+
+    .brand img {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 999px;
+      min-height: 38px;
+      padding: 0 14px;
+      color: var(--text);
+      background: rgba(255,255,255,0.06);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .btn.primary {
+      color: #0b0b0b;
+      background: linear-gradient(180deg, var(--gold-1), var(--gold-2));
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .muted { color: var(--muted); }
+
+    .status {
+      font-size: 14px;
+      line-height: 1.5;
+      white-space: pre-line;
+    }
+
+    .status.ok { color: var(--green); }
+    .status.err { color: var(--red); }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .kpi {
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(255,255,255,0.03);
+      display: grid;
+      gap: 6px;
+    }
+
+    .kpi-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--muted);
+    }
+
+    .kpi-value {
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    @media (max-width: 960px) {
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 620px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <img src="../creatorrr-logo-nolink.png" alt="Creatorrr logo" />
+        <span>Founder Dashboard</span>
+      </div>
+      <div class="top-actions">
+        <a class="btn" href="../account.html">Account</a>
+        <button class="btn primary" id="refresh-btn" type="button">Refresh</button>
+      </div>
+    </div>
+
+    <section class="card">
+      <div id="status" class="status muted">Checking access...</div>
+    </section>
+
+    <section class="card">
+      <h2 style="margin-top:0;">Revenue & Growth Snapshot</h2>
+      <div class="kpi-grid" id="kpi-grid"></div>
+    </section>
+  </div>
+
+  <script>
+    const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
+    const API_BASE = "https://api.creatorrr.com";
+
+    const statusEl = document.getElementById("status");
+    const gridEl = document.getElementById("kpi-grid");
+    const refreshBtn = document.getElementById("refresh-btn");
+
+    function getToken() {
+      try {
+        return window.localStorage.getItem(LS_WEB_TOKEN) || "";
+      } catch {
+        return "";
+      }
+    }
+
+    function fmtNumber(n) {
+      const value = Number(n || 0);
+      return Number.isFinite(value) ? new Intl.NumberFormat("en-US").format(value) : "0";
+    }
+
+    function fmtMoney(n) {
+      const value = Number(n || 0);
+      return Number.isFinite(value)
+        ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value)
+        : "$0";
+    }
+
+    function fmtPercent(n) {
+      const value = Number(n || 0);
+      return Number.isFinite(value)
+        ? `${(value * 100).toFixed(1)}%`
+        : "0%";
+    }
+
+    function tile(label, value) {
+      const node = document.createElement("div");
+      node.className = "kpi";
+      node.innerHTML = `<div class="kpi-label">${label}</div><div class="kpi-value">${value}</div>`;
+      return node;
+    }
+
+    async function loadDashboard() {
+      const token = getToken();
+      if (!token) {
+        window.location.href = "../account.html?intent=login&next=%2Fdashboard%2F";
+        return;
+      }
+
+      statusEl.className = "status muted";
+      statusEl.textContent = "Loading founder metrics...";
+
+      try {
+        const endpoint = `${API_BASE}/dashboard/overview`;
+        const res = await fetch(endpoint, {
+          method: "GET",
+          headers: { authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => null);
+
+        if (res.status === 404) {
+          throw new Error(`dashboard_api_not_found:${endpoint}`);
+        }
+        if (!res.ok || !data?.ok) {
+          throw new Error(data?.error || `request_failed_${res.status}`);
+        }
+
+        const m = data.metrics || {};
+        gridEl.innerHTML = "";
+        gridEl.append(
+          tile("Estimated MRR", fmtMoney(m.estimated_mrr_usd)),
+          tile("Paying Subscribers", fmtNumber(m.paying_subscribers)),
+          tile("New Users (7d)", fmtNumber(m.new_users_last_7_days)),
+          tile("Verification Rate", fmtPercent(m.verification_rate)),
+          tile("Total Users", fmtNumber(m.total_users)),
+          tile("Verified Users", fmtNumber(m.verified_users)),
+          tile("Trialing", fmtNumber(m.trialing_users)),
+          tile("Canceling", fmtNumber(m.canceling_users)),
+          tile("Payment Risk", fmtNumber(m.payment_risk_users)),
+          tile("Monthly Subs", fmtNumber(m.month_subscribers)),
+          tile("Yearly Subs", fmtNumber(m.year_subscribers)),
+          tile("Owner Access", data.owner_email || "-")
+        );
+
+        const generatedAt = data.generated_at ? new Date(data.generated_at).toLocaleString() : "now";
+        statusEl.className = "status ok";
+        statusEl.textContent = `Private founder view active. Last refresh: ${generatedAt}`;
+      } catch (err) {
+        if (String(err instanceof Error ? err.message : "").includes("access_denied")) {
+          window.location.href = "../account.html?intent=login&dashboard=forbidden";
+          return;
+        }
+        statusEl.className = "status err";
+        const msg = err instanceof Error ? err.message : "unknown_error";
+        statusEl.textContent = msg.startsWith("dashboard_api_not_found:")
+          ? `Dashboard API returned 404 on: ${msg.split(":")[1]}`
+          : `Access denied or data unavailable.\n${msg}`;
+        gridEl.innerHTML = "";
+      }
+    }
+
+    refreshBtn.addEventListener("click", loadDashboard);
+    loadDashboard();
+  </script>
+</body>
+</html>
