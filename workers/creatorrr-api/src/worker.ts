@@ -922,7 +922,7 @@ export default {
       const payingSubscribers = await countValue(`
         SELECT COUNT(*) AS c
         FROM licenses
-        WHERE status IN ('active', 'trialing', 'past_due', 'unpaid', 'canceling')
+        WHERE status IN ('active', 'past_due', 'unpaid', 'canceling')
           AND plan <> 'free'
           ${licenseExclusionClause}
       `, hiddenUserIds);
