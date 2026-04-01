@@ -256,6 +256,7 @@
     letter-spacing: -1.8px;
     white-space: nowrap;
     text-align: center;
+    overflow: hidden;
   }
 
   .hero p {
@@ -373,7 +374,6 @@
     font-size: clamp(28px, 4vw, 40px);
     line-height: 1.03;
     letter-spacing: -1.1px;
-    white-space: nowrap;
   }
 
   .section-head p {
@@ -399,7 +399,6 @@
     line-height: 1.03;
     letter-spacing: -1.1px;
     text-align: center;
-    white-space: nowrap;
   }
 
   .hero-video {
@@ -778,7 +777,6 @@
     .section-head h2,
     .demo-card .demo-top h2 {
       font-size: clamp(24px, 3.6vw, 34px);
-      white-space: nowrap;
     }
   }
 
@@ -854,11 +852,12 @@
 
     .hero h1 {
       margin: 0 0 12px;
-      font-size: clamp(24px, 6.7vw, 40px);
+      font-size: clamp(25px, 7.9vw, 42px);
       line-height: 1.02;
       letter-spacing: -1.15px;
       white-space: nowrap;
       text-align: center;
+      overflow: hidden;
     }
 
     .section-head h2,
@@ -867,7 +866,6 @@
       margin-left: auto;
       margin-right: auto;
       max-width: 100%;
-      white-space: nowrap;
       line-height: 1.08;
     }
 
@@ -935,11 +933,24 @@
 
     .second-headline {
       margin: 0 0 18px;
-      font-size: clamp(14px, 3.8vw, 18px);
+      font-size: clamp(15px, 4.45vw, 20px);
       line-height: 1.08;
       letter-spacing: -0.35px;
       text-align: center;
       white-space: nowrap;
+      overflow: hidden;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .hero h1 {
+      font-size: 24px;
+      letter-spacing: -1px;
+    }
+
+    .second-headline {
+      font-size: 14px;
+      letter-spacing: -0.3px;
     }
   }
 
@@ -1054,6 +1065,7 @@
     text-align: center;
     color: var(--text);
     white-space: nowrap;
+    overflow: hidden;
   }
 </style>
 
