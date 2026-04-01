@@ -245,8 +245,8 @@
 
   .hero-grid {
     display: grid;
-    grid-template-columns: 1.02fr 0.98fr;
-    gap: 30px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 540px);
+    gap: 42px;
     align-items: center;
     min-width: 0;
   }
@@ -273,7 +273,7 @@
 
   .hero h1 {
     margin: 0 0 14px;
-    font-size: clamp(34px, 4.6vw, 62px);
+    font-size: clamp(34px, 4.35vw, 58px);
     line-height: 0.98;
     letter-spacing: -1.8px;
     white-space: nowrap;
@@ -862,11 +862,7 @@
     }
 
     .nav-links .nav-link-highlight {
-      flex-basis: 100%;
-      width: 100%;
-      max-width: 320px;
-      order: 10;
-      margin-top: 2px;
+      display: none;
     }
 
     .nav-action-slot {
