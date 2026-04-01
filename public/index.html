@@ -774,6 +774,11 @@
 
     @media (max-width: 780px) {
       html { scroll-padding-top: 132px; }
+
+      .container {
+        width: min(calc(100% - 28px), var(--max));
+      }
+
       .nav {
         display: flex;
         min-height: auto;
@@ -810,9 +815,34 @@
         padding-top: 48px;
       }
 
+      .hero-copy,
+      .section-head {
+        text-align: center;
+      }
+
+      .hero h1 {
+        margin-left: auto;
+        margin-right: auto;
+        max-width: none;
+        font-size: clamp(26px, 7.6vw, 42px);
+        line-height: 1.02;
+        white-space: nowrap;
+      }
+
+      .section-head h2,
+      .demo-card .demo-top h2,
+      .launch-curtain-card h2 {
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 18ch;
+        line-height: 1.08;
+      }
+
       .hero p,
       .section-head p {
         font-size: 16px;
+        margin-left: auto;
+        margin-right: auto;
       }
 
       .btn {
@@ -835,6 +865,10 @@
       .hero-actions,
       .nav-actions {
         width: auto;
+      }
+
+      .hero-actions {
+        justify-content: center;
       }
 
       .nav-actions {
