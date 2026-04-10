@@ -368,6 +368,27 @@
       line-height: 1.45;
     }
 
+    .download-changelog-compact {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .download-changelog-compact h3 {
+      margin: 0 0 8px;
+      text-align: center;
+      font-size: 16px;
+    }
+
+    .download-changelog-compact p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
     .footer-note {
       margin-top: 16px;
       color: var(--muted-2);
@@ -502,32 +523,37 @@
           <img class="download-logo" src="../64x64.png" alt="Contentorrr logo">
           <div class="download-title-group">
             <h2>Download Contentorrr</h2>
-            <p>Current version: V1.0.0</p>
+            <p>Current version: V1.1.0</p>
           </div>
         </div>
         <div class="download-grid">
           <div class="platform-card">
             <strong>Windows</strong>
-            <span>Current version v1.0.0 for Windows 11 and later</span>
-            <a class="btn btn-primary" id="download-windows" href="https://downloads.creatorrr.com/Contentorrr_1.0.0_x64-setup.exe">Download .exe</a>
+            <span>Current version v1.1.0 for Windows 11 and later</span>
+            <a class="btn btn-primary" id="download-windows" href="https://downloads.creatorrr.com/Contentorrr_1.1.0_x64-setup.exe">Download .exe</a>
             <div class="download-filesize">87.4 MB</div>
           </div>
           <div class="platform-card">
             <strong>macOS (Apple Silicon)</strong>
-            <span>Current version v1.0.0 for macOS</span>
-            <a class="btn btn-primary" id="download-macos" href="https://downloads.creatorrr.com/Contentorrr_1.0.0_aarch64.dmg">Download .dmg</a>
+            <span>Current version v1.1.0 for macOS</span>
+            <a class="btn btn-primary" id="download-macos" href="https://downloads.creatorrr.com/Contentorrr_1.1.0_aarch64.dmg">Download .dmg</a>
             <div class="download-filesize">58.6 MB</div>
           </div>
         </div>
+        <article class="download-changelog-compact" aria-label="Changelog">
+          <h3>Changelog</h3>
+          <p><strong>V1.1.0 — 10.04.2026:</strong> Bulk watermark exports, watermark metadata status, content-set sorting/count/search, import modes, and improved MOV → MP4 quality.</p>
+          <p style="margin-top:8px;">Older build: <a href="https://downloads.creatorrr.com/Contentorrr_1.0.0_aarch64.dmg">V1.0.0 — 29.04.2026</a></p>
+        </article>
       </section>
     </div>
   </main>
 
   <script>
     const API_BASE = "https://api.creatorrr.com";
-    const APP_VERSION = "v1.0.0";
-    const INSTALLER_WINDOWS_URL = "https://downloads.creatorrr.com/Contentorrr_1.0.0_x64-setup.exe";
-    const INSTALLER_MACOS_URL = "https://downloads.creatorrr.com/Contentorrr_1.0.0_aarch64.dmg";
+    const APP_VERSION = "v1.1.0";
+    const INSTALLER_WINDOWS_URL = "https://downloads.creatorrr.com/Contentorrr_1.1.0_x64-setup.exe";
+    const INSTALLER_MACOS_URL = "https://downloads.creatorrr.com/Contentorrr_1.1.0_aarch64.dmg";
     const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
     const params = new URLSearchParams(window.location.search);
 
