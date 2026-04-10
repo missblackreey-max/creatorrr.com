@@ -1038,6 +1038,13 @@
       color: var(--text);
     }
 
+    .download-changelog-label {
+      margin: 10px 0 6px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
     .download-changelog ul {
       margin: 0;
       padding-left: 18px;
@@ -1055,7 +1062,7 @@
     }
 
     .download-legacy-link a {
-      color: var(--text);
+      color: var(--gold-1);
       text-decoration: underline;
       text-underline-offset: 2px;
     }
@@ -1375,8 +1382,8 @@
 
         <article class="download-changelog" aria-label="Changelog">
           <h3>Changelog</h3>
-          <h4>V1.1.0 — 10.04.2026</h4>
-          <h4>Added</h4>
+          <h4>V1.1.0 | date: 10.04.2026</h4>
+          <p class="download-changelog-label">Added:</p>
           <ul>
             <li>Bulk watermark exports.</li>
             <li>Watermark metadata status in Media Library (<code>Watermarked: Yes/No</code>).</li>
@@ -1385,12 +1392,12 @@
             <li>Import modes: <strong>Full replacement</strong> vs <strong>Update tags &amp; metadata</strong>.</li>
             <li>Dashboard content-set name search (partial text filter) with matched/total count display while searching.</li>
           </ul>
-          <h4>Improved</h4>
+          <p class="download-changelog-label">Improved:</p>
           <ul>
             <li>Better-quality MOV → MP4 transcoding.</li>
           </ul>
           <div class="download-legacy-link">
-            Need an older build? <a href="https://downloads.creatorrr.com/Contentorrr_1.0.0_aarch64.dmg">V1.0.0 — 29.04.2026</a>
+            Need an older build? V1.0.0 | date: <a href="https://downloads.creatorrr.com/Contentorrr_1.0.0_aarch64.dmg">First version.</a>
           </div>
         </article>
       </section>

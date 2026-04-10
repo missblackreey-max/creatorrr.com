@@ -345,12 +345,16 @@
       border-radius: 16px;
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.06);
+      text-align: left;
+      display: grid;
+      gap: 6px;
     }
 
     .platform-card strong {
       display: block;
       margin-bottom: 4px;
       font-size: 16px;
+      text-align: center;
     }
 
     .platform-card span {
@@ -366,6 +370,11 @@
       color: var(--muted-2);
       font-size: 12px;
       line-height: 1.45;
+      text-align: center;
+    }
+
+    .platform-card .btn {
+      justify-self: center;
     }
 
     .download-changelog-compact {
@@ -387,6 +396,12 @@
       color: var(--muted);
       font-size: 13px;
       line-height: 1.5;
+    }
+
+    .download-changelog-compact a {
+      color: var(--gold-1);
+      text-decoration: underline;
+      text-underline-offset: 2px;
     }
 
     .footer-note {
@@ -542,8 +557,8 @@
         </div>
         <article class="download-changelog-compact" aria-label="Changelog">
           <h3>Changelog</h3>
-          <p><strong>V1.1.0 — 10.04.2026:</strong> Bulk watermark exports, watermark metadata status, content-set sorting/count/search, import modes, and improved MOV → MP4 quality.</p>
-          <p style="margin-top:8px;">Older build: <a href="https://downloads.creatorrr.com/Contentorrr_1.0.0_aarch64.dmg">V1.0.0 — 29.04.2026</a></p>
+          <p><strong>V1.1.0 | date: 10.04.2026:</strong> Bulk watermark exports, watermark metadata status, content-set sorting/count/search, import modes, and improved MOV → MP4 quality.</p>
+          <p style="margin-top:8px;">Older build: V1.0.0 | date: <a href="https://downloads.creatorrr.com/Contentorrr_1.0.0_aarch64.dmg">First version.</a></p>
         </article>
       </section>
     </div>
