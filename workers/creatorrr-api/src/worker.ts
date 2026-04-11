@@ -213,7 +213,7 @@ function isGoogleOAuthEnabled(env: Env): boolean {
 }
 
 function getDashboardOwnerEmails(env: Env): string[] {
-  const raw = String(env.DASHBOARD_OWNER_EMAILS || "ben@creatorrr.com,ben@creatorrrr.com");
+  const raw = String(env.DASHBOARD_OWNER_EMAILS || "");
   return raw
     .split(",")
     .map((value) => normalizeEmail(value))
@@ -246,6 +246,7 @@ async function requireDashboardOwner(
   if (!userEmail) return { ok: false, response: bad(req, "access_denied", 403) };
 
   const owners = new Set(getDashboardOwnerEmails(env));
+  if (owners.size === 0) return { ok: false, response: bad(req, "dashboard_owner_not_configured", 403) };
   if (!owners.has(userEmail)) return { ok: false, response: bad(req, "access_denied", 403) };
 
   return { ok: true, userId: user.id, email: userEmail };
