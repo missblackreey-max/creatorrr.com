@@ -276,6 +276,18 @@ function detectLikelyBot(req: Request): { isBot: boolean; botScore: number | nul
   return { isBot: uaLooksBot, botScore: null };
 }
 
+const ANALYTICS_ALLOWED_EVENTS = new Set(["download_click"]);
+
+function normalizeAnalyticsField(value: unknown, maxLength: number): string | null {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  return text.slice(0, maxLength);
+}
+
+function isSafeAnalyticsToken(value: string): boolean {
+  return /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(value);
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
@@ -905,7 +917,20 @@ export default {
       if (!body) return bad(req, "invalid_json");
 
       const eventName = String(body.event || "").trim().toLowerCase();
-      if (!eventName) return bad(req, "invalid_event");
+      if (!ANALYTICS_ALLOWED_EVENTS.has(eventName)) return bad(req, "invalid_event");
+
+      const itemId = normalizeAnalyticsField(body.item_id, 256);
+      const itemVersion = normalizeAnalyticsField(body.item_version, 64);
+      const itemVariant = normalizeAnalyticsField(body.item_variant, 64);
+      const path = normalizeAnalyticsField(body.path, 512);
+
+      if (!itemId || !itemVersion || !itemVariant) {
+        return bad(req, "invalid_event_payload");
+      }
+      if (!isSafeAnalyticsToken(itemId) || !isSafeAnalyticsToken(itemVersion) || !isSafeAnalyticsToken(itemVariant)) {
+        return bad(req, "invalid_event_payload");
+      }
+      if (path && !path.startsWith("/")) return bad(req, "invalid_event_payload");
 
       const ip = getRequestIpAddress(req);
       const ipHash = ip ? await sha256Hex(ip) : null;
@@ -921,10 +946,10 @@ export default {
           uuid(),
           nowIso(),
           eventName.slice(0, 64),
-          body.item_id ? String(body.item_id).slice(0, 256) : null,
-          body.item_version ? String(body.item_version).slice(0, 64) : null,
-          body.item_variant ? String(body.item_variant).slice(0, 64) : null,
-          body.path ? String(body.path).slice(0, 512) : null,
+          itemId,
+          itemVersion,
+          itemVariant,
+          path,
           getCountryCode(req),
           getRequestUserAgent(req),
           ipHash,
