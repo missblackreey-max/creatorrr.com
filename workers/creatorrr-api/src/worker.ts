@@ -893,6 +893,48 @@ export default {
       return json(req, { ok: true });
     }
 
+    if (req.method === "POST" && url.pathname === "/analytics/event") {
+      const body = await readJson<{
+        event?: string;
+        item_id?: string | null;
+        item_version?: string | null;
+        item_variant?: string | null;
+        path?: string | null;
+      }>(req);
+      if (!body) return bad(req, "invalid_json");
+
+      const eventName = String(body.event || "").trim().toLowerCase();
+      if (!eventName) return bad(req, "invalid_event");
+
+      const ip = getRequestIpAddress(req);
+      const ipHash = ip ? await sha256Hex(ip) : null;
+      const { isBot, botScore } = detectLikelyBot(req);
+
+      await env.creatorrr_db
+        .prepare(
+          `INSERT INTO analytics_events (
+            id, created_at, event_name, item_id, item_version, item_variant, path, country, user_agent, ip_hash, is_bot, bot_score
+          ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)`,
+        )
+        .bind(
+          uuid(),
+          nowIso(),
+          eventName.slice(0, 64),
+          body.item_id ? String(body.item_id).slice(0, 256) : null,
+          body.item_version ? String(body.item_version).slice(0, 64) : null,
+          body.item_variant ? String(body.item_variant).slice(0, 64) : null,
+          body.path ? String(body.path).slice(0, 512) : null,
+          getCountryCode(req),
+          getRequestUserAgent(req),
+          ipHash,
+          isBot ? 1 : 0,
+          botScore,
+        )
+        .run();
+
+      return json(req, { ok: true });
+    }
+
     if (req.method === "GET" && url.pathname === "/dashboard/overview") {
       const owner = await requireDashboardOwner(req, env);
       if (!owner.ok) return owner.response;
@@ -1024,6 +1066,26 @@ export default {
         return Number.isFinite(n) ? n : 0;
       };
 
+      const downloadRows = await env.creatorrr_db.prepare(`
+        SELECT
+          item_id,
+          item_version,
+          item_variant,
+          COUNT(*) AS downloads
+        FROM analytics_events
+        WHERE event_name='download_click'
+          AND julianday(created_at) >= julianday('now', '-30 days')
+          AND is_bot=0
+        GROUP BY item_id, item_version, item_variant
+        ORDER BY downloads DESC
+        LIMIT 30
+      `).all<{
+        item_id?: string | null;
+        item_version?: string | null;
+        item_variant?: string | null;
+        downloads?: number | string | null;
+      }>();
+
       return json(req, {
         ok: true,
         generated_at: nowIso(),
@@ -1041,6 +1103,12 @@ export default {
         top_pages: (pathRows.results || []).map((row) => ({
           path: String(row.path || "/"),
           visits: numberOrZero(row.visits),
+        })),
+        downloads: (downloadRows.results || []).map((row) => ({
+          item_id: String(row.item_id || "unknown"),
+          item_version: String(row.item_version || "-"),
+          item_variant: String(row.item_variant || "-"),
+          downloads: numberOrZero(row.downloads),
         })),
       });
     }
