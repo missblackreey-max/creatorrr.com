@@ -213,7 +213,7 @@ function isGoogleOAuthEnabled(env: Env): boolean {
 }
 
 function getDashboardOwnerEmails(env: Env): string[] {
-  const raw = String(env.DASHBOARD_OWNER_EMAILS || "ben@creatorrr.com,ben@creatorrrr.com");
+  const raw = String(env.DASHBOARD_OWNER_EMAILS || "");
   return raw
     .split(",")
     .map((value) => normalizeEmail(value))
@@ -246,6 +246,7 @@ async function requireDashboardOwner(
   if (!userEmail) return { ok: false, response: bad(req, "access_denied", 403) };
 
   const owners = new Set(getDashboardOwnerEmails(env));
+  if (owners.size === 0) return { ok: false, response: bad(req, "dashboard_owner_not_configured", 403) };
   if (!owners.has(userEmail)) return { ok: false, response: bad(req, "access_denied", 403) };
 
   return { ok: true, userId: user.id, email: userEmail };
@@ -273,6 +274,18 @@ function detectLikelyBot(req: Request): { isBot: boolean; botScore: number | nul
   const ua = String(req.headers.get("user-agent") || "").toLowerCase();
   const uaLooksBot = /(bot|crawler|spider|curl|wget|headless)/i.test(ua);
   return { isBot: uaLooksBot, botScore: null };
+}
+
+const ANALYTICS_ALLOWED_EVENTS = new Set(["download_click"]);
+
+function normalizeAnalyticsField(value: unknown, maxLength: number): string | null {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  return text.slice(0, maxLength);
+}
+
+function isSafeAnalyticsToken(value: string): boolean {
+  return /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(value);
 }
 
 export default {
@@ -893,6 +906,61 @@ export default {
       return json(req, { ok: true });
     }
 
+    if (req.method === "POST" && url.pathname === "/analytics/event") {
+      const body = await readJson<{
+        event?: string;
+        item_id?: string | null;
+        item_version?: string | null;
+        item_variant?: string | null;
+        path?: string | null;
+      }>(req);
+      if (!body) return bad(req, "invalid_json");
+
+      const eventName = String(body.event || "").trim().toLowerCase();
+      if (!ANALYTICS_ALLOWED_EVENTS.has(eventName)) return bad(req, "invalid_event");
+
+      const itemId = normalizeAnalyticsField(body.item_id, 256);
+      const itemVersion = normalizeAnalyticsField(body.item_version, 64);
+      const itemVariant = normalizeAnalyticsField(body.item_variant, 64);
+      const path = normalizeAnalyticsField(body.path, 512);
+
+      if (!itemId || !itemVersion || !itemVariant) {
+        return bad(req, "invalid_event_payload");
+      }
+      if (!isSafeAnalyticsToken(itemId) || !isSafeAnalyticsToken(itemVersion) || !isSafeAnalyticsToken(itemVariant)) {
+        return bad(req, "invalid_event_payload");
+      }
+      if (path && !path.startsWith("/")) return bad(req, "invalid_event_payload");
+
+      const ip = getRequestIpAddress(req);
+      const ipHash = ip ? await sha256Hex(ip) : null;
+      const { isBot, botScore } = detectLikelyBot(req);
+
+      await env.creatorrr_db
+        .prepare(
+          `INSERT INTO analytics_events (
+            id, created_at, event_name, item_id, item_version, item_variant, path, country, user_agent, ip_hash, is_bot, bot_score
+          ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)`,
+        )
+        .bind(
+          uuid(),
+          nowIso(),
+          eventName.slice(0, 64),
+          itemId,
+          itemVersion,
+          itemVariant,
+          path,
+          getCountryCode(req),
+          getRequestUserAgent(req),
+          ipHash,
+          isBot ? 1 : 0,
+          botScore,
+        )
+        .run();
+
+      return json(req, { ok: true });
+    }
+
     if (req.method === "GET" && url.pathname === "/dashboard/overview") {
       const owner = await requireDashboardOwner(req, env);
       if (!owner.ok) return owner.response;
@@ -1024,6 +1092,26 @@ export default {
         return Number.isFinite(n) ? n : 0;
       };
 
+      const downloadRows = await env.creatorrr_db.prepare(`
+        SELECT
+          item_id,
+          item_version,
+          item_variant,
+          COUNT(*) AS downloads
+        FROM analytics_events
+        WHERE event_name='download_click'
+          AND julianday(created_at) >= julianday('now', '-30 days')
+          AND is_bot=0
+        GROUP BY item_id, item_version, item_variant
+        ORDER BY downloads DESC
+        LIMIT 30
+      `).all<{
+        item_id?: string | null;
+        item_version?: string | null;
+        item_variant?: string | null;
+        downloads?: number | string | null;
+      }>();
+
       return json(req, {
         ok: true,
         generated_at: nowIso(),
@@ -1041,6 +1129,12 @@ export default {
         top_pages: (pathRows.results || []).map((row) => ({
           path: String(row.path || "/"),
           visits: numberOrZero(row.visits),
+        })),
+        downloads: (downloadRows.results || []).map((row) => ({
+          item_id: String(row.item_id || "unknown"),
+          item_version: String(row.item_version || "-"),
+          item_variant: String(row.item_variant || "-"),
+          downloads: numberOrZero(row.downloads),
         })),
       });
     }

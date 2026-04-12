@@ -55,6 +55,22 @@ async function ensureTestSchema() {
         scheduled_change_at TEXT
       )
     `),
+		env.creatorrr_db.prepare(`
+      CREATE TABLE IF NOT EXISTS analytics_events (
+        id TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL,
+        event_name TEXT NOT NULL,
+        item_id TEXT,
+        item_version TEXT,
+        item_variant TEXT,
+        path TEXT,
+        country TEXT,
+        user_agent TEXT,
+        ip_hash TEXT,
+        is_bot INTEGER NOT NULL DEFAULT 0,
+        bot_score INTEGER
+      )
+    `),
 	]);
 }
 
@@ -179,5 +195,56 @@ describe("creatorrr-api worker", () => {
 			.all<{ device_id: string }>();
 
 		expect(devices.results).toEqual([{ device_id: "device-new" }]);
+	});
+
+	it("rejects invalid analytics event payloads", async () => {
+		await ensureTestSchema();
+		const response = await SELF.fetch("https://example.com/analytics/event", {
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+			},
+			body: JSON.stringify({
+				event: "download_click",
+				item_id: "",
+				item_version: "1.1.0",
+				item_variant: "exe",
+				path: "/account",
+			}),
+		});
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toMatchObject({ ok: false, error: "invalid_event_payload" });
+	});
+
+	it("stores valid download analytics events", async () => {
+		await ensureTestSchema();
+		const response = await SELF.fetch("https://example.com/analytics/event", {
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+			},
+			body: JSON.stringify({
+				event: "download_click",
+				item_id: "contentorrr_windows",
+				item_version: "1.1.0",
+				item_variant: "exe",
+				path: "/account",
+			}),
+		});
+
+		expect(response.status).toBe(200);
+		await expect(response.json()).resolves.toMatchObject({ ok: true });
+
+		const inserted = await env.creatorrr_db
+			.prepare("SELECT event_name, item_id, item_version, item_variant FROM analytics_events ORDER BY created_at DESC LIMIT 1")
+			.first<{ event_name: string; item_id: string; item_version: string; item_variant: string }>();
+
+		expect(inserted).toMatchObject({
+			event_name: "download_click",
+			item_id: "contentorrr_windows",
+			item_version: "1.1.0",
+			item_variant: "exe",
+		});
 	});
 });

@@ -199,6 +199,10 @@
           <h3 style="margin:0 0 8px 0;">Top pages</h3>
           <div class="muted" id="pages-list" style="white-space: pre-line;">Loading...</div>
         </div>
+        <div>
+          <h3 style="margin:0 0 8px 0;">Downloads (last 30 days)</h3>
+          <div class="muted" id="downloads-list" style="white-space: pre-line;">Loading...</div>
+        </div>
       </div>
     </section>
   </div>
@@ -212,6 +216,7 @@
     const trafficGridEl = document.getElementById("traffic-grid");
     const countriesListEl = document.getElementById("countries-list");
     const pagesListEl = document.getElementById("pages-list");
+    const downloadsListEl = document.getElementById("downloads-list");
     const refreshBtn = document.getElementById("refresh-btn");
 
     function getToken() {
@@ -252,6 +257,13 @@
       if (!Array.isArray(rows) || rows.length === 0) return "No data yet.";
       return rows
         .map((row) => `${row[keyLabel]}: ${fmtNumber(row.visits)}`)
+        .join("\n");
+    }
+
+    function makeDownloadList(rows) {
+      if (!Array.isArray(rows) || rows.length === 0) return "No data yet.";
+      return rows
+        .map((row) => `${row.item_id} v${row.item_version} (${row.item_variant}): ${fmtNumber(row.downloads)}`)
         .join("\n");
     }
 
@@ -318,6 +330,7 @@
 
         countriesListEl.textContent = makePairsList(traffic.countries || [], "country");
         pagesListEl.textContent = makePairsList(traffic.top_pages || [], "path");
+        downloadsListEl.textContent = makeDownloadList(traffic.downloads || []);
 
         const generatedAt = data.generated_at ? new Date(data.generated_at).toLocaleString() : "now";
         statusEl.className = "status ok";
@@ -337,6 +350,7 @@
         trafficGridEl.innerHTML = "";
         countriesListEl.textContent = "Unavailable";
         pagesListEl.textContent = "Unavailable";
+        downloadsListEl.textContent = "Unavailable";
       }
     }
 
