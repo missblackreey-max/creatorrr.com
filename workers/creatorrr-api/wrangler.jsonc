@@ -27,7 +27,8 @@
     "SITE_URL": "https://creatorrr.com",
     "STRIPE_PORTAL_RETURN_URL": "https://creatorrr.com/account.html?intent=login",
     "RESEND_FROM_EMAIL": "noreply@mail.creatorrr.com",
-    "RESEND_FROM_NAME": "Creatorrr"
+    "RESEND_FROM_NAME": "Creatorrr",
+    "DASHBOARD_OWNER_EMAILS": "ben@creatorrr.com"
   }
   /**
    * Smart Placement
