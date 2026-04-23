@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-MV8HQZJYQV"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-MV8HQZJYQV', { send_page_view: false });
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Verify Email | Contentorrr</title>
@@ -224,6 +233,19 @@
       const qs = cleanParams.toString();
       history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
     }
+
+    function sendSanitizedGaPageView() {
+      if (typeof window.gtag !== "function") return;
+      const pagePath = window.location.pathname || "/verify-email.html";
+      const pageLocation = `${window.location.origin}${pagePath}`;
+      window.gtag("event", "page_view", {
+        page_path: pagePath,
+        page_location: pageLocation,
+        page_title: document.title || "Verify Email | Contentorrr",
+      });
+    }
+
+    sendSanitizedGaPageView();
 
     function setStatus(message, state = "") {
       statusEl.className = "status-box" + (state ? ` ${state}` : "");
