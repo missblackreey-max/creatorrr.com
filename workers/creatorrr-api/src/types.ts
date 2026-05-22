@@ -19,6 +19,10 @@ export interface Env {
   DASHBOARD_YEARLY_PRICE_USD?: string;
 }
 
+export type CanonicalPlan = "free" | "free_pass" | "pro";
+
+export type BillingInterval = "month" | "year" | null;
+
 export type LicenseRow = {
   user_id: string;
   plan: string;
@@ -32,8 +36,12 @@ export type LicenseRow = {
   billing_interval?: string | null;
   current_period_start?: string | null;
   current_period_end?: string | null;
+
+  // Kept because old DB rows / Stripe objects may still contain these.
+  // Backend must normalize them and never emit trial/beta in API output.
   trial_start_at?: string | null;
   trial_end_at?: string | null;
+
   scheduled_billing_interval?: string | null;
   scheduled_change_at?: string | null;
   cancel_at?: string | null;
@@ -56,12 +64,11 @@ export type UserRow = {
 };
 
 export type EntitlementView = {
-  plan: string;
-  status: string;
+  plan: CanonicalPlan;
+  billing_interval: BillingInterval;
   entitled: boolean;
   entitled_until: string | null;
-  in_trial: boolean;
-  cancel_at: string | null;
+  subscription_ends_at: string | null;
 };
 
 export type LegalAcceptanceRow = {

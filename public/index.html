@@ -695,6 +695,182 @@
     color: rgba(247, 213, 106, 0.95);
   }
 
+
+  .download-card {
+    padding: 26px;
+  }
+
+  .download-head {
+    --download-logo-size: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 18px;
+    text-align: center;
+  }
+
+  .download-logo {
+    width: var(--download-logo-size);
+    height: var(--download-logo-size);
+    border-radius: 18px;
+    object-fit: contain;
+    flex: 0 0 auto;
+    filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.28));
+  }
+
+  .download-title-group {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .download-title-group h2 {
+    margin: 0;
+  }
+
+  .download-title-group p {
+    color: var(--muted);
+  }
+
+  .download-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    align-items: stretch;
+  }
+
+  .platform-card {
+    padding: 18px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    text-align: center;
+    display: grid;
+    grid-auto-rows: min-content;
+    justify-items: center;
+  }
+
+  .platform-card strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 18px;
+  }
+
+  .platform-card span {
+    display: block;
+    margin-bottom: 12px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .download-filesize {
+    margin-top: 8px;
+    color: var(--muted-2);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .download-note {
+    margin: 18px auto 0;
+    max-width: 78ch;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.55;
+    text-align: center;
+  }
+
+  .download-changelog {
+    margin-top: 18px;
+    padding: 0;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    overflow: hidden;
+  }
+
+  .download-changelog summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .download-changelog summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .download-changelog summary::after {
+    content: "+";
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    color: #0b0b0b;
+    background: linear-gradient(180deg, var(--gold-1), var(--gold-2));
+    font-weight: 900;
+    flex: 0 0 auto;
+  }
+
+  .download-changelog[open] summary::after {
+    content: "−";
+  }
+
+  .download-changelog-title {
+    display: grid;
+    gap: 4px;
+  }
+
+  .download-changelog-title h3 {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .download-changelog-title span {
+    color: var(--muted-2);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .download-changelog-body {
+    padding: 0 16px 16px;
+  }
+
+  .download-changelog-body p {
+    margin: 0 0 12px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .download-changelog-body h4 {
+    margin: 14px 0 6px;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .download-changelog-label {
+    margin: 10px 0 6px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .download-changelog-body ul {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+    display: grid;
+    gap: 4px;
+  }
+
   .site-footer {
     padding: 38px 0 54px;
     color: var(--muted);
@@ -717,7 +893,7 @@
   }
 
   .pricing-grid--pricing {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: stretch;
   }
 
@@ -1194,7 +1370,7 @@
         <a href="#workflow">Workflow</a>
         <a href="#pricing">Pricing</a>
         <a href="./challenge/">Challenge</a>
-        <a class="nav-link-highlight" href="./account.html?intent=trial">3-day free trial</a>
+        <a class="nav-link-highlight" href="#downloads">Download free version</a>
       </nav>
 
       <div class="nav-action-slot nav-auth-pending" id="nav-action-slot">
@@ -1230,7 +1406,7 @@
           </div>
 
           <div class="hero-actions">
-            <a class="btn btn-primary" href="./account.html?intent=trial">Start 3-day free trial</a>
+            <a class="btn btn-primary" href="#downloads">Download free version</a>
             <a class="btn btn-secondary" href="#demo">Watch the demo</a>
             <a class="btn btn-secondary-challenge" href="./challenge/">Take the challenge</a>
           </div>
@@ -1357,36 +1533,89 @@
     </section>
 
 
+    <section id="downloads">
+      <div class="container">
+        <article class="download-card">
+          <div class="download-head">
+            <img class="download-logo" src="./64x64.png" alt="Contentorrr logo">
+            <div class="download-title-group">
+              <h2>Download Contentorrr</h2>
+              <p>Current version: V1.1.2</p>
+            </div>
+          </div>
+
+          <div class="download-grid">
+            <div class="platform-card">
+              <strong>Windows 11</strong>
+              <span>Current version v1.1.2 for Windows 11 and later</span>
+              <a class="btn btn-primary" id="download-windows" href="https://downloads.creatorrr.com/Contentorrr_1.1.2_x64-setup.exe" data-analytics-download="contentorrr_windows" data-analytics-version="1.1.2" data-analytics-variant="exe">Download .exe</a>
+              <div class="download-filesize">87.4 MB</div>
+            </div>
+
+            <div class="platform-card">
+              <strong>macOS (Apple Silicon)</strong>
+              <span>Current version v1.1.2 for Apple Silicon Macs</span>
+              <a class="btn btn-primary" id="download-macos" href="https://downloads.creatorrr.com/Contentorrr_1.1.2_aarch64.dmg" data-analytics-download="contentorrr_macos" data-analytics-version="1.1.2" data-analytics-variant="dmg">Download .dmg</a>
+              <div class="download-filesize">58.6 MB</div>
+            </div>
+          </div>
+
+          <p class="download-note">Unlimited trial use. Free version has creatorrr.com watermark locked and centered. No credit card, no account, no email. Just a free local offline app. Get Contentorrr Pro for no watermark or your own watermark(s).</p>
+
+          <details class="download-changelog" aria-label="Changelog">
+            <summary>
+              <span class="download-changelog-title">
+                <h3>Changelog</h3>
+                <span>Latest: V1.1.2 | 22.05.2026</span>
+              </span>
+            </summary>
+            <div class="download-changelog-body">
+              <h4>V1.1.2 | 22.05.2026</h4>
+              <p class="download-changelog-label">Changes:</p>
+              <ul>
+                <li>Replaced the previous 3-day trial with the free version.</li>
+                <li>Free version can be used without account, email, credit card, or internet connection.</li>
+                <li>Free version exports with creatorrr.com watermark locked and centered.</li>
+                <li>Minor bug fixes.</li>
+              </ul>
+              <h4>V1.1.1 | 25.04.2026</h4>
+              <p class="download-changelog-label">Changes:</p>
+              <ul>
+                <li>Faster loading for large media libraries.</li>
+                <li>Smoother overall performance in day-to-day editing.</li>
+                <li>Improved stability across core workflows.</li>
+                <li>Minor bug fixes.</li>
+              </ul>
+              <h4>V1.1.0 | 10.04.2026</h4>
+              <p class="download-changelog-label">Changes:</p>
+              <ul>
+                <li>Bulk watermark exports.</li>
+                <li>Watermark status in Media Library (<code>Watermarked: Yes/No</code>).</li>
+                <li>Copy selected tags with one click.</li>
+                <li>Sorting for <strong>Your Content-Sets</strong>.</li>
+                <li>Content-set count shown in the dashboard title.</li>
+                <li>New import modes: <strong>Full replacement</strong> or <strong>Update tags &amp; metadata</strong>.</li>
+                <li>Dashboard search for content-set names (with matched/total count).</li>
+                <li>Better MOV → MP4 quality.</li>
+              </ul>
+              <h4>V1.0.0 | 29.03.2026</h4>
+              <ul>
+                <li>First Windows version.</li>
+                <li>First Apple Silicon version.</li>
+              </ul>
+            </div>
+          </details>
+        </article>
+      </div>
+    </section>
+
     <section id="pricing">
       <div class="container">
         <div class="section-head">
           <h2>Pricing</h2>
-          <p>Start with a 3-day free trial (locked watermark, no credit card). Once you are ready for the full version, simply choose the monthly or yearly plan. </p>
+          <p>Unlimited trial use with the free version. Get Contentorrr Pro for no watermark or your own watermark(s).</p>
         </div>
         <div class="pricing-grid pricing-grid--pricing">
-          <article class="price-card price-card-trial">
-            <h3>3-day trial</h3>
-            <p class="pricing-subtitle">No credit card required, does not renew automatically.</p>
-
-            <div class="price">
-              <strong>$0</strong>
-              <span>/ 3 days</span>
-            </div>
-
-            <p class="price-note">Try before buy.</p>
-
-            <div class="pricing-features">
-              <div>Locked watermark, otherwise full access</div>
-              <div>Windows 10 or later and macOS (Apple Silicon)</div>
-              <div>Desktop app (no cloud)</div>
-              <div>Upgrade anytime</div>
-            </div>
-
-            <div class="pricing-actions">
-              <a class="btn btn-trial" href="./account.html?intent=trial">Start 3-day trial</a>
-            </div>
-          </article>
-
           <article class="price-card price-card-monthly">
             <h3>Monthly</h3>
             <p class="pricing-subtitle">Charged today, renews every month until canceled</p>
@@ -1396,12 +1625,12 @@
               <span>/ month</span>
             </div>
 
-            <p class="price-note">Immediate full access without fixed watermark.</p>
+            <p class="price-note">Full Contentorrr access without locked creatorrr.com watermark.</p>
 
             <div class="pricing-features">
-              <div>Full Contentorrr access</div>
+              <div>No locked creatorrr.com watermark</div>
+              <div>Use no watermark or your own watermark(s)</div>
               <div>Windows 10 or later and macOS (Apple Silicon)</div>
-              <div>Desktop app (no cloud)</div>
               <div>Month-to-month billing</div>
             </div>
 
@@ -1420,12 +1649,12 @@
               <span>/ year</span>
             </div>
 
-            <p class="price-note">Effective $19.92/month: You'll save 33%.</p>
+            <p class="price-note">Effective $19.92/month. Same Pro access, lower effective monthly cost.</p>
 
             <div class="pricing-features">
-              <div>Full Contentorrr access</div>
+              <div>No locked creatorrr.com watermark</div>
+              <div>Use no watermark or your own watermark(s)</div>
               <div>Windows 10 or later and macOS (Apple Silicon)</div>
-              <div>Desktop app (no cloud)</div>
               <div>Lower effective monthly cost</div>
             </div>
 

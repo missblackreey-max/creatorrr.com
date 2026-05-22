@@ -17,7 +17,7 @@
   <link rel="apple-touch-icon" href="./creatorrr-logo-nolink.png" />
   <meta
     name="description"
-    content="Create your Contentorrr account, choose access, manage your subscription, and download the latest app version."
+    content="Create your Contentorrr account, choose Pro access, and manage your subscription."
   />
   <style>
     :root {
@@ -705,7 +705,7 @@
 
     .plans-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
       align-items: stretch;
     }
@@ -746,9 +746,6 @@
       transform: none;
     }
 
-    .plan-card-trial {
-      background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.03));
-    }
 
     .plan-card-monthly {
       background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.03));
@@ -906,18 +903,6 @@
       text-align: left;
     }
 
-    .btn-trial {
-      color: #0b0b0b;
-      border-color: rgba(247, 213, 106, 0.5);
-      background: linear-gradient(180deg, var(--gold-1), var(--gold-2));
-      box-shadow: 0 14px 30px rgba(184, 137, 42, 0.20);
-    }
-
-    .btn-trial:hover {
-      color: #0b0b0b;
-      border-color: rgba(247, 213, 106, 0.58);
-      background: linear-gradient(180deg, #f9df82, #cd9c3c);
-    }
 
     .btn-premium {
       color: var(--gold-1);
@@ -1197,7 +1182,7 @@
             <span class="eyebrow" id="auth-eyebrow">Your Account</span>
             <h1 id="auth-title">Log in</h1>
             <p class="auth-copy" id="auth-copy">
-              Use one account for checkout, billing, and the Contentorrr desktop app.
+              Use one account for Pro checkout, billing, and Pro activation in the desktop app.
             </p>
 
             <div class="tabs" id="auth-tabs" role="tablist" aria-label="Authentication mode">
@@ -1354,70 +1339,16 @@
       <section class="card initially-hidden" id="plans-section">
         <div class="section-head">
           <div class="section-subtext">
-            <h2>Choose your plan</h2>
+            <h2>Choose Pro</h2>
             <p id="plans-copy"></p>
           </div>
         </div>
 
         <div class="plans-grid" id="plans-grid"></div>
         <div id="plan-consent-area"></div>
-        <p class="account-note">The 3-day trial stays card-free and does not turn into a paid plan automatically.</p>
       </section>
 
-      <section class="card initially-hidden" id="downloads-section">
-        <div class="section-head download-head">
-          <img class="download-logo" src="./64x64.png" alt="Contentorrr logo">
-          <div class="section-subtext">
-            <h2>Download Contentorrr</h2>
-            <p id="downloads-copy">Current version: V1.1.1</p>
-          </div>
-        </div>
 
-        <div class="download-grid">
-          <div class="platform-card">
-            <strong>Windows 11</strong>
-            <span>Current version v1.1.1 for Windows 11 and later</span>
-            <a class="btn btn-primary" id="download-windows" href="https://downloads.creatorrr.com/Contentorrr_1.1.1_x64-setup.exe" data-analytics-download="contentorrr_windows" data-analytics-version="1.1.1" data-analytics-variant="exe">Download .exe</a>
-            <div class="download-filesize">87.4 MB</div>
-          </div>
-
-          <div class="platform-card">
-            <strong>macOS (Apple Silicon)</strong>
-            <span>Current version v1.1.1 for Apple Silicon Macs</span>
-            <a class="btn btn-primary" id="download-macos" href="https://downloads.creatorrr.com/Contentorrr_1.1.1_aarch64.dmg" data-analytics-download="contentorrr_macos" data-analytics-version="1.1.1" data-analytics-variant="dmg">Download .dmg</a>
-            <div class="download-filesize">58.6 MB</div>
-          </div>
-        </div>
-
-        <article class="download-changelog" aria-label="Changelog">
-          <h3>Changelog</h3>
-          <h4>V1.1.1 | 25.04.2026</h4>
-          <p class="download-changelog-label">Changes:</p>
-          <ul>
-            <li>Faster loading for large media libraries.</li>
-            <li>Smoother overall performance in day-to-day editing.</li>
-            <li>Improved stability across core workflows.</li>
-            <li>Minor bug fixes.</li>
-          </ul>
-          <h4>V1.1.0 | 10.04.2026</h4>
-          <p class="download-changelog-label">Changes:</p>
-          <ul>
-            <li>Bulk watermark exports.</li>
-            <li>Watermark status in Media Library (<code>Watermarked: Yes/No</code>).</li>
-            <li>Copy selected tags with one click.</li>
-            <li>Sorting for <strong>Your Content-Sets</strong>.</li>
-            <li>Content-set count shown in the dashboard title.</li>
-            <li>New import modes: <strong>Full replacement</strong> or <strong>Update tags &amp; metadata</strong>.</li>
-            <li>Dashboard search for content-set names (with matched/total count).</li>
-            <li>Better MOV → MP4 quality.</li>
-          </ul>
-          <h4>V1.0.0 | 29.03.2026</h4>
-          <ul>
-            <li>First Windows version.</li>
-            <li>First Apple Silicon version.</li>
-          </ul>
-        </article>
-      </section>
     </div>
   </main>
 
@@ -1428,9 +1359,9 @@
     const WEBSITE_ACCOUNT_DEVICE_ID = "creatorrr-web-account-v1";
     const LS_WEB_OAUTH_NONCE = "creatorrr.web.oauth.google.nonce.v1";
 
-    const APP_VERSION = "v1.1.1";
-    const INSTALLER_WINDOWS_URL = "https://downloads.creatorrr.com/Contentorrr_1.1.1_x64-setup.exe";
-    const INSTALLER_MACOS_URL = "https://downloads.creatorrr.com/Contentorrr_1.1.1_aarch64.dmg";
+    const APP_VERSION = "v1.1.2";
+    const INSTALLER_WINDOWS_URL = "https://downloads.creatorrr.com/Contentorrr_1.1.2_x64-setup.exe";
+    const INSTALLER_MACOS_URL = "https://downloads.creatorrr.com/Contentorrr_1.1.2_aarch64.dmg";
     const MONTHLY_PRICE_LABEL = "$29.90";
     const YEARLY_PRICE_LABEL = "$239";
     const CURRENT_TERMS_VERSION = "2026-03-21";
@@ -1474,7 +1405,6 @@
     const authSection = document.getElementById("auth-section");
     const accountSection = document.getElementById("account-section");
     const plansSection = document.getElementById("plans-section");
-    const downloadsSection = document.getElementById("downloads-section");
 
     const accountGrid = document.getElementById("account-grid");
     const accountActions = document.getElementById("account-actions");
@@ -1494,9 +1424,6 @@
     const backToLoginLink = document.getElementById("back-to-login-link");
     const headerLogout = document.getElementById("header-logout");
 
-    const downloadsCopy = document.getElementById("downloads-copy");
-    const downloadWindows = document.getElementById("download-windows");
-    const downloadMacos = document.getElementById("download-macos");
     const planConsentArea = document.getElementById("plan-consent-area");
 
     const initialIntentPlan = normalizePlan(preselectParam);
@@ -1505,15 +1432,7 @@
     let preferredPlan = initialIntentPlan || "year";
     let selectedConsentPlanKey = initialIntentPlan;
 
-    const windowsInstallerUrl = INSTALLER_WINDOWS_URL;
-    const macosInstallerUrl = INSTALLER_MACOS_URL;
-
-    downloadsCopy.textContent = `Current version ${APP_VERSION}.`;
-    downloadWindows.href = windowsInstallerUrl;
-    downloadMacos.href = macosInstallerUrl;
-
     function normalizePlan(value) {
-      if (value === "trial") return "trial";
       if (value === "monthly" || value === "month") return "month";
       if (value === "yearly" || value === "year") return "year";
       if (value === "login") return "year";
@@ -1567,11 +1486,11 @@
       } else if (signupActive) {
         authEyebrow.textContent = "Your Account";
         authTitle.textContent = "Create account";
-        authCopy.textContent = "Use one account for checkout, billing, and the Contentorrr desktop app.";
+        authCopy.textContent = "Use one account for Pro checkout, billing, and Pro activation in the desktop app.";
       } else {
         authEyebrow.textContent = "Your Account";
         authTitle.textContent = "Log in";
-        authCopy.textContent = "Use one account for checkout, billing, and the Contentorrr desktop app.";
+        authCopy.textContent = "Use one account for Pro checkout, billing, and Pro activation in the desktop app.";
       }
 
       if (signupActive) {
@@ -1901,23 +1820,23 @@
       const user = account?.user || null;
       const license = account?.license || {};
       const billingInterval = normalizeBillingInterval(license.billing_interval);
+      const plan = String(license.plan || "").trim().toLowerCase();
 
       if (!user) return "logged_out";
-      if (license.entitled && license.in_trial) return "trial_active";
-      if (license.entitled && String(license.plan || "").trim().toLowerCase() === "free") return "free_active";
+      if (license.entitled && plan === "free_pass") return "free_pass_active";
       if (license.entitled && billingInterval === "month") return "monthly_active";
       if (license.entitled && billingInterval === "year") return "yearly_active";
-      if (!license.entitled) return "no_access";
       return "no_access";
     }
 
     function currentPlanName(license) {
       const billingInterval = normalizeBillingInterval(license?.billing_interval);
+      const plan = String(license?.plan || "").trim().toLowerCase();
 
-      if (license?.in_trial) return "3-day trial";
-      if (String(license?.plan || "").trim().toLowerCase() === "free") return "Free";
-      if (billingInterval === "month") return "Monthly";
-      if (billingInterval === "year") return "Yearly";
+      if (plan === "free_pass") return "Free Pass";
+      if (plan === "free") return "Free";
+      if (billingInterval === "month") return "Pro Monthly";
+      if (billingInterval === "year") return "Pro Yearly";
       return "None";
     }
 
@@ -1942,17 +1861,9 @@
       const billingInterval = normalizeBillingInterval(license.billing_interval);
       const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
       const status = String(license.status || "").trim().toLowerCase();
+      const plan = String(license.plan || "").trim().toLowerCase();
 
-      if (license.in_trial) {
-        return formatDateFriendly(
-          license.trial_end_at ||
-          license.entitled_until ||
-          license.current_period_end ||
-          ""
-        );
-      }
-
-      if (license.entitled && String(license.plan || "").trim().toLowerCase() === "free") {
+      if (license.entitled && plan === "free_pass") {
         return "∞";
       }
 
@@ -1971,7 +1882,6 @@
           license.subscription_ends_at ||
           license.current_period_end ||
           license.entitled_until ||
-          license.trial_end_at ||
           ""
         );
       }
@@ -1979,7 +1889,6 @@
       return formatDateFriendly(
         license.entitled_until ||
         license.current_period_end ||
-        license.trial_end_at ||
         ""
       );
     }
@@ -1993,45 +1902,37 @@
     }
 
     function buildAccessSummary(license) {
-      if (!license) return "No active access.";
+      if (!license) return "No active Pro access.";
 
       const billingInterval = normalizeBillingInterval(license.billing_interval);
       const scheduledInterval = normalizeBillingInterval(license.scheduled_billing_interval);
       const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
       const accessActive = Boolean(license.entitled);
       const autoRenewEnabled = Boolean(license.auto_renew_enabled);
+      const plan = String(license.plan || "").trim().toLowerCase();
       const periodEndText = formatDateFriendly(
         license.current_period_end ||
         license.entitled_until ||
         ""
       );
-      const trialEndText = formatDateFriendly(
-        license.trial_end_at ||
-        license.entitled_until ||
-        ""
-      );
 
-      if (accessActive && license.in_trial) {
-        return `3 day trial active until ${trialEndText}. Besides the locked watermark, you have full access.`;
-      }
-
-      if (accessActive && String(license.plan || "").trim().toLowerCase() === "free") {
-        return "Free access active. No renewal required.";
+      if (accessActive && plan === "free_pass") {
+        return "Creatorrr Free Pass active. Pro export access is unlocked.";
       }
 
       if (accessActive && hasRecurringPlan && autoRenewEnabled && scheduledInterval && scheduledInterval !== billingInterval) {
-        return `Full access active. ${planDisplayName(billingInterval)} plan is active until ${periodEndText}. Next renewal is set to ${sentenceIntervalLabel(scheduledInterval)}.`;
+        return `Pro access active. ${planDisplayName(billingInterval)} plan is active until ${periodEndText}. Next renewal is set to ${sentenceIntervalLabel(scheduledInterval)}.`;
       }
 
       if (accessActive && hasRecurringPlan && autoRenewEnabled) {
-        return `Full access active. ${planDisplayName(billingInterval)} plan is active and auto-renew is on.`;
+        return `Pro access active. ${planDisplayName(billingInterval)} plan is active and auto-renew is on.`;
       }
 
       if (accessActive && hasRecurringPlan && !autoRenewEnabled) {
-        return `Full access active. ${planDisplayName(billingInterval)} plan will end at the current period end unless you turn auto-renew back on.`;
+        return `Pro access active. ${planDisplayName(billingInterval)} plan will end at the current period end unless you turn auto-renew back on.`;
       }
 
-      return "No active access.";
+      return "No active Pro access. The free local app still works with the locked creatorrr.com watermark.";
     }
 
     function buildBillingLine(license) {
@@ -2041,14 +1942,12 @@
       const nextBillingInterval = normalizeBillingInterval(license.next_billing_interval);
       const hasRecurringPlan = billingInterval === "month" || billingInterval === "year";
       const status = String(license.status || "").trim().toLowerCase();
+      const plan = String(license.plan || "").trim().toLowerCase();
 
-      if (license.in_trial) {
-        return "Next payment: $0. Trial only.";
+      if (license.entitled && plan === "free_pass") {
+        return "Next payment: $0. Free Pass.";
       }
 
-      if (license.entitled && String(license.plan || "").trim().toLowerCase() === "free") {
-        return "Next payment: $0. Free access.";
-      }
       if (!hasRecurringPlan) {
         return "";
       }
@@ -2096,10 +1995,6 @@
       const scheduledInterval = normalizeBillingInterval(license.scheduled_billing_interval);
       const autoRenewEnabled = Boolean(license.auto_renew_enabled);
 
-      if (planKey === "trial") {
-        return license.in_trial ? "Current" : "";
-      }
-
       if (!currentInterval) return "";
       if (planKey === currentInterval && !autoRenewEnabled) return "Current";
       if (planKey !== currentInterval && (!autoRenewEnabled || !scheduledInterval)) return "";
@@ -2114,7 +2009,6 @@
       authSection.classList.remove("initially-hidden");
       accountSection.classList.add("initially-hidden");
       plansSection.classList.add("initially-hidden");
-      downloadsSection.classList.add("initially-hidden");
       headerLogout.classList.add("initially-hidden");
     }
 
@@ -2122,19 +2016,7 @@
       authSection.classList.add("initially-hidden");
       accountSection.classList.remove("initially-hidden");
       plansSection.classList.remove("initially-hidden");
-      downloadsSection.classList.remove("initially-hidden");
       headerLogout.classList.remove("initially-hidden");
-    }
-
-    function hasUsedTrialOnAccount(account) {
-      const license = account?.license || {};
-      const trialTimestampsUsed = Boolean(String(license.trial_start_at || "").trim() || String(license.trial_end_at || "").trim());
-      const paidAccessEverUsed = Boolean(
-        normalizeBillingInterval(license.billing_interval) ||
-        String(license.current_period_end || "").trim() ||
-        String(license.cancel_at || "").trim()
-      );
-      return trialTimestampsUsed || paidAccessEverUsed;
     }
 
     function getLegalAcceptanceStorageKey(account) {
@@ -2205,7 +2087,7 @@
       return Boolean(
         action &&
         action.kind === "cta" &&
-        ["start-trial", "checkout-month", "checkout-year"].includes(String(action.action || ""))
+        ["checkout-month", "checkout-year"].includes(String(action.action || ""))
       );
     }
 
@@ -2318,41 +2200,26 @@
       const autoRenewEnabled = Boolean(license.auto_renew_enabled);
 
       if (state === "no_access") {
-        if (planKey === "trial") {
-          if (hasUsedTrialOnAccount(account)) {
-            return { kind: "disabled", label: "Expired" };
-          }
-          return { kind: "cta", label: "Start 3-day trial", action: "start-trial", primary: false };
-        }
-
         if (planKey === "month") {
-          return { kind: "cta", label: "Buy monthly", action: "checkout-month", primary: false };
+          return { kind: "cta", label: "Get Pro monthly", action: "checkout-month", primary: false };
         }
-        return { kind: "cta", label: "Buy yearly", action: "checkout-year", primary: false };
+        if (planKey === "year") {
+          return { kind: "cta", label: "Get Pro yearly", action: "checkout-year", primary: false };
+        }
       }
 
-      if (state === "trial_active") {
-        if (planKey === "trial") return { kind: "current", label: "Current plan" };
-        if (planKey === "month") return { kind: "cta", label: "Buy monthly", action: "checkout-month", primary: false };
-        return { kind: "cta", label: "Buy yearly", action: "checkout-year", primary: false };
-      }
-
-      if (state === "free_active") {
-        if (planKey === "trial") return { kind: "disabled", label: "Expired" };
-        if (planKey === "month") return { kind: "disabled", label: "Included" };
+      if (state === "free_pass_active") {
         return { kind: "disabled", label: "Included" };
       }
 
       if (state === "monthly_active") {
         if (planKey === "month") return { kind: "current", label: "Current plan" };
-        if (planKey === "trial") return { kind: "disabled", label: "Expired" };
         if (autoRenewEnabled && scheduledInterval === "year") return { kind: "disabled", label: "Renews yearly" };
         return { kind: "cta", label: "Yearly renewal", action: "upgrade-yearly", primary: true };
       }
 
       if (state === "yearly_active") {
         if (planKey === "year") return { kind: "current", label: "Current plan" };
-        if (planKey === "trial") return { kind: "disabled", label: "Expired" };
         if (autoRenewEnabled && scheduledInterval === "month") return { kind: "disabled", label: "Renews monthly" };
         return { kind: "cta", label: "Monthly renewal", action: "downgrade-monthly", primary: false };
       }
@@ -2361,7 +2228,7 @@
     }
 
     function isStaticPlanAction(planKey, action) {
-      return planKey === "trial" && action.kind === "disabled" && action.label === "Expired";
+      return false;
     }
 
     function renderPlanButton(planKey, action, armed) {
@@ -2373,7 +2240,7 @@
         return `<button class="btn btn-ghost" type="button" disabled>${escapeHtml(action.label)}</button>`;
       }
 
-      const buttonClass = planKey === "trial" ? "btn-trial" : (planKey === "year" ? "btn-premium" : (action.primary ? "btn-primary" : "btn-secondary"));
+      const buttonClass = planKey === "year" ? "btn-premium" : (action.primary ? "btn-primary" : "btn-secondary");
       return `<button class="btn ${buttonClass} ${armed ? "btn-plan-armed" : ""}" type="button" data-plan-action="${escapeHtml(action.action)}" data-plan-key="${escapeHtml(planKey)}" data-busy-sensitive="true">${escapeHtml(action.label)}</button>`;
     }
 
@@ -2381,37 +2248,27 @@
       renderConsentControls(account);
 
       const activeConsentPlanKey = getActiveConsentPlanKey(account);
-      const trialAction = getPlanAction("trial", account);
-      const trialBadge = trialAction.kind === "cta" ? "Try now" : "";
 
       const plans = [
         {
-          key: "trial",
-          name: "3-day trial",
-          price: "$0",
-          meta: "No credit card required, does not renew automatically",
-          copy: "Your 3 day test run with full access and the locked watermark.",
-          badge: trialBadge
-        },
-        {
           key: "month",
-          name: "Monthly",
+          name: "Pro Monthly",
           price: MONTHLY_PRICE_LABEL,
-          meta: "Charged today, renews every month until canceled",
-          copy: "Full access without the fixed watermark. Best if you want to stay flexible.",
+          meta: "Monthly subscription. Cancel anytime.",
+          copy: "No locked creatorrr.com watermark. Use no watermark or your own watermark(s).",
           badge: ""
         },
         {
           key: "year",
-          name: "Yearly",
+          name: "Pro Yearly",
           price: YEARLY_PRICE_LABEL,
-          meta: "Charged today, renews every year until canceled",
-          copy: "Full access without the fixed watermark. Best value if you produce a lot of content.",
+          meta: "Yearly subscription. Best value.",
+          copy: "No locked creatorrr.com watermark. Use no watermark or your own watermark(s).",
           badge: "Save 33%"
         }
       ];
 
-      plansCopy.textContent = "";
+      plansCopy.textContent = "Pro unlocks export without the locked centered creatorrr.com watermark. Use no watermark or your own watermark(s).";
 
       plansGrid.innerHTML = plans.map((plan) => {
         const action = getPlanAction(plan.key, account);
@@ -2420,13 +2277,12 @@
         const statusLabel = getCurrentNextPeriodLabel(plan.key, account?.license || {});
         const current = statusLabel === "Current" || statusLabel === "Current & next period";
         const staticCard = isStaticPlanAction(plan.key, action);
-        const trialHighlight = plan.key === "trial" && !staticCard && (action.kind === "cta" || current);
         const monthlyClass = plan.key === "month" ? "plan-card-monthly" : "";
         const armed = activeConsentPlanKey === plan.key;
         const selectable = action.kind === "cta" || current;
 
         return `
-          <div class="plan-card ${trialHighlight ? "plan-card-trial" : ""} ${monthlyClass} ${recommended ? "recommended" : ""} ${preselected && selectable ? "preselected" : ""} ${current ? "current" : ""} ${staticCard ? "plan-card-static" : ""}" data-plan-card="true" data-plan-key="${escapeHtml(plan.key)}" data-plan-selectable="${selectable ? "true" : "false"}">
+          <div class="plan-card ${monthlyClass} ${recommended ? "recommended" : ""} ${preselected && selectable ? "preselected" : ""} ${current ? "current" : ""} ${staticCard ? "plan-card-static" : ""}" data-plan-card="true" data-plan-key="${escapeHtml(plan.key)}" data-plan-selectable="${selectable ? "true" : "false"}">
             <div class="plan-badge-row">
               <div class="plan-badge-status">
                 ${statusLabel ? `<span class="plan-badge green">${escapeHtml(statusLabel)}</span>` : ""}
@@ -2490,11 +2346,6 @@
             return;
           }
 
-          if (action === "start-trial") {
-            await startFreeTrial();
-            return;
-          }
-
           if (action === "checkout-month") {
             await continueCheckout("month");
             return;
@@ -2549,39 +2400,6 @@
           await refreshCurrentAccountSilently();
         }
         setError(err instanceof Error ? err.message : "Could not open checkout.");
-      } finally {
-        setBusy(false);
-      }
-    }
-
-    async function startFreeTrial() {
-      clearMessages();
-      if (!hasLegalConsentForAction(currentAccount)) {
-        setError("Please agree to the Terms of Use, Privacy Policy, and Refund Policy before continuing.");
-        return;
-      }
-      setBusy(true);
-      try {
-        const token = getWebToken();
-        if (!token) throw new Error("You are not logged in.");
-
-        setStatus("Starting your 3-day trial...");
-        const legalAcceptance = buildLegalAcceptancePayload(currentAccount);
-        const data = await apiPost("/license/trial/start", {
-          ...(legalAcceptance ? { legal_acceptance: legalAcceptance } : {})
-        }, token);
-
-        rememberCurrentLegalTermsAcceptance(currentAccount || data);
-        renderAccount(data);
-        renderPlans(data);
-        window.location.href = "./billing/success.html?mode=trial";
-      } catch (err) {
-        const status = err && typeof err === "object" ? err.status : undefined;
-        const code = err && typeof err === "object" ? err.code || err.payload?.error : "";
-        if (status === 409 || code === "trial_already_used" || code === "subscription_already_active") {
-          await refreshCurrentAccountSilently();
-        }
-        setError(err instanceof Error ? err.message : "Could not start trial.");
       } finally {
         setBusy(false);
       }

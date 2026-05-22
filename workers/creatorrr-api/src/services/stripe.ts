@@ -224,7 +224,7 @@ async function stripeGetSubscriptionById(
 
 function isLiveStripeStatus(statusRaw: string): boolean {
   const s = String(statusRaw || "").trim().toLowerCase();
-  return s === "trialing" || s === "active" || s === "past_due" || s === "unpaid";
+  return s === "active" || s === "past_due" || s === "unpaid";
 }
 
 
@@ -257,11 +257,11 @@ function subscriptionRank(sub: StripeSubscriptionLike): number {
   const hasCancelAt = hasStripeSubscriptionCancelAt(sub);
   const periodEnd = Number(extractCurrentPeriodEndUnix(sub) || 0);
 
-  if ((status === "trialing" || status === "active" || status === "past_due" || status === "unpaid") && !hasCancelAt) {
+  if ((status === "active" || status === "past_due" || status === "unpaid") && !hasCancelAt) {
     return 4000000000 + periodEnd;
   }
 
-  if ((status === "trialing" || status === "active" || status === "past_due" || status === "unpaid") && hasCancelAt) {
+  if ((status === "active" || status === "past_due" || status === "unpaid") && hasCancelAt) {
     return 3000000000 + periodEnd;
   }
 
@@ -697,6 +697,10 @@ function mapStripeStatus(subscription: StripeSubscriptionLike): string {
   const raw = String(subscription.status || "").trim().toLowerCase();
   const cancelsAt = hasStripeSubscriptionCancelAt(subscription);
 
+  if (raw === "trialing") {
+    return "active";
+  }
+
   if (isLiveStripeStatus(raw) && cancelsAt) {
     return "canceling";
   }
@@ -771,8 +775,8 @@ export async function upsertLicenseFromStripeSubscription(
   const status = mapStripeStatus(subscription);
   const currentPeriodStart = unixToIso(extractCurrentPeriodStartUnix(subscription));
   const currentPeriodEnd = unixToIso(extractCurrentPeriodEndUnix(subscription));
-  const trialStartAt = unixToIso(subscription.trial_start);
-  const trialEndAt = unixToIso(subscription.trial_end);
+  const trialStartAt = null;
+  const trialEndAt = null;
   const canceledAt = unixToIso(subscription.canceled_at);
   const endedAt = unixToIso(subscription.ended_at);
   const cancelAt = unixToIso(subscription.cancel_at);

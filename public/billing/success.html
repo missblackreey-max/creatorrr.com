@@ -12,12 +12,12 @@
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Contentorrr | Access confirmed</title>
+  <title>Contentorrr | Pro access confirmed</title>
   <link rel="icon" type="image/png" href="../creatorrr-logo-nolink.png" sizes="790x790" />
   <link rel="apple-touch-icon" href="../creatorrr-logo-nolink.png" />
   <meta
     name="description"
-    content="Access confirmed for Contentorrr."
+    content="Pro access confirmed for Contentorrr."
   />
   <style>
     :root {
@@ -504,12 +504,12 @@
   <main>
     <div class="container grid">
       <section class="card">
-        <span class="eyebrow" id="eyebrow">Activation successful</span>
-        <h1 id="page-title">Access confirmed.</h1>
+        <span class="eyebrow" id="eyebrow">Purchase successful</span>
+        <h1 id="page-title">Pro access confirmed.</h1>
 
         <div class="stack">
           <div class="status-box" id="status-box">
-            We are confirming your access.
+            Your Pro access is confirmed.
           </div>
 
           <div class="notice-box" id="notice-box"></div>
@@ -535,7 +535,7 @@
               <div class="step-number">3</div>
               <div class="step-copy">
                 <strong>Sign in</strong>
-                <span>Use your existing account.</span>
+                <span>Open Contentorrr and sign in with the same email.</span>
               </div>
             </div>
           </div>
@@ -547,25 +547,26 @@
           <img class="download-logo" src="../64x64.png" alt="Contentorrr logo">
           <div class="download-title-group">
             <h2>Download Contentorrr</h2>
-            <p>Current version: V1.1.1</p>
+            <p>Current version: V1.1.2</p>
           </div>
         </div>
         <div class="download-grid">
           <div class="platform-card">
             <strong>Windows</strong>
-            <span>Current version v1.1.1 for Windows 11 and later</span>
-            <a class="btn btn-primary" id="download-windows" href="https://downloads.creatorrr.com/Contentorrr_1.1.1_x64-setup.exe">Download .exe</a>
+            <span>Current version v1.1.2 for Windows 11 and later</span>
+            <a class="btn btn-primary" id="download-windows" href="https://downloads.creatorrr.com/Contentorrr_1.1.2_x64-setup.exe">Download .exe</a>
             <div class="download-filesize">87.4 MB</div>
           </div>
           <div class="platform-card">
             <strong>macOS (Apple Silicon)</strong>
-            <span>Current version v1.1.1 for macOS</span>
-            <a class="btn btn-primary" id="download-macos" href="https://downloads.creatorrr.com/Contentorrr_1.1.1_aarch64.dmg">Download .dmg</a>
+            <span>Current version v1.1.2 for macOS</span>
+            <a class="btn btn-primary" id="download-macos" href="https://downloads.creatorrr.com/Contentorrr_1.1.2_aarch64.dmg">Download .dmg</a>
             <div class="download-filesize">58.6 MB</div>
           </div>
         </div>
         <article class="download-changelog-compact" aria-label="Changelog">
           <h3>Changelog</h3>
+          <p><strong>V1.1.2 | 22.05.2026:</strong> Minor bug fixes. Replaced the previous 3 day trial with unlimited free version use: locked centered creatorrr.com watermark. Get Contentorrr Pro for no watermark or your own watermark(s).</p>
           <p><strong>V1.1.1 | 25.04.2026:</strong> Faster loading for large media libraries, smoother overall performance in day-to-day editing, improved stability across core workflows, and minor bug fixes.</p>
           <p><strong>V1.1.0 | 10.04.2026:</strong> Bulk watermark exports, watermark status in Media Library (Watermarked: Yes/No), copy selected tags with one click, sorting for Your Content-Sets, content-set count in the dashboard title, new import modes, dashboard search with matched/total count, and better MOV → MP4 quality.</p>
           <p>V1.0.0 | 29.03.2026: First Windows version / First Apple Silicon version.</p>
@@ -576,9 +577,9 @@
 
   <script>
     const API_BASE = "https://api.creatorrr.com";
-    const APP_VERSION = "v1.1.1";
-    const INSTALLER_WINDOWS_URL = "https://downloads.creatorrr.com/Contentorrr_1.1.1_x64-setup.exe";
-    const INSTALLER_MACOS_URL = "https://downloads.creatorrr.com/Contentorrr_1.1.1_aarch64.dmg";
+    const APP_VERSION = "v1.1.2";
+    const INSTALLER_WINDOWS_URL = "https://downloads.creatorrr.com/Contentorrr_1.1.2_x64-setup.exe";
+    const INSTALLER_MACOS_URL = "https://downloads.creatorrr.com/Contentorrr_1.1.2_aarch64.dmg";
     const LS_WEB_TOKEN = "creatorrr.web.auth.token.v1";
     const params = new URLSearchParams(window.location.search);
 
@@ -600,7 +601,6 @@
 
     function normalizeMode(value) {
       const mode = String(value || "").trim().toLowerCase();
-      if (mode === "trial") return "trial";
       if (mode === "month" || mode === "monthly") return "month";
       if (mode === "year" || mode === "yearly") return "year";
       return null;
@@ -641,34 +641,26 @@
     }
 
     function applySuccessCopy(mode) {
-      if (mode === "trial") {
-        document.title = "Contentorrr | Free trial confirmed";
-        eyebrow.textContent = "Activation successful";
-        pageTitle.textContent = "Free trial confirmed.";
-        setStatusMessage('Your 3 day free trial is now active. Don&apos;t hesitate to contact me for any questions, suggestions or bugs: <a href="mailto:ben@creatorrr.com">ben@creatorrr.com</a>');
-        return;
-      }
-
       if (mode === "month") {
-        document.title = "Contentorrr | Monthly subscription confirmed";
+        document.title = "Contentorrr | Monthly Pro confirmed";
         eyebrow.textContent = "Purchase successful";
-        pageTitle.textContent = "Monthly subscription confirmed.";
-        setStatusMessage('Thank you for your purchase! Your monthly subscription is now active. Don&apos;t hesitate to contact me for any questions, suggestions or bugs: <a href="mailto:ben@creatorrr.com">ben@creatorrr.com</a>');
+        pageTitle.textContent = "Monthly Pro confirmed.";
+        setStatusMessage('Thank you for your purchase. Monthly Pro is now active. Open Contentorrr and sign in with the same email. For questions, suggestions or bugs: <a href="mailto:ben@creatorrr.com">ben@creatorrr.com</a>');
         return;
       }
 
       if (mode === "year") {
-        document.title = "Contentorrr | Yearly subscription confirmed";
+        document.title = "Contentorrr | Yearly Pro confirmed";
         eyebrow.textContent = "Purchase successful";
-        pageTitle.textContent = "Yearly subscription confirmed.";
-        setStatusMessage('Thank you for your purchase! Your yearly subscription is now active. Don&apos;t hesitate to contact me for any questions, suggestions or bugs: <a href="mailto:ben@creatorrr.com">ben@creatorrr.com</a>');
+        pageTitle.textContent = "Yearly Pro confirmed.";
+        setStatusMessage('Thank you for your purchase. Yearly Pro is now active. Open Contentorrr and sign in with the same email. For questions, suggestions or bugs: <a href="mailto:ben@creatorrr.com">ben@creatorrr.com</a>');
         return;
       }
 
-      document.title = "Contentorrr | Access confirmed";
-      eyebrow.textContent = "Activation successful";
-      pageTitle.textContent = "Access confirmed.";
-      setStatusMessage('Your access is now active. Don&apos;t hesitate to contact me for any questions, suggestions or bugs: <a href="mailto:ben@creatorrr.com">ben@creatorrr.com</a>');
+      document.title = "Contentorrr | Pro access confirmed";
+      eyebrow.textContent = "Purchase successful";
+      pageTitle.textContent = "Pro access confirmed.";
+      setStatusMessage('Your Pro access is active. Open Contentorrr and sign in with the same email. For questions, suggestions or bugs: <a href="mailto:ben@creatorrr.com">ben@creatorrr.com</a>');
     }
 
     async function verifyAccessInBrowser() {
@@ -696,11 +688,6 @@
 
         setLoggedInHeader(true);
         const license = data?.license || {};
-
-        if (license?.entitled && license?.in_trial) {
-          applySuccessCopy("trial");
-          return;
-        }
 
         if (license?.entitled && license?.billing_interval === "month") {
           applySuccessCopy("month");

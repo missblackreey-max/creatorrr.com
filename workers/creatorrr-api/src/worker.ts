@@ -59,32 +59,41 @@ export function makeAccountView(
   const entitlement = computeEntitlement(lic);
 
   const status = String(lic?.status || "").trim().toLowerCase();
-  const billingInterval = String(lic?.billing_interval || "").trim().toLowerCase();
+  const billingInterval = entitlement.billing_interval;
   const scheduledBillingInterval = String(lic?.scheduled_billing_interval || "").trim().toLowerCase();
-  const freeAccessActive = entitlement.entitled && entitlement.plan === "free";
-  const accessEnded = status === "canceled" && !entitlement.entitled;
 
-  const hasRecurringPlan = !freeAccessActive && (billingInterval === "month" || billingInterval === "year");
-  const autoRenewEnabled = hasRecurringPlan && entitlement.entitled && status !== "canceling" && !lic?.cancel_at;
-  const endedAt = freeAccessActive
+  const isPro = entitlement.plan === "pro";
+  const isFreePass = entitlement.plan === "free_pass" && entitlement.entitled;
+  const isFree = entitlement.plan === "free";
+
+  const accessEnded = isPro && status === "canceled" && !entitlement.entitled;
+
+  const hasRecurringPlan = isPro && (billingInterval === "month" || billingInterval === "year");
+  const autoRenewEnabled =
+    hasRecurringPlan &&
+    entitlement.entitled &&
+    status !== "canceling" &&
+    !lic?.cancel_at;
+
+  const endedAt = isFree || isFreePass
     ? null
     : accessEnded
-    ? (
-        lic?.ended_at ||
-        lic?.canceled_at ||
-        lic?.cancel_at ||
-        lic?.current_period_end ||
-        null
-      )
-    : (lic?.ended_at || null);
-  const currentPeriodEnd = freeAccessActive ? null : (accessEnded ? null : (lic?.current_period_end || null));
-  const cancelAt = freeAccessActive ? null : (accessEnded ? null : entitlement.cancel_at);
+      ? (
+          lic?.ended_at ||
+          lic?.canceled_at ||
+          lic?.cancel_at ||
+          lic?.current_period_end ||
+          null
+        )
+      : (lic?.ended_at || null);
+
+  const currentPeriodEnd = isPro && !accessEnded ? (lic?.current_period_end || null) : null;
 
   const nextBillingInterval =
     autoRenewEnabled
       ? (scheduledBillingInterval === "month" || scheduledBillingInterval === "year"
           ? scheduledBillingInterval
-          : billingInterval || null)
+          : billingInterval)
       : null;
 
   const nextPaymentAt =
@@ -93,9 +102,12 @@ export function makeAccountView(
       : null;
 
   const subscriptionEndsAt =
-    autoRenewEnabled
-      ? null
-      : (accessEnded ? null : (lic?.cancel_at || lic?.current_period_end || entitlement.entitled_until || null));
+    entitlement.subscription_ends_at ||
+    (
+      isPro && !autoRenewEnabled && !accessEnded
+        ? (lic?.cancel_at || lic?.current_period_end || null)
+        : null
+    );
 
   return {
     user: {
@@ -108,29 +120,26 @@ export function makeAccountView(
     },
     license: {
       plan: entitlement.plan,
-      status: entitlement.status,
+      billing_interval: entitlement.billing_interval,
       entitled: entitlement.entitled,
       entitled_until: entitlement.entitled_until,
-      in_trial: entitlement.in_trial,
-      cancel_at: cancelAt,
+      subscription_ends_at: subscriptionEndsAt,
+
+      current_period_end: currentPeriodEnd,
+      cancel_at: isPro && !accessEnded ? (lic?.cancel_at || null) : null,
       ended_at: endedAt,
 
-      billing_interval: freeAccessActive ? null : (lic?.billing_interval || null),
-      current_period_end: currentPeriodEnd,
-      trial_start_at: lic?.trial_start_at || null,
-      trial_end_at: lic?.trial_end_at || null,
-
-      scheduled_billing_interval: freeAccessActive ? null : (lic?.scheduled_billing_interval || null),
-      scheduled_change_at: freeAccessActive ? null : (lic?.scheduled_change_at || null),
+      scheduled_billing_interval: isPro ? (lic?.scheduled_billing_interval || null) : null,
+      scheduled_change_at: isPro ? (lic?.scheduled_change_at || null) : null,
 
       auto_renew_enabled: autoRenewEnabled,
 
       next_billing_interval: nextBillingInterval,
       next_payment_at: nextPaymentAt,
-      subscription_ends_at: freeAccessActive ? null : subscriptionEndsAt,
 
       can_manage_subscription: false,
     },
+    entitlement,
     legal: {
       has_accepted_current_versions: legal.hasAcceptedCurrentVersions,
       current_terms_version: CURRENT_TERMS_VERSION,
@@ -139,6 +148,7 @@ export function makeAccountView(
     },
   };
 }
+
 
 function getRequestIpAddress(req: Request): string | null {
   const value = String(req.headers.get("CF-Connecting-IP") || req.headers.get("x-forwarded-for") || "").trim();
@@ -346,8 +356,8 @@ export default {
       const deviceId = normalizeDeviceId(String(url.searchParams.get("deviceId") || ""));
       if (!deviceId) return bad(req, "missing_device_id", 400);
 
-      const intentRaw = String(url.searchParams.get("intent") || "trial").trim().toLowerCase();
-      const intent = ["trial", "monthly", "yearly", "login"].includes(intentRaw) ? intentRaw : "trial";
+      const intentRaw = String(url.searchParams.get("intent") || "login").trim().toLowerCase();
+      const intent = ["monthly", "yearly", "login"].includes(intentRaw) ? intentRaw : "login";
       const clientNonce = normalizeClientNonce(String(url.searchParams.get("clientNonce") || ""));
       if (!clientNonce) return bad(req, "missing_client_nonce", 400);
 
@@ -443,7 +453,7 @@ export default {
       }
 
       const deviceId = normalizeDeviceId(String(saved.device_id || ""));
-      const intent = String(saved.intent || "trial").trim().toLowerCase();
+      const intent = String(saved.intent || "login").trim().toLowerCase();
       if (!deviceId) {
         return redirect(req, oauthRedirectToSite(env, "login", { oauth_error: "missing_device_id" }));
       }
@@ -535,7 +545,7 @@ export default {
                 trial_start_at,
                 trial_end_at,
                 cancel_at
-              ) VALUES (?1,'none','none','registered_no_license',?2,?2,NULL,NULL,NULL,NULL)`,
+              ) VALUES (?1,'free','active','registered_free',?2,?2,NULL,NULL,NULL,NULL)`,
             )
             .bind(userId, now),
           env.creatorrr_db
@@ -613,7 +623,7 @@ export default {
               trial_start_at,
               trial_end_at,
               cancel_at
-            ) VALUES (?1,'none','none','registered_no_license',?2,?2,NULL,NULL,NULL,NULL)`,
+            ) VALUES (?1,'free','active','registered_free',?2,?2,NULL,NULL,NULL,NULL)`,
           )
           .bind(userId, now),
       ]);
@@ -991,11 +1001,11 @@ export default {
         SELECT COUNT(*) AS c
         FROM licenses
         WHERE status IN ('active', 'past_due', 'unpaid', 'canceling')
-          AND plan <> 'free'
+          AND plan = 'pro'
           ${licenseExclusionClause}
       `, hiddenUserIds);
-      const trialingUsers = await countValue(
-        `SELECT COUNT(*) AS c FROM licenses WHERE status='trialing'${licenseExclusionClause}`,
+      const freePassUsers = await countValue(
+        `SELECT COUNT(*) AS c FROM licenses WHERE plan='free_pass' AND status='active'${licenseExclusionClause}`,
         hiddenUserIds,
       );
       const cancelingUsers = await countValue(
@@ -1009,17 +1019,17 @@ export default {
       const monthSubs = await countValue(`
         SELECT COUNT(*) AS c
         FROM licenses
-        WHERE status IN ('active', 'trialing', 'past_due', 'unpaid', 'canceling')
+        WHERE status IN ('active', 'past_due', 'unpaid', 'canceling')
           AND billing_interval='month'
-          AND plan <> 'free'
+          AND plan = 'pro'
           ${licenseExclusionClause}
       `, hiddenUserIds);
       const yearSubs = await countValue(`
         SELECT COUNT(*) AS c
         FROM licenses
-        WHERE status IN ('active', 'trialing', 'past_due', 'unpaid', 'canceling')
+        WHERE status IN ('active', 'past_due', 'unpaid', 'canceling')
           AND billing_interval='year'
-          AND plan <> 'free'
+          AND plan = 'pro'
           ${licenseExclusionClause}
       `, hiddenUserIds);
 
@@ -1038,7 +1048,7 @@ export default {
           verification_rate: verificationRate,
           new_users_last_7_days: usersLast7Days,
           paying_subscribers: payingSubscribers,
-          trialing_users: trialingUsers,
+          free_pass_users: freePassUsers,
           canceling_users: cancelingUsers,
           payment_risk_users: paymentRisk,
           month_subscribers: monthSubs,
@@ -1140,123 +1150,6 @@ export default {
     }
 
 
-    if (req.method === "POST" && url.pathname === "/license/trial/start") {
-      const auth = await requireAuth(req, env);
-      if (!auth.ok) return auth.response;
-
-      const body = await readJson<{ legal_acceptance?: LegalAcceptancePayload }>(req);
-      if (!body) return bad(req, "invalid_json");
-
-      const lic = await getLicenseRow(env, auth.ctx.userId);
-
-      const currentStatus = String(lic?.status || "").trim().toLowerCase();
-      const billingInterval = String(lic?.billing_interval || "").trim().toLowerCase();
-      const currentPeriodEndMs = Date.parse(String(lic?.current_period_end || ""));
-      const trialEndMs = Date.parse(String(lic?.trial_end_at || ""));
-
-      const hasRecurringSubscription =
-        (billingInterval === "month" || billingInterval === "year") &&
-        Number.isFinite(currentPeriodEndMs) &&
-        currentPeriodEndMs > Date.now() &&
-        ["active", "trialing", "past_due", "canceling"].includes(currentStatus);
-
-      if (hasRecurringSubscription) {
-        return bad(req, "subscription_already_active", 409, {
-          message: "You already have an active paid subscription.",
-        });
-      }
-
-      const hasUsedTrial = Boolean(String(lic?.trial_start_at || "").trim() || String(lic?.trial_end_at || "").trim() || String(lic?.stripe_customer_id || "").trim() || String(lic?.stripe_subscription_id || "").trim());
-      const hasLiveTrial = Number.isFinite(trialEndMs) && trialEndMs > Date.now() && (currentStatus === "trialing" || currentStatus === "active");
-
-      if (hasLiveTrial) {
-        const user = await getUserById(env, auth.ctx.userId);
-        if (!user) return bad(req, "user_not_found", 404);
-        const hasAcceptedCurrentVersions = await hasAcceptedCurrentLegalVersions(env, auth.ctx.userId);
-        return json(req, {
-          ok: true,
-          ...makeAccountView(user, lic, {
-            hasAcceptedCurrentVersions,
-          }),
-        });
-      }
-
-      if (hasUsedTrial) {
-        return bad(req, "trial_already_used", 409, {
-          message: "Free trial already used on this account.",
-        });
-      }
-
-      const legalAcceptance = await ensureCurrentLegalAcceptance(
-        req,
-        env,
-        auth.ctx.userId,
-        "license_trial_start",
-        body.legal_acceptance,
-      );
-      if (!legalAcceptance.ok) return legalAcceptance.response;
-
-      const now = nowIso();
-      const trialEndAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
-
-      await env.creatorrr_db
-        .prepare(
-          `
-            INSERT INTO licenses (
-              user_id,
-              plan,
-              status,
-              notes,
-              created_at,
-              updated_at,
-              billing_interval,
-              current_period_start,
-              current_period_end,
-              trial_start_at,
-              trial_end_at,
-              cancel_at,
-              canceled_at,
-              ended_at,
-              stripe_customer_id,
-              stripe_subscription_id,
-              stripe_price_id
-            )
-            VALUES (?1, 'trial', 'trialing', 'local free trial', ?2, ?2, NULL, NULL, NULL, ?2, ?3, NULL, NULL, NULL, NULL, NULL, NULL)
-            ON CONFLICT(user_id) DO UPDATE SET
-              plan='trial',
-              status='trialing',
-              notes='local free trial',
-              updated_at=excluded.updated_at,
-              billing_interval=NULL,
-              current_period_start=NULL,
-              current_period_end=NULL,
-              trial_start_at=excluded.trial_start_at,
-              trial_end_at=excluded.trial_end_at,
-              scheduled_billing_interval=NULL,
-              scheduled_change_at=NULL,
-              cancel_at=NULL,
-              canceled_at=NULL,
-              ended_at=NULL,
-              stripe_customer_id=NULL,
-              stripe_subscription_id=NULL,
-              stripe_price_id=NULL
-          `,
-        )
-        .bind(auth.ctx.userId, now, trialEndAt)
-        .run();
-
-      const user = await getUserById(env, auth.ctx.userId);
-      if (!user) return bad(req, "user_not_found", 404);
-
-      const updatedLic = await getLicenseRow(env, auth.ctx.userId);
-      return json(req, {
-        ok: true,
-        ...makeAccountView(user, updatedLic, {
-          hasAcceptedCurrentVersions: legalAcceptance.hasAcceptedCurrentVersions,
-        }),
-      });
-    }
-
     if (req.method === "POST" && url.pathname === "/stripe/checkout") {
       const cfgErr = requireStripeCheckoutConfig(req, env);
       if (cfgErr) return cfgErr;
@@ -1291,7 +1184,7 @@ export default {
         (currentInterval === "month" || currentInterval === "year") &&
         Number.isFinite(currentPeriodEndMs) &&
         currentPeriodEndMs > Date.now() &&
-        ["active", "trialing", "past_due", "canceling"].includes(currentStatus);
+        ["active", "past_due", "canceling"].includes(currentStatus);
 
       let liveSubscription: StripeSubscriptionLike | null = null;
       try {
@@ -1379,14 +1272,13 @@ export default {
       const currentInterval = String(lic?.billing_interval || "").trim().toLowerCase();
       const currentStatus = String(lic?.status || "").trim().toLowerCase();
       const currentPeriodEndMs = Date.parse(String(lic?.current_period_end || ""));
-      const trialEndMs = Date.parse(String(lic?.trial_end_at || ""));
       const hasFutureMonthlyAccess =
-        (Number.isFinite(currentPeriodEndMs) && currentPeriodEndMs > Date.now()) ||
-        (currentStatus === "trialing" && Number.isFinite(trialEndMs) && trialEndMs > Date.now());
+        Number.isFinite(currentPeriodEndMs) &&
+        currentPeriodEndMs > Date.now();
       const isMonthlyActive =
         currentInterval === "month" &&
         hasFutureMonthlyAccess &&
-        ["active", "trialing", "past_due", "canceling"].includes(currentStatus);
+        ["active", "past_due", "canceling"].includes(currentStatus);
 
       if (!isMonthlyActive) {
         return bad(req, "monthly_subscription_required", 409, {
@@ -1451,7 +1343,7 @@ export default {
       const hasFuturePaidAccess =
         Number.isFinite(currentPeriodEndMs) &&
         currentPeriodEndMs > Date.now() &&
-        ["active", "trialing", "past_due", "canceling"].includes(currentStatus);
+        ["active", "past_due", "canceling"].includes(currentStatus);
 
       const canSwitchRenewalToMonthly =
         hasFuturePaidAccess &&
