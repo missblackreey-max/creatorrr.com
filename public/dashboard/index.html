@@ -172,7 +172,7 @@
       .kpi-grid { grid-template-columns: 1fr; }
     }
   </style>
-  <script src="/analytics.js" defer></script>
+
 </head>
 <body>
   <div class="wrap">
@@ -320,7 +320,7 @@
           tile("Verification Rate", fmtPercent(m.verification_rate)),
           tile("Total Users", fmtNumber(m.total_users)),
           tile("Verified Users", fmtNumber(m.verified_users)),
-          tile("Trialing", fmtNumber(m.trialing_users)),
+          tile("Free Pass", fmtNumber(m.free_pass_users)),
           tile("Canceling", fmtNumber(m.canceling_users)),
           tile("Payment Risk", fmtNumber(m.payment_risk_users)),
           tile("Monthly Subs", fmtNumber(m.month_subscribers)),
