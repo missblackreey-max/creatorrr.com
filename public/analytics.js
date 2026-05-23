@@ -81,8 +81,9 @@
 
       const isPlainLeftClick = event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
       const opensNewTab = link.target === "_blank";
+      const hasNativeDownloadBehavior = link.hasAttribute("download");
 
-      if (!isPlainLeftClick || opensNewTab) {
+      if (!isPlainLeftClick || opensNewTab || hasNativeDownloadBehavior) {
         sendEvent("download_click", {
           item_id: link.getAttribute("data-analytics-download"),
           item_version: link.getAttribute("data-analytics-version"),
