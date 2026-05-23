@@ -39,27 +39,30 @@
 
     if (navigator.sendBeacon) {
       const blob = new Blob([body], { type: "application/json" });
-      navigator.sendBeacon(endpoint, blob);
-      return;
+      const queued = navigator.sendBeacon(endpoint, blob);
+      if (queued) return Promise.resolve(true);
     }
 
-    fetch(endpoint, {
+    return fetch(endpoint, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body,
       keepalive: true,
-    }).catch(() => {});
+      mode: "cors",
+    })
+      .then((res) => res.ok)
+      .catch(() => false);
   }
 
   function sendPageView() {
-    sendJson(PAGEVIEW_ENDPOINT, getCommonPayload());
+    return sendJson(PAGEVIEW_ENDPOINT, getCommonPayload());
   }
 
   function sendEvent(eventName, details = {}) {
     const name = safeString(eventName, 64);
-    if (!name) return;
+    if (!name) return Promise.resolve(false);
 
-    sendJson(EVENT_ENDPOINT, {
+    return sendJson(EVENT_ENDPOINT, {
       event: name,
       item_id: safeString(details.item_id || "", 256) || null,
       item_version: safeString(details.item_version || "", 64) || null,
@@ -74,12 +77,34 @@
       if (!(target instanceof Element)) return;
 
       const link = target.closest("[data-analytics-download]");
-      if (!(link instanceof HTMLElement)) return;
+      if (!(link instanceof HTMLAnchorElement)) return;
 
-      sendEvent("download_click", {
-        item_id: link.getAttribute("data-analytics-download"),
-        item_version: link.getAttribute("data-analytics-version"),
-        item_variant: link.getAttribute("data-analytics-variant"),
+      const isPlainLeftClick = event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+      const opensNewTab = link.target === "_blank";
+
+      if (!isPlainLeftClick || opensNewTab) {
+        sendEvent("download_click", {
+          item_id: link.getAttribute("data-analytics-download"),
+          item_version: link.getAttribute("data-analytics-version"),
+          item_variant: link.getAttribute("data-analytics-variant"),
+        });
+        return;
+      }
+
+      const href = link.href;
+      if (!href) return;
+
+      event.preventDefault();
+
+      Promise.race([
+        sendEvent("download_click", {
+          item_id: link.getAttribute("data-analytics-download"),
+          item_version: link.getAttribute("data-analytics-version"),
+          item_variant: link.getAttribute("data-analytics-variant"),
+        }),
+        new Promise((resolve) => setTimeout(resolve, 180)),
+      ]).finally(() => {
+        window.location.assign(href);
       });
     });
   }
