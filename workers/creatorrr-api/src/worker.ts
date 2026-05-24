@@ -310,6 +310,7 @@ function isSafeAnalyticsToken(value: string): boolean {
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
+    (req as Request & { __env?: Env }).__env = env;
     const url = new URL(req.url);
 
     if (req.method === "OPTIONS") {
@@ -1124,6 +1125,7 @@ export default {
         FROM analytics_events
         WHERE event_name='download_click'
           AND julianday(created_at) >= julianday('now', '-30 days')
+          AND is_bot=0
         GROUP BY item_id, item_version, item_variant, country
         ORDER BY downloads DESC
         LIMIT 30
