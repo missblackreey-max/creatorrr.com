@@ -34,10 +34,11 @@
     };
   }
 
-  function sendJson(endpoint, data) {
+  function sendJson(endpoint, data, options = {}) {
+    const preferFetch = options.preferFetch === true;
     const body = JSON.stringify(data);
 
-    if (navigator.sendBeacon) {
+    if (!preferFetch && navigator.sendBeacon) {
       const blob = new Blob([body], { type: "application/json" });
       const queued = navigator.sendBeacon(endpoint, blob);
       if (queued) return Promise.resolve(true);
@@ -58,7 +59,7 @@
     return sendJson(PAGEVIEW_ENDPOINT, getCommonPayload());
   }
 
-  function sendEvent(eventName, details = {}) {
+  function sendEvent(eventName, details = {}, options = {}) {
     const name = safeString(eventName, 64);
     if (!name) return Promise.resolve(false);
 
@@ -68,7 +69,7 @@
       item_version: safeString(details.item_version || "", 64) || null,
       item_variant: safeString(details.item_variant || "", 64) || null,
       ...getCommonPayload(),
-    });
+    }, options);
   }
 
   function bindDownloadTracking() {
@@ -102,8 +103,8 @@
           item_id: link.getAttribute("data-analytics-download"),
           item_version: link.getAttribute("data-analytics-version"),
           item_variant: link.getAttribute("data-analytics-variant"),
-        }),
-        new Promise((resolve) => setTimeout(resolve, 180)),
+        }, { preferFetch: true }),
+        new Promise((resolve) => setTimeout(resolve, 350)),
       ]).finally(() => {
         window.location.assign(href);
       });
