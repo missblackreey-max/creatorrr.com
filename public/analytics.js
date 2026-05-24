@@ -50,6 +50,7 @@
       body,
       keepalive: true,
       mode: "cors",
+      credentials: "omit",
     })
       .then((res) => res.ok)
       .catch(() => false);
