@@ -975,6 +975,9 @@ export default {
       const path = String(body.path || "").trim();
       if (!path.startsWith("/")) return bad(req, "invalid_path");
 
+      const countryCode = getCountryCode(req);
+      if (countryCode === "CH") return json(req, { ok: true, skipped: "excluded_country" });
+
       const ip = getRequestIpAddress(req);
       const excludedIps = getAnalyticsExcludedIps(env);
       if (ip && isIpExcluded(ip, excludedIps)) return json(req, { ok: true, skipped: "excluded_ip" });
@@ -993,7 +996,7 @@ export default {
         String(body.query || "").slice(0, 1024),
         body.referrer ? String(body.referrer).slice(0, 1024) : null,
         body.title ? String(body.title).slice(0, 512) : null,
-        getCountryCode(req),
+        countryCode,
         getRequestUserAgent(req),
         ipHash,
         isBot ? 1 : 0,
@@ -1032,7 +1035,12 @@ export default {
       }
       if (path && !path.startsWith("/")) return bad(req, "invalid_event_payload");
 
+      const countryCode = getCountryCode(req);
+      if (countryCode === "CH") return json(req, { ok: true, skipped: "excluded_country" });
+
       const ip = getRequestIpAddress(req);
+      const excludedIps = getAnalyticsExcludedIps(env);
+      if (ip && isIpExcluded(ip, excludedIps)) return json(req, { ok: true, skipped: "excluded_ip" });
       const ipHash = ip ? await sha256Hex(ip) : null;
       const { isBot, botScore } = detectLikelyBot(req);
 
@@ -1050,7 +1058,7 @@ export default {
           itemVersion,
           itemVariant,
           path,
-          getCountryCode(req),
+          countryCode,
           getRequestUserAgent(req),
           ipHash,
           isBot ? 1 : 0,
