@@ -230,6 +230,16 @@ function getDashboardOwnerEmails(env: Env): string[] {
     .filter(Boolean);
 }
 
+function getAnalyticsExcludedIps(env: Env): Set<string> {
+  const raw = String(env.ANALYTICS_EXCLUDED_IPS || "");
+  return new Set(
+    raw
+      .split(",")
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0),
+  );
+}
+
 function getDashboardHiddenUserIds(env: Env): string[] {
   const defaultHiddenIds = [
     "99055ec5-9c39-405e-84c6-3dd2bf1bb63e",
@@ -888,6 +898,8 @@ export default {
       if (!path.startsWith("/")) return bad(req, "invalid_path");
 
       const ip = getRequestIpAddress(req);
+      const excludedIps = getAnalyticsExcludedIps(env);
+      if (ip && excludedIps.has(ip)) return json(req, { ok: true, skipped: "excluded_ip" });
       const ipHash = ip ? await sha256Hex(ip) : null;
       const { isBot, botScore } = detectLikelyBot(req);
       const visitId = uuid();
@@ -1107,17 +1119,19 @@ export default {
           item_id,
           item_version,
           item_variant,
+          country,
           COUNT(*) AS downloads
         FROM analytics_events
         WHERE event_name='download_click'
           AND julianday(created_at) >= julianday('now', '-30 days')
-        GROUP BY item_id, item_version, item_variant
+        GROUP BY item_id, item_version, item_variant, country
         ORDER BY downloads DESC
         LIMIT 30
       `).all<{
         item_id?: string | null;
         item_version?: string | null;
         item_variant?: string | null;
+        country?: string | null;
         downloads?: number | string | null;
       }>();
 
@@ -1143,6 +1157,7 @@ export default {
           item_id: String(row.item_id || "unknown"),
           item_version: String(row.item_version || "-"),
           item_variant: String(row.item_variant || "-"),
+          country: String(row.country || "ZZ"),
           downloads: numberOrZero(row.downloads),
         })),
       });
