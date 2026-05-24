@@ -1,7 +1,36 @@
+function normalizeOrigin(value: string): string {
+  return String(value || "").trim().replace(/\/+$/, "").toLowerCase();
+}
+
+function isAllowedOrigin(origin: string, req: Request): boolean {
+  const normalized = normalizeOrigin(origin);
+  if (!normalized) return false;
+
+  const url = new URL(req.url);
+  const host = url.hostname.toLowerCase();
+  const defaultAllowed = new Set([
+    "https://creatorrr.com",
+    "https://www.creatorrr.com",
+    `https://${host}`,
+  ]);
+
+  const env = (req as Request & { cf?: Record<string, unknown> } & { __env?: { CORS_ALLOWED_ORIGINS?: string } }).__env;
+  const extra = String(env?.CORS_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((item) => normalizeOrigin(item))
+    .filter(Boolean);
+  for (const item of extra) defaultAllowed.add(item);
+
+  return defaultAllowed.has(normalized);
+}
+
 export function corsHeaders(req: Request): Record<string, string> {
-  const origin = req.headers.get("origin") || "*";
+  const origin = req.headers.get("origin") || "";
+  const allowCredentials = isAllowedOrigin(origin, req);
+
   return {
-    "access-control-allow-origin": origin,
+    "access-control-allow-origin": allowCredentials ? origin : "*",
+    ...(allowCredentials ? { "access-control-allow-credentials": "true" } : {}),
     "access-control-allow-methods": "GET,POST,OPTIONS",
     "access-control-allow-headers": "authorization,content-type",
     "access-control-max-age": "86400",
