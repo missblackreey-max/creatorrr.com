@@ -151,9 +151,11 @@ export function makeAccountView(
 
 
 function getRequestIpAddress(req: Request): string | null {
-  const value = String(req.headers.get("CF-Connecting-IP") || req.headers.get("x-forwarded-for") || "").trim();
-  if (!value) return null;
-  return value.slice(0, 255);
+  const raw = String(req.headers.get("CF-Connecting-IP") || req.headers.get("x-forwarded-for") || "").trim();
+  if (!raw) return null;
+  const first = raw.split(",")[0]?.trim() || "";
+  if (!first) return null;
+  return first.slice(0, 255);
 }
 
 function getRequestUserAgent(req: Request): string | null {
@@ -238,6 +240,81 @@ function getAnalyticsExcludedIps(env: Env): Set<string> {
       .map((value) => value.trim())
       .filter((value) => value.length > 0),
   );
+}
+
+function ipv4ToInt(ip: string): number | null {
+  const parts = ip.split(".");
+  if (parts.length !== 4) return null;
+  let out = 0;
+  for (const part of parts) {
+    if (!/^\d+$/.test(part)) return null;
+    const value = Number(part);
+    if (!Number.isInteger(value) || value < 0 || value > 255) return null;
+    out = (out << 8) + value;
+  }
+  return out >>> 0;
+}
+
+function ipv6ToBigInt(ip: string): bigint | null {
+  const input = ip.toLowerCase();
+  if (!input.includes(":")) return null;
+
+  const [headRaw, tailRaw] = input.split("::");
+  if (input.split("::").length > 2) return null;
+
+  const head = headRaw ? headRaw.split(":").filter(Boolean) : [];
+  const tail = tailRaw ? tailRaw.split(":").filter(Boolean) : [];
+
+  if (head.length + tail.length > 8) return null;
+  const missing = 8 - (head.length + tail.length);
+  const full = [...head, ...Array(missing).fill("0"), ...tail];
+  if (full.length !== 8) return null;
+
+  let value = 0n;
+  for (const group of full) {
+    if (!/^[0-9a-f]{1,4}$/i.test(group)) return null;
+    value = (value << 16n) + BigInt(parseInt(group, 16));
+  }
+  return value;
+}
+
+function ipMatchesToken(ip: string, token: string): boolean {
+  const rule = token.trim();
+  if (!rule) return false;
+  if (ip === rule) return true;
+
+  const slash = rule.indexOf("/");
+  if (slash <= 0) return false;
+  const base = rule.slice(0, slash).trim();
+  const prefixRaw = rule.slice(slash + 1).trim();
+  const prefix = Number(prefixRaw);
+  if (!Number.isInteger(prefix)) return false;
+
+  const ip4 = ipv4ToInt(ip);
+  const base4 = ipv4ToInt(base);
+  if (ip4 !== null && base4 !== null) {
+    if (prefix < 0 || prefix > 32) return false;
+    const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+    return (ip4 & mask) === (base4 & mask);
+  }
+
+  const ip6 = ipv6ToBigInt(ip);
+  const base6 = ipv6ToBigInt(base);
+  if (ip6 !== null && base6 !== null) {
+    if (prefix < 0 || prefix > 128) return false;
+    const shift = BigInt(128 - prefix);
+    const mask = prefix === 0 ? 0n : ((1n << 128n) - 1n) ^ ((1n << shift) - 1n);
+    return (ip6 & mask) === (base6 & mask);
+  }
+
+  return false;
+}
+
+function isIpExcluded(ip: string, excludedIps: Set<string>): boolean {
+  for (const token of excludedIps) {
+    if (ipMatchesToken(ip, token)) return true;
+  }
+  return false;
 }
 
 function getDashboardHiddenUserIds(env: Env): string[] {
@@ -900,7 +977,7 @@ export default {
 
       const ip = getRequestIpAddress(req);
       const excludedIps = getAnalyticsExcludedIps(env);
-      if (ip && excludedIps.has(ip)) return json(req, { ok: true, skipped: "excluded_ip" });
+      if (ip && isIpExcluded(ip, excludedIps)) return json(req, { ok: true, skipped: "excluded_ip" });
       const ipHash = ip ? await sha256Hex(ip) : null;
       const { isBot, botScore } = detectLikelyBot(req);
       const visitId = uuid();
