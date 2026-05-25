@@ -272,7 +272,7 @@
     function makeDownloadList(rows) {
       if (!Array.isArray(rows) || rows.length === 0) return "No data yet.";
       return rows
-        .map((row) => `${row.item_id} v${row.item_version} (${row.item_variant}): ${fmtNumber(row.downloads)}`)
+        .map((row) => `${row.item_id} v${row.item_version} (${row.item_variant}) [${row.country || "ZZ"}]: ${fmtNumber(row.downloads)}`)
         .join("\n");
     }
 
