@@ -281,6 +281,19 @@ function ipv6ToBigInt(ip: string): bigint | null {
 function ipMatchesToken(ip: string, token: string): boolean {
   const rule = token.trim();
   if (!rule) return false;
+
+  const ip4Literal = ipv4ToInt(ip);
+  const rule4Literal = ipv4ToInt(rule);
+  if (ip4Literal !== null && rule4Literal !== null) {
+    return ip4Literal === rule4Literal;
+  }
+
+  const ip6Literal = ipv6ToBigInt(ip);
+  const rule6Literal = ipv6ToBigInt(rule);
+  if (ip6Literal !== null && rule6Literal !== null) {
+    return ip6Literal === rule6Literal;
+  }
+
   if (ip === rule) return true;
 
   const slash = rule.indexOf("/");
