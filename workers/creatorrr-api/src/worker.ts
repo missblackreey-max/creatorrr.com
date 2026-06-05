@@ -492,11 +492,11 @@ export default {
           .prepare(
             `
               UPDATE email_subscribers
-              SET verify_token_hash=NULL, verify_expires_at=NULL, updated_at=?2
-              WHERE email=?1 AND status='pending'
+              SET verify_token_hash=NULL, verify_expires_at=NULL, updated_at=?3
+              WHERE email=?1 AND status='pending' AND verify_token_hash=?2
             `,
           )
-          .bind(email, nowIso())
+          .bind(email, tokenHash, nowIso())
           .run();
       }
 
@@ -1176,11 +1176,18 @@ export default {
       const itemVersion = normalizeAnalyticsField(body.item_version, 64);
       const itemVariant = normalizeAnalyticsField(body.item_variant, 64);
       const path = normalizeAnalyticsField(body.path, 512);
+      const requiresDownloadMetadata = eventName === "download_click";
 
-      if (!itemId || !itemVersion || !itemVariant) {
+      if (!itemId || !isSafeAnalyticsToken(itemId)) {
         return bad(req, "invalid_event_payload");
       }
-      if (!isSafeAnalyticsToken(itemId) || !isSafeAnalyticsToken(itemVersion) || !isSafeAnalyticsToken(itemVariant)) {
+      if (requiresDownloadMetadata && (!itemVersion || !itemVariant)) {
+        return bad(req, "invalid_event_payload");
+      }
+      if (itemVersion && !isSafeAnalyticsToken(itemVersion)) {
+        return bad(req, "invalid_event_payload");
+      }
+      if (itemVariant && !isSafeAnalyticsToken(itemVariant)) {
         return bad(req, "invalid_event_payload");
       }
       if (path && !path.startsWith("/")) return bad(req, "invalid_event_payload");
