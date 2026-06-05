@@ -1240,7 +1240,11 @@
     }
 
     .updates-form {
-      grid-template-rows: 18px auto 46px min-content;
+      grid-template-rows: 18px auto auto min-content;
+    }
+
+    .updates-form-row {
+      flex-direction: column;
     }
 
     .nav {
@@ -1273,6 +1277,7 @@
 
     .updates-form-row {
       flex-direction: column;
+      align-items: stretch;
     }
 
     .updates-form-row .btn,
