@@ -52,6 +52,7 @@ async function sendEmailVerificationEmail(
       to: [toEmail],
       subject: "Verify your Creatorrr email",
       html: [
+        '<div style="padding:22px 18px;text-align:center;background:#060606;border-radius:18px;margin-bottom:24px;"><img src="https://creatorrr.com/creatorrr-logo-nolink.png" alt="creatorrr.com" width="72" height="72" style="display:inline-block;border-radius:16px;"><div style="margin-top:12px;color:#f7d56a;font-family:Arial,sans-serif;font-size:18px;font-weight:700;">creatorrr.com</div></div>',
         "<p>Thanks for creating your Creatorrr account.</p>",
         `<p><a href=\"${safeUrl}\">Verify your email address</a></p>`,
         "<p>This link expires in 24 hours. If you did not create this account, you can ignore this email.</p>",
