@@ -193,15 +193,26 @@
     border: 1px solid rgba(247, 213, 106, 0.18);
     background: linear-gradient(180deg, rgba(247, 213, 106, 0.08), rgba(255, 255, 255, 0.03));
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.86fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px;
-    align-items: center;
+    align-items: stretch;
+  }
+
+  .updates-copy,
+  .updates-form {
+    min-height: 154px;
+    padding: 18px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
   }
 
   .updates-copy {
     display: grid;
-    gap: 8px;
-    text-align: left;
+    grid-template-rows: 18px 26px 46px min-content;
+    gap: 10px;
+    text-align: center;
+    align-content: start;
   }
 
   .updates-kicker {
@@ -228,8 +239,11 @@
   .updates-reddit {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    min-height: 46px;
     gap: 7px;
     width: fit-content;
+    margin: -2px auto 0;
     color: var(--text);
     font-size: 14px;
     font-weight: 720;
@@ -241,7 +255,9 @@
 
   .updates-form {
     display: grid;
+    grid-template-rows: 18px 26px 46px min-content;
     gap: 10px;
+    text-align: center;
   }
 
   .updates-form-row {
@@ -269,10 +285,11 @@
   }
 
   .updates-fineprint,
+  .updates-copy p,
   .updates-status {
     margin: 0;
     color: var(--muted-2);
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.45;
   }
 
@@ -897,11 +914,13 @@
 
   .download-note {
     margin: 18px auto 0;
-    max-width: 78ch;
+    width: 100%;
+    max-width: none;
     color: var(--muted);
     font-size: 14px;
     line-height: 1.55;
     text-align: center;
+    white-space: nowrap;
   }
 
   .download-note a {
@@ -911,6 +930,24 @@
 
   .download-note a:hover {
     color: var(--text);
+  }
+
+  .download-pro-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 14px auto 22px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.55;
+    text-align: center;
+  }
+
+  .download-pro-cta .btn {
+    min-height: 40px;
+    padding: 0 16px;
   }
 
   .download-changelog {
@@ -1192,6 +1229,10 @@
 
     .container {
       width: min(calc(100% - 28px), var(--max));
+    }
+
+    .download-note {
+      white-space: normal;
     }
 
     .nav {
@@ -1694,19 +1735,20 @@
           <div class="download-head">
             <img class="download-logo" src="./64x64.png" alt="Contentorrr logo">
             <div class="download-title-group">
-              <h2>Download Contentorrr for free<span class="download-free-asterisk">*</span></h2>
+              <h2>Download Contentorrr</h2>
               <p>Current version: V1.1.2</p>
             </div>
           </div>
 
           <div class="updates-card" id="updates">
             <div class="updates-copy">
-              <span class="updates-kicker">Get updates & insights:</span>
-              <p>For more demos, discussions, insights:</p>
+              <span class="updates-kicker">Community</span>
+              <p>More demos, workflow notes, and creator discussions:</p>
               <a class="updates-reddit" href="https://www.reddit.com/r/CreatorrrHub/" target="_blank" rel="noopener noreferrer" data-analytics-link="creatorrr_hub_updates"><svg class="reddit-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" fill="#ff4500"/><path fill="#fff" d="M17.9 10.5c-.6 0-1.1.3-1.4.7-1-.7-2.3-1.1-3.8-1.2l.7-3.1 2.2.5c0 .6.5 1 1.1 1 .7 0 1.2-.5 1.2-1.2S17.4 6 16.7 6c-.5 0-.9.3-1.1.7l-2.7-.6c-.2 0-.4.1-.4.3l-.8 3.6c-1.5 0-2.9.5-3.9 1.2-.3-.4-.8-.7-1.4-.7-.9 0-1.6.7-1.6 1.6 0 .7.4 1.2 1 1.5v.4c0 2.2 2.8 4 6.2 4s6.2-1.8 6.2-4v-.4c.6-.3 1-.8 1-1.5.3-.9-.4-1.6-1.3-1.6ZM9.4 13.2c0-.6.5-1 1-1s1 .5 1 1-.5 1-1 1-1-.4-1-1Zm5 2.7c-.7.7-2.9.7-3.6 0-.2-.2-.2-.4 0-.6.2-.2.4-.2.6 0 .4.4 2.2.4 2.6 0 .2-.2.4-.2.6 0 .1.2.1.5-.2.6Zm-.8-1.7c-.6 0-1-.5-1-1s.5-1 1-1 1 .5 1 1-.4 1-1 1Z"/></svg><span>Join r/CreatorrrHub</span></a>
             </div>
             <form class="updates-form" id="updates-form">
-              <p class="updates-fineprint">Version updates & weekly insights on how we approach the adult creator business:</p>
+              <span class="updates-kicker">Email updates</span>
+              <p class="updates-fineprint">Version updates & weekly creator-business insights:</p>
               <div class="updates-form-row">
                 <input class="updates-input" id="updates-email" name="email" type="email" placeholder="Email address" autocomplete="email" required>
                 <button class="btn btn-primary" id="updates-submit" type="submit">Sign up</button>
@@ -1715,23 +1757,28 @@
             </form>
           </div>
 
+          <p class="download-note">Local app. No credit card, no account, no email needed. Free version has &quot;creatorrr.com&quot; watermark locked and centered.</p>
+          <div class="download-pro-cta">
+            <span>For no watermark or your own watermark(s):</span>
+            <a class="btn btn-primary" href="https://creatorrr.com/#pricing">Get Contentorrr Pro</a>
+          </div>
+
           <div class="download-grid">
             <div class="platform-card">
-              <strong>Windows 11</strong>
+              <strong>Windows 11 Installer</strong>
               <span>Current version v1.1.2 for Windows 11 and later</span>
               <a class="btn btn-primary" id="download-windows" href="https://downloads.creatorrr.com/Contentorrr_1.1.2_x64-setup.exe" data-analytics-download="contentorrr_windows" data-analytics-version="1.1.2" data-analytics-variant="exe">Download .exe</a>
               <div class="download-filesize">87.4 MB</div>
             </div>
 
             <div class="platform-card">
-              <strong>macOS (Apple Silicon)</strong>
+              <strong>macOS (Apple Silicon) Installer</strong>
               <span>Current version v1.1.2 for Apple Silicon Macs</span>
               <a class="btn btn-primary" id="download-macos" href="https://downloads.creatorrr.com/Contentorrr_1.1.2_aarch64.dmg" data-analytics-download="contentorrr_macos" data-analytics-version="1.1.2" data-analytics-variant="dmg">Download .dmg</a>
               <div class="download-filesize">58.6 MB</div>
             </div>
           </div>
 
-          <p><span class="download-free-asterisk">*</span>Unlimited trial use. No credit card, no account, no email needed. Just a free local offline app.<br>Free version has "creatorrr.com" watermark locked and centered. For no watermark or your own watermark(s), <a href="./account.html?intent=login">get Contentorrr Pro</a>.</p>
 
           <details class="download-changelog" aria-label="Changelog">
             <summary>
