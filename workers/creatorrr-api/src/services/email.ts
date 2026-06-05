@@ -188,6 +188,7 @@ export async function sendSubscriberVerificationEmail(
       to: [toEmail],
       subject: "Confirm creatorrr.com updates",
       html: [
+        '<div style="padding:22px 18px;text-align:center;background:#060606;border-radius:18px;margin-bottom:24px;"><img src="https://creatorrr.com/creatorrr-logo-nolink.png" alt="creatorrr.com" width="72" height="72" style="display:inline-block;border-radius:16px;"><div style="margin-top:12px;color:#f7d56a;font-family:Arial,sans-serif;font-size:18px;font-weight:700;">creatorrr.com</div></div>',
         "<p>Thanks for signing up for creatorrr.com updates.</p>",
         `<p>We’ll send version updates and weekly insights on how we approach the adult creator business. You’re also invited to join r/CreatorrrHub on Reddit: <a href=\"${redditUrl}\">${redditUrl}</a></p>`,
         "<p>Please confirm your email address.</p>",
