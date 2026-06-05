@@ -1235,12 +1235,27 @@
       white-space: normal;
     }
 
-    .updates-copy {
-      grid-template-rows: 18px auto 46px;
+    .updates-copy,
+    .updates-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: auto;
     }
 
-    .updates-form {
-      grid-template-rows: 18px auto 46px min-content;
+    .updates-form-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .updates-form-row .btn,
+    .updates-input {
+      width: 100%;
+    }
+
+    .updates-reddit {
+      margin: 0 auto;
     }
 
     .nav {
@@ -1269,15 +1284,6 @@
 
     .nav-links .nav-link-highlight {
       display: none;
-    }
-
-    .updates-form-row {
-      flex-direction: column;
-    }
-
-    .updates-form-row .btn,
-    .updates-input {
-      width: 100%;
     }
 
     .nav-action-slot {
@@ -1785,7 +1791,7 @@
           </div>
 
           <div class="download-pro-cta">
-            <span>For no watermark or your own watermark(s):</span>
+            <span>For no watermark or your own:</span>
             <a class="btn btn-primary" href="https://creatorrr.com/#pricing">Get Contentorrr Pro</a>
           </div>
 
