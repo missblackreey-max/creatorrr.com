@@ -51,6 +51,21 @@ export type LicenseRow = {
   ended_at?: string | null;
 };
 
+export type EmailSubscriberRow = {
+  id: string;
+  email: string;
+  status: string;
+  source?: string | null;
+  consent_text?: string | null;
+  verify_token_hash?: string | null;
+  verify_expires_at?: string | null;
+  verified_at?: string | null;
+  unsubscribed_at?: string | null;
+  user_id?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type UserRow = {
   id: string;
   email: string;

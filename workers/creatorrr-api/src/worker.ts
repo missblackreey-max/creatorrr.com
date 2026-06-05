@@ -13,7 +13,7 @@ import {
   uuid,
 } from "./lib/utils";
 import { jwtSign, makeOpaqueSecret, makeOpaqueToken, makeSalt, pbkdf2, sha256Hex } from "./lib/crypto";
-import type { Env, LegalAcceptancePayload, StripeSubscriptionLike, UserRow } from "./types";
+import type { EmailSubscriberRow, Env, LegalAcceptancePayload, StripeSubscriptionLike, UserRow } from "./types";
 import { computeEntitlement } from "./services/entitlement";
 import {
   currentDeviceTokenVersion,
@@ -49,7 +49,12 @@ import {
   verifyStripeWebhookSignature,
 } from "./services/stripe";
 import { getGoogleIdTokenInfo, getUserIdByGoogleSub, issueWebToken, oauthRedirectToSite } from "./services/oauth-google";
-import { isEmailDeliveryConfigured, issueEmailVerification, issuePasswordReset } from "./services/email";
+import {
+  isEmailDeliveryConfigured,
+  issueEmailVerification,
+  issuePasswordReset,
+  sendSubscriberVerificationEmail,
+} from "./services/email";
 
 export function makeAccountView(
   user: UserRow,
@@ -386,7 +391,21 @@ function detectLikelyBot(req: Request): { isBot: boolean; botScore: number | nul
   return { isBot: uaLooksBot, botScore: null };
 }
 
-const ANALYTICS_ALLOWED_EVENTS = new Set(["download_click"]);
+const ANALYTICS_ALLOWED_EVENTS = new Set(["download_click", "email_updates_submit", "email_updates_verified", "link_click"]);
+
+function normalizeSubscriberSource(value: unknown): string | null {
+  const text = String(value || "").trim().toLowerCase();
+  if (!text) return null;
+  return text.replace(/[^a-z0-9._-]/g, "_").slice(0, 80) || null;
+}
+
+function subscriberVerifyUrl(req: Request, rawToken: string): string {
+  const url = new URL(req.url);
+  url.pathname = "/email/verify";
+  url.search = "";
+  url.searchParams.set("token", rawToken);
+  return url.toString();
+}
 
 function normalizeAnalyticsField(value: unknown, maxLength: number): string | null {
   const text = String(value || "").trim();
@@ -405,6 +424,124 @@ export default {
 
     if (req.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders(req) });
+    }
+
+    if (req.method === "POST" && url.pathname === "/email/subscribe") {
+      const body = await readJson<{ email?: string; source?: string }>(req);
+      if (!body) return bad(req, "invalid_json");
+
+      const email = normalizeEmail(String(body.email || ""));
+      if (!email) return bad(req, "invalid_email");
+
+      const now = nowIso();
+      const subscriberId = uuid();
+      const rawToken = makeOpaqueToken();
+      const tokenHash = await sha256Hex(rawToken);
+      const expiresAt = addMinutesIso(60 * 24);
+      const source = normalizeSubscriberSource(body.source) || "homepage_updates";
+      const consentText =
+        "Version updates and weekly insights on how we approach the adult creator business; invited to join r/CreatorrrHub.";
+
+      const existing = await env.creatorrr_db
+        .prepare("SELECT * FROM email_subscribers WHERE email=?1")
+        .bind(email)
+        .first<EmailSubscriberRow>();
+
+      if (existing?.status === "verified") {
+        return json(req, {
+          ok: true,
+          status: "verified",
+          verification_sent: false,
+          email_delivery_configured: isEmailDeliveryConfigured(env),
+        });
+      }
+
+      await env.creatorrr_db
+        .prepare(
+          `
+            INSERT INTO email_subscribers (
+              id,
+              email,
+              status,
+              source,
+              consent_text,
+              verify_token_hash,
+              verify_expires_at,
+              verified_at,
+              unsubscribed_at,
+              user_id,
+              created_at,
+              updated_at
+            ) VALUES (?1,?2,'pending',?3,?4,?5,?6,NULL,NULL,NULL,?7,?7)
+            ON CONFLICT(email) DO UPDATE SET
+              status='pending',
+              source=excluded.source,
+              consent_text=excluded.consent_text,
+              verify_token_hash=excluded.verify_token_hash,
+              verify_expires_at=excluded.verify_expires_at,
+              unsubscribed_at=NULL,
+              updated_at=excluded.updated_at
+          `,
+        )
+        .bind(subscriberId, email, source, consentText, tokenHash, expiresAt, now)
+        .run();
+
+      const verificationSent = await sendSubscriberVerificationEmail(env, email, subscriberVerifyUrl(req, rawToken)).catch(() => false);
+      if (!verificationSent) {
+        await env.creatorrr_db
+          .prepare(
+            `
+              UPDATE email_subscribers
+              SET verify_token_hash=NULL, verify_expires_at=NULL, updated_at=?2
+              WHERE email=?1 AND status='pending'
+            `,
+          )
+          .bind(email, nowIso())
+          .run();
+      }
+
+      return json(req, {
+        ok: true,
+        status: "pending",
+        verification_sent: verificationSent,
+        email_delivery_configured: isEmailDeliveryConfigured(env),
+      });
+    }
+
+    if (req.method === "GET" && url.pathname === "/email/verify") {
+      const rawToken = String(url.searchParams.get("token") || "").trim();
+      const siteUrl = safeSiteUrl(env);
+      if (!rawToken) return redirect(req, `${siteUrl}/?updates=invalid#downloads`);
+
+      const tokenHash = await sha256Hex(rawToken);
+      const subscriber = await env.creatorrr_db
+        .prepare("SELECT * FROM email_subscribers WHERE verify_token_hash=?1")
+        .bind(tokenHash)
+        .first<EmailSubscriberRow>();
+
+      if (!subscriber || isExpiredIso(subscriber.verify_expires_at || null)) {
+        return redirect(req, `${siteUrl}/?updates=invalid#downloads`);
+      }
+
+      const now = nowIso();
+      await env.creatorrr_db
+        .prepare(
+          `
+            UPDATE email_subscribers
+            SET
+              status='verified',
+              verified_at=COALESCE(verified_at, ?2),
+              verify_token_hash=NULL,
+              verify_expires_at=NULL,
+              unsubscribed_at=NULL,
+              updated_at=?2
+            WHERE id=?1
+          `,
+        )
+        .bind(subscriber.id, now)
+        .run();
+
+      return redirect(req, `${siteUrl}/email-confirmed.html`);
     }
 
     if (req.method === "POST" && url.pathname === "/stripe/webhook") {
