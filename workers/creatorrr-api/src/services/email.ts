@@ -163,3 +163,38 @@ export async function issuePasswordReset(env: Env, userId: string, email: string
     expires_at: expiresAt,
   };
 }
+
+export async function sendSubscriberVerificationEmail(
+  env: Env,
+  toEmail: string,
+  verificationUrl: string,
+): Promise<boolean> {
+  const apiKey = String(env.RESEND_API_KEY || "").trim();
+  const fromEmail = String(env.RESEND_FROM_EMAIL || "noreply@mail.creatorrr.com").trim();
+  const fromName = String(env.RESEND_FROM_NAME || "Creatorrr").trim() || "Creatorrr";
+  if (!apiKey || !fromEmail) return false;
+
+  const safeUrl = escapeHtml(verificationUrl);
+  const redditUrl = "https://www.reddit.com/r/CreatorrrHub/";
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      from: `${fromName} <${fromEmail}>`,
+      to: [toEmail],
+      subject: "Confirm creatorrr.com updates",
+      html: [
+        "<p>Thanks for signing up for creatorrr.com updates.</p>",
+        `<p>We’ll send version updates and weekly insights on how we approach the adult creator business. You’re also invited to join r/CreatorrrHub on Reddit: <a href=\"${redditUrl}\">${redditUrl}</a></p>`,
+        "<p>Please confirm your email address.</p>",
+        `<p><a href=\"${safeUrl}\">Confirm your email</a></p>`,
+        "<p>This link expires in 24 hours. If you did not request this, you can ignore this email.</p>",
+      ].join(""),
+    }),
+  });
+
+  return response.ok;
+}

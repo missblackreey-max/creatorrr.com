@@ -173,6 +173,125 @@
     color: #0b0b0b;
   }
 
+
+  .reddit-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .reddit-logo {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+  }
+
+  .updates-card {
+    margin: 18px auto 0;
+    padding: 18px;
+    border-radius: 20px;
+    border: 1px solid rgba(247, 213, 106, 0.18);
+    background: linear-gradient(180deg, rgba(247, 213, 106, 0.08), rgba(255, 255, 255, 0.03));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.86fr);
+    gap: 18px;
+    align-items: center;
+  }
+
+  .updates-copy {
+    display: grid;
+    gap: 8px;
+    text-align: left;
+  }
+
+  .updates-kicker {
+    color: var(--gold-1);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.28px;
+    text-transform: uppercase;
+  }
+
+  .updates-copy h3 {
+    margin: 0;
+    font-size: clamp(20px, 2.4vw, 28px);
+    letter-spacing: -0.35px;
+  }
+
+  .updates-copy p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .updates-reddit {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    width: fit-content;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 720;
+  }
+
+  .updates-reddit:hover {
+    color: var(--gold-1);
+  }
+
+  .updates-form {
+    display: grid;
+    gap: 10px;
+  }
+
+  .updates-form-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .updates-input {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text);
+    background: rgba(0, 0, 0, 0.26);
+    font: inherit;
+    font-size: 14px;
+    outline: none;
+  }
+
+  .updates-input:focus {
+    border-color: rgba(247, 213, 106, 0.58);
+    box-shadow: 0 0 0 3px rgba(247, 213, 106, 0.12);
+  }
+
+  .updates-fineprint,
+  .updates-status {
+    margin: 0;
+    color: var(--muted-2);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .updates-status {
+    display: none;
+  }
+
+  .updates-status.is-visible {
+    display: block;
+  }
+
+  .updates-status.is-error {
+    color: #ffb4b4;
+  }
+
+  .updates-status.is-success {
+    color: #bdf2c6;
+  }
+
   .nav-actions {
     display: flex;
     align-items: center;
@@ -733,6 +852,10 @@
     color: var(--muted);
   }
 
+  .download-free-asterisk {
+    color: var(--text);
+  }
+
   .download-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -779,6 +902,15 @@
     font-size: 14px;
     line-height: 1.55;
     text-align: center;
+  }
+
+  .download-note a {
+    color: var(--gold-1);
+    font-weight: 760;
+  }
+
+  .download-note a:hover {
+    color: var(--text);
   }
 
   .download-changelog {
@@ -981,6 +1113,19 @@
       justify-content: flex-start;
     }
 
+    .updates-card {
+      grid-template-columns: 1fr;
+      text-align: center;
+    }
+
+    .updates-copy {
+      text-align: center;
+    }
+
+    .updates-reddit {
+      margin: 0 auto;
+    }
+
     .hero-grid > div:first-child,
     .hero-copy,
     .eyebrow,
@@ -1075,6 +1220,15 @@
 
     .nav-links .nav-link-highlight {
       display: none;
+    }
+
+    .updates-form-row {
+      flex-direction: column;
+    }
+
+    .updates-form-row .btn,
+    .updates-input {
+      width: 100%;
     }
 
     .nav-action-slot {
@@ -1370,6 +1524,7 @@
         <a href="#workflow">Workflow</a>
         <a href="#pricing">Pricing</a>
         <a href="./challenge/">Challenge</a>
+        <a class="reddit-link" href="https://www.reddit.com/r/CreatorrrHub/" target="_blank" rel="noopener noreferrer" data-analytics-link="creatorrr_hub_header"><svg class="reddit-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" fill="#ff4500"/><path fill="#fff" d="M17.9 10.5c-.6 0-1.1.3-1.4.7-1-.7-2.3-1.1-3.8-1.2l.7-3.1 2.2.5c0 .6.5 1 1.1 1 .7 0 1.2-.5 1.2-1.2S17.4 6 16.7 6c-.5 0-.9.3-1.1.7l-2.7-.6c-.2 0-.4.1-.4.3l-.8 3.6c-1.5 0-2.9.5-3.9 1.2-.3-.4-.8-.7-1.4-.7-.9 0-1.6.7-1.6 1.6 0 .7.4 1.2 1 1.5v.4c0 2.2 2.8 4 6.2 4s6.2-1.8 6.2-4v-.4c.6-.3 1-.8 1-1.5.3-.9-.4-1.6-1.3-1.6ZM9.4 13.2c0-.6.5-1 1-1s1 .5 1 1-.5 1-1 1-1-.4-1-1Zm5 2.7c-.7.7-2.9.7-3.6 0-.2-.2-.2-.4 0-.6.2-.2.4-.2.6 0 .4.4 2.2.4 2.6 0 .2-.2.4-.2.6 0 .1.2.1.5-.2.6Zm-.8-1.7c-.6 0-1-.5-1-1s.5-1 1-1 1 .5 1 1-.4 1-1 1Z"/></svg><span>r/CreatorrrHub</span></a>
         <a class="nav-link-highlight" href="#downloads">Download free version</a>
       </nav>
 
@@ -1539,9 +1694,26 @@
           <div class="download-head">
             <img class="download-logo" src="./64x64.png" alt="Contentorrr logo">
             <div class="download-title-group">
-              <h2>Download Contentorrr</h2>
+              <h2>Download Contentorrr for free<span class="download-free-asterisk">*</span></h2>
               <p>Current version: V1.1.2</p>
             </div>
+          </div>
+
+          <div class="updates-card" id="updates">
+            <div class="updates-copy">
+              <span class="updates-kicker">Optional updates</span>
+              <h3>Get creatorrr.com updates</h3>
+              <p>Version updates and weekly insights on how we approach the adult creator business.</p>
+              <a class="updates-reddit" href="https://www.reddit.com/r/CreatorrrHub/" target="_blank" rel="noopener noreferrer" data-analytics-link="creatorrr_hub_updates"><svg class="reddit-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" fill="#ff4500"/><path fill="#fff" d="M17.9 10.5c-.6 0-1.1.3-1.4.7-1-.7-2.3-1.1-3.8-1.2l.7-3.1 2.2.5c0 .6.5 1 1.1 1 .7 0 1.2-.5 1.2-1.2S17.4 6 16.7 6c-.5 0-.9.3-1.1.7l-2.7-.6c-.2 0-.4.1-.4.3l-.8 3.6c-1.5 0-2.9.5-3.9 1.2-.3-.4-.8-.7-1.4-.7-.9 0-1.6.7-1.6 1.6 0 .7.4 1.2 1 1.5v.4c0 2.2 2.8 4 6.2 4s6.2-1.8 6.2-4v-.4c.6-.3 1-.8 1-1.5.3-.9-.4-1.6-1.3-1.6ZM9.4 13.2c0-.6.5-1 1-1s1 .5 1 1-.5 1-1 1-1-.4-1-1Zm5 2.7c-.7.7-2.9.7-3.6 0-.2-.2-.2-.4 0-.6.2-.2.4-.2.6 0 .4.4 2.2.4 2.6 0 .2-.2.4-.2.6 0 .1.2.1.5-.2.6Zm-.8-1.7c-.6 0-1-.5-1-1s.5-1 1-1 1 .5 1 1-.4 1-1 1Z"/></svg><span>Join r/CreatorrrHub</span></a>
+            </div>
+            <form class="updates-form" id="updates-form">
+              <div class="updates-form-row">
+                <input class="updates-input" id="updates-email" name="email" type="email" placeholder="Email address" autocomplete="email" required>
+                <button class="btn btn-primary" id="updates-submit" type="submit">Notify me</button>
+              </div>
+              <p class="updates-fineprint">We’ll send a confirmation link first.</p>
+              <p class="updates-status" id="updates-status" role="status" aria-live="polite"></p>
+            </form>
           </div>
 
           <div class="download-grid">
@@ -1560,7 +1732,8 @@
             </div>
           </div>
 
-          <p class="download-note">Unlimited trial use. Free version has creatorrr.com watermark locked and centered. No credit card, no account, no email. Just a free local offline app. Get Contentorrr Pro for no watermark or your own watermark(s).</p>
+          <p class="download-note"><span class="download-free-asterisk">*</span>Unlimited trial use. No credit card, no account, no email needed. Just a free local offline app.<br><br>Free version has "creatorrr.com" watermark locked and centered. For no watermark or your own watermark(s), <a href="./account.html?intent=login">get Contentorrr Pro</a>.</p>
+
 
           <details class="download-changelog" aria-label="Changelog">
             <summary>
@@ -1688,6 +1861,7 @@
         <a href="./privacy.html">Privacy Policy</a>
         <a href="./terms.html">Terms of Use</a>
         <a href="./refunds.html">Refund Policy</a>
+        <a class="reddit-link" href="https://www.reddit.com/r/CreatorrrHub/" target="_blank" rel="noopener noreferrer" data-analytics-link="creatorrr_hub_footer"><svg class="reddit-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" fill="#ff4500"/><path fill="#fff" d="M17.9 10.5c-.6 0-1.1.3-1.4.7-1-.7-2.3-1.1-3.8-1.2l.7-3.1 2.2.5c0 .6.5 1 1.1 1 .7 0 1.2-.5 1.2-1.2S17.4 6 16.7 6c-.5 0-.9.3-1.1.7l-2.7-.6c-.2 0-.4.1-.4.3l-.8 3.6c-1.5 0-2.9.5-3.9 1.2-.3-.4-.8-.7-1.4-.7-.9 0-1.6.7-1.6 1.6 0 .7.4 1.2 1 1.5v.4c0 2.2 2.8 4 6.2 4s6.2-1.8 6.2-4v-.4c.6-.3 1-.8 1-1.5.3-.9-.4-1.6-1.3-1.6ZM9.4 13.2c0-.6.5-1 1-1s1 .5 1 1-.5 1-1 1-1-.4-1-1Zm5 2.7c-.7.7-2.9.7-3.6 0-.2-.2-.2-.4 0-.6.2-.2.4-.2.6 0 .4.4 2.2.4 2.6 0 .2-.2.4-.2.6 0 .1.2.1.5-.2.6Zm-.8-1.7c-.6 0-1-.5-1-1s.5-1 1-1 1 .5 1 1-.4 1-1 1Z"/></svg><span>r/CreatorrrHub</span></a>
         <a href="mailto:ben@creatorrr.com">Contact</a>
       </div>
     </div>
@@ -1832,8 +2006,93 @@
       }
     }
 
+
+
+    const updatesForm = document.getElementById("updates-form");
+    const updatesEmail = document.getElementById("updates-email");
+    const updatesSubmit = document.getElementById("updates-submit");
+    const updatesStatus = document.getElementById("updates-status");
+
+    function trackEvent(eventName, details) {
+      if (window.creatorrrAnalytics && typeof window.creatorrrAnalytics.track === "function") {
+        window.creatorrrAnalytics.track(eventName, details || {}, { preferFetch: true });
+      }
+    }
+
+    function setUpdatesStatus(text, type) {
+      if (!updatesStatus) return;
+      updatesStatus.textContent = text || "";
+      updatesStatus.classList.toggle("is-visible", Boolean(text));
+      updatesStatus.classList.toggle("is-error", type === "error");
+      updatesStatus.classList.toggle("is-success", type === "success");
+    }
+
+    async function subscribeForUpdates(email) {
+      const res = await fetch(`${API_BASE}/email/subscribe`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, source: "homepage_downloads" })
+      });
+      const data = await safeReadJson(res);
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.error || "Could not subscribe right now.");
+      }
+      return data;
+    }
+
+    function bootstrapUpdatesStatusFromUrl() {
+      const params = new URLSearchParams(window.location.search || "");
+      const state = params.get("updates");
+      if (state === "verified") {
+        setUpdatesStatus("Email address confirmed.", "success");
+        trackEvent("email_updates_verified", { item_id: "homepage_updates" });
+      } else if (state === "invalid") {
+        setUpdatesStatus("That confirmation link is invalid or expired. Enter your email again and we’ll send a new one.", "error");
+      }
+    }
+
+    if (updatesForm) {
+      updatesForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const email = String(updatesEmail.value || "").trim();
+        if (!email) {
+          setUpdatesStatus("Please enter your email address.", "error");
+          return;
+        }
+
+        updatesSubmit.disabled = true;
+        setUpdatesStatus("Sending confirmation email...", "");
+        trackEvent("email_updates_submit", { item_id: "homepage_updates" });
+
+        try {
+          const data = await subscribeForUpdates(email);
+          if (data.status === "verified") {
+            setUpdatesStatus("You’re already confirmed for creatorrr.com updates.", "success");
+          } else if (data.verification_sent) {
+            setUpdatesStatus("Check your email to confirm.", "success");
+            updatesForm.reset();
+          } else {
+            setUpdatesStatus("Email delivery is not configured yet. Please try again later or join r/CreatorrrHub.", "error");
+          }
+        } catch (err) {
+          setUpdatesStatus(err instanceof Error ? err.message : "Could not subscribe right now.", "error");
+        } finally {
+          updatesSubmit.disabled = false;
+        }
+      });
+    }
+
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const link = target.closest("[data-analytics-link]");
+      if (!(link instanceof HTMLAnchorElement)) return;
+      trackEvent("link_click", { item_id: link.getAttribute("data-analytics-link") });
+    });
+
     // bootstrapPreviewGate();
     document.getElementById("year").textContent = new Date().getFullYear();
+    bootstrapUpdatesStatusFromUrl();
     checkHeaderAuthState();
   </script>
 </body>
