@@ -1,7 +1,7 @@
 import { env, createExecutionContext, waitOnExecutionContext, SELF } from "cloudflare:test";
 import { describe, it, expect } from "vitest";
 import worker from "../src/index";
-import { makeSalt, pbkdf2 } from "../src/lib/crypto";
+import { jwtSign, makeSalt, pbkdf2 } from "../src/lib/crypto";
 
 const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
 
@@ -53,6 +53,24 @@ async function ensureTestSchema() {
         ended_at TEXT,
         scheduled_billing_interval TEXT,
         scheduled_change_at TEXT
+      )
+    `),
+		env.creatorrr_db.prepare(`
+      CREATE TABLE IF NOT EXISTS analytics_pageviews (
+        id TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL,
+        path TEXT NOT NULL,
+        query TEXT,
+        referrer TEXT,
+        title TEXT,
+        country TEXT,
+        user_agent TEXT,
+        ip_hash TEXT,
+        is_bot INTEGER NOT NULL DEFAULT 0,
+        bot_score INTEGER,
+        timezone TEXT,
+        screen TEXT,
+        language TEXT
       )
     `),
 		env.creatorrr_db.prepare(`
@@ -247,4 +265,65 @@ describe("creatorrr-api worker", () => {
 			item_variant: "exe",
 		});
 	});
+	it("returns dashboard traffic windows with CH excluded and daily downloads", async () => {
+		await ensureTestSchema();
+		await env.creatorrr_db.batch([
+			env.creatorrr_db.prepare("DELETE FROM analytics_pageviews"),
+			env.creatorrr_db.prepare("DELETE FROM analytics_events"),
+		]);
+
+		const { userId, email } = await seedVerifiedUserWithDevices(["dashboard-device"]);
+		const jwtSecret = "test-dashboard-secret";
+		const testEnv = {
+			...env,
+			DASHBOARD_OWNER_EMAILS: email,
+			ANALYTICS_EXCLUDED_COUNTRIES: "CH",
+			JWT_SECRET: jwtSecret,
+		};
+		const token = await jwtSign(jwtSecret, {
+			sub: userId,
+			did: "dashboard-device",
+			tv: 0,
+			exp: Math.floor(Date.now() / 1000) + 3600,
+		});
+
+		const now = new Date();
+		const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+		await env.creatorrr_db.batch([
+			env.creatorrr_db.prepare("INSERT INTO analytics_pageviews (id, created_at, path, country, ip_hash, is_bot) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind("pv-us-1", daysAgo(1), "/", "US", "ip-us", 0),
+			env.creatorrr_db.prepare("INSERT INTO analytics_pageviews (id, created_at, path, country, ip_hash, is_bot) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind("pv-us-2", daysAgo(10), "/account", "US", "ip-us-2", 0),
+			env.creatorrr_db.prepare("INSERT INTO analytics_pageviews (id, created_at, path, country, ip_hash, is_bot) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind("pv-old", daysAgo(40), "/old", "DE", "ip-de", 0),
+			env.creatorrr_db.prepare("INSERT INTO analytics_pageviews (id, created_at, path, country, ip_hash, is_bot) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind("pv-ch", daysAgo(1), "/", "CH", "ip-ch", 0),
+			env.creatorrr_db.prepare("INSERT INTO analytics_events (id, created_at, event_name, item_id, item_version, item_variant, country, ip_hash, is_bot) VALUES (?1, ?2, 'download_click', ?3, ?4, ?5, ?6, ?7, 0)").bind("dl-us", daysAgo(1), "contentorrr_windows", "1.1.2", "exe", "US", "ip-us"),
+			env.creatorrr_db.prepare("INSERT INTO analytics_events (id, created_at, event_name, item_id, item_version, item_variant, country, ip_hash, is_bot) VALUES (?1, ?2, 'download_click', ?3, ?4, ?5, ?6, ?7, 0)").bind("dl-ch", daysAgo(1), "contentorrr_macos", "1.1.2", "dmg", "CH", "ip-ch"),
+			env.creatorrr_db.prepare("INSERT INTO analytics_events (id, created_at, event_name, item_id, item_version, item_variant, country, ip_hash, is_bot) VALUES (?1, ?2, 'download_click', ?3, ?4, ?5, ?6, ?7, 0)").bind("dl-old", daysAgo(40), "contentorrr_macos", "1.1.2", "dmg", "DE", "ip-de"),
+		]);
+
+		const sevenDayRequest = new IncomingRequest("https://example.com/dashboard/traffic?window=7", {
+			headers: { authorization: `Bearer ${token}` },
+		});
+		const sevenDayCtx = createExecutionContext();
+		const sevenDay = await worker.fetch(sevenDayRequest, testEnv, sevenDayCtx);
+		await waitOnExecutionContext(sevenDayCtx);
+		expect(sevenDay.status).toBe(200);
+		await expect(sevenDay.json()).resolves.toMatchObject({
+			ok: true,
+			window: "7",
+			excluded_countries: ["CH"],
+			totals: { pageviews: 1, downloads: 1 },
+			countries: [{ country: "US", visits: 1 }],
+		});
+
+		const allTimeRequest = new IncomingRequest("https://example.com/dashboard/traffic?window=all", {
+			headers: { authorization: `Bearer ${token}` },
+		});
+		const allTimeCtx = createExecutionContext();
+		const allTime = await worker.fetch(allTimeRequest, testEnv, allTimeCtx);
+		await waitOnExecutionContext(allTimeCtx);
+		expect(allTime.status).toBe(200);
+		const allTimeBody = await allTime.json<{ totals: { pageviews: number; downloads: number }; daily: unknown[] }>();
+		expect(allTimeBody.totals).toMatchObject({ pageviews: 3, downloads: 2 });
+		expect(allTimeBody.daily.length).toBeGreaterThanOrEqual(2);
+	});
+
 });
