@@ -265,7 +265,7 @@ describe("creatorrr-api worker", () => {
 			item_variant: "exe",
 		});
 	});
-	it("returns dashboard traffic windows with CH excluded and daily downloads", async () => {
+	it("returns dashboard traffic with CH excluded from visits and downloads", async () => {
 		await ensureTestSchema();
 		await env.creatorrr_db.batch([
 			env.creatorrr_db.prepare("DELETE FROM analytics_pageviews"),
@@ -299,31 +299,21 @@ describe("creatorrr-api worker", () => {
 			env.creatorrr_db.prepare("INSERT INTO analytics_events (id, created_at, event_name, item_id, item_version, item_variant, country, ip_hash, is_bot) VALUES (?1, ?2, 'download_click', ?3, ?4, ?5, ?6, ?7, 0)").bind("dl-old", daysAgo(40), "contentorrr_macos", "1.1.2", "dmg", "DE", "ip-de"),
 		]);
 
-		const sevenDayRequest = new IncomingRequest("https://example.com/dashboard/traffic?window=7", {
+		const request = new IncomingRequest("https://example.com/dashboard/traffic", {
 			headers: { authorization: `Bearer ${token}` },
 		});
-		const sevenDayCtx = createExecutionContext();
-		const sevenDay = await worker.fetch(sevenDayRequest, testEnv, sevenDayCtx);
-		await waitOnExecutionContext(sevenDayCtx);
-		expect(sevenDay.status).toBe(200);
-		await expect(sevenDay.json()).resolves.toMatchObject({
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, testEnv, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		await expect(response.json()).resolves.toMatchObject({
 			ok: true,
-			window: "7",
+			window_days: 30,
 			excluded_countries: ["CH"],
-			totals: { pageviews: 1, downloads: 1 },
-			countries: [{ country: "US", visits: 1 }],
+			totals: { pageviews: 2 },
+			countries: [{ country: "US", visits: 2 }],
+			downloads: [{ country: "US", downloads: 1 }],
 		});
-
-		const allTimeRequest = new IncomingRequest("https://example.com/dashboard/traffic?window=all", {
-			headers: { authorization: `Bearer ${token}` },
-		});
-		const allTimeCtx = createExecutionContext();
-		const allTime = await worker.fetch(allTimeRequest, testEnv, allTimeCtx);
-		await waitOnExecutionContext(allTimeCtx);
-		expect(allTime.status).toBe(200);
-		const allTimeBody = await allTime.json<{ totals: { pageviews: number; downloads: number }; daily: unknown[] }>();
-		expect(allTimeBody.totals).toMatchObject({ pageviews: 3, downloads: 2 });
-		expect(allTimeBody.daily.length).toBeGreaterThanOrEqual(2);
 	});
 
 });
