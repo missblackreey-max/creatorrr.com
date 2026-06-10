@@ -247,6 +247,15 @@ function getAnalyticsExcludedIps(env: Env): Set<string> {
   );
 }
 
+type DashboardTrafficWindow = { key: "all" | "30" | "7"; label: string; days: number | null };
+
+function getDashboardTrafficWindow(url: URL): DashboardTrafficWindow {
+  const raw = String(url.searchParams.get("window") || url.searchParams.get("range") || "30").trim().toLowerCase();
+  if (["all", "all_time", "all-time", "total"].includes(raw)) return { key: "all", label: "All time", days: null };
+  if (["7", "7d", "last_7", "last-7"].includes(raw)) return { key: "7", label: "Last 7 days", days: 7 };
+  return { key: "30", label: "Last 30 days", days: 30 };
+}
+
 function ipv4ToInt(ip: string): number | null {
   const parts = ip.split(".");
   if (parts.length !== 4) return null;
@@ -1126,7 +1135,6 @@ export default {
       if (!path.startsWith("/")) return bad(req, "invalid_path");
 
       const countryCode = getCountryCode(req);
-      if (countryCode === "CH") return json(req, { ok: true, skipped: "excluded_country" });
 
       const ip = getRequestIpAddress(req);
       const excludedIps = getAnalyticsExcludedIps(env);
@@ -1193,7 +1201,6 @@ export default {
       if (path && !path.startsWith("/")) return bad(req, "invalid_event_payload");
 
       const countryCode = getCountryCode(req);
-      if (countryCode === "CH") return json(req, { ok: true, skipped: "excluded_country" });
 
       const ip = getRequestIpAddress(req);
       const excludedIps = getAnalyticsExcludedIps(env);
@@ -1319,25 +1326,32 @@ export default {
       const owner = await requireDashboardOwner(req, env);
       if (!owner.ok) return owner.response;
 
+      const trafficWindow = getDashboardTrafficWindow(url);
+      const windowCondition = trafficWindow.days === null
+        ? ""
+        : `AND julianday(created_at) >= julianday('now', '-${trafficWindow.days} days')`;
+
       const totalsRow = await env.creatorrr_db.prepare(`
         SELECT
-          COUNT(*) AS pageviews_30d,
-          COUNT(DISTINCT ip_hash) AS unique_visitors_30d,
-          SUM(CASE WHEN is_bot=1 THEN 1 ELSE 0 END) AS bot_pageviews_30d,
-          SUM(CASE WHEN is_bot=0 THEN 1 ELSE 0 END) AS human_pageviews_30d
+          COUNT(*) AS pageviews,
+          COUNT(DISTINCT CASE WHEN is_bot=0 THEN ip_hash END) AS unique_visitors,
+          SUM(CASE WHEN is_bot=1 THEN 1 ELSE 0 END) AS bot_pageviews,
+          SUM(CASE WHEN is_bot=0 THEN 1 ELSE 0 END) AS human_pageviews
         FROM analytics_pageviews
-        WHERE julianday(created_at) >= julianday('now', '-30 days')
+        WHERE 1=1
+          ${windowCondition}
       `).first<{
-        pageviews_30d?: number | string | null;
-        unique_visitors_30d?: number | string | null;
-        bot_pageviews_30d?: number | string | null;
-        human_pageviews_30d?: number | string | null;
+        pageviews?: number | string | null;
+        unique_visitors?: number | string | null;
+        bot_pageviews?: number | string | null;
+        human_pageviews?: number | string | null;
       }>();
 
       const countryRows = await env.creatorrr_db.prepare(`
         SELECT country, COUNT(*) AS visits
         FROM analytics_pageviews
-        WHERE julianday(created_at) >= julianday('now', '-30 days')
+        WHERE 1=1
+          ${windowCondition}
         GROUP BY country
         ORDER BY visits DESC
         LIMIT 10
@@ -1346,7 +1360,8 @@ export default {
       const pathRows = await env.creatorrr_db.prepare(`
         SELECT path, COUNT(*) AS visits
         FROM analytics_pageviews
-        WHERE julianday(created_at) >= julianday('now', '-30 days')
+        WHERE 1=1
+          ${windowCondition}
         GROUP BY path
         ORDER BY visits DESC
         LIMIT 10
@@ -1357,6 +1372,14 @@ export default {
         return Number.isFinite(n) ? n : 0;
       };
 
+      const downloadTotalsRow = await env.creatorrr_db.prepare(`
+        SELECT COUNT(*) AS downloads
+        FROM analytics_events
+        WHERE event_name='download_click'
+          ${windowCondition}
+          AND is_bot=0
+      `).first<{ downloads?: number | string | null }>();
+
       const downloadRows = await env.creatorrr_db.prepare(`
         SELECT
           item_id,
@@ -1366,7 +1389,7 @@ export default {
           COUNT(*) AS downloads
         FROM analytics_events
         WHERE event_name='download_click'
-          AND julianday(created_at) >= julianday('now', '-30 days')
+          ${windowCondition}
           AND is_bot=0
         GROUP BY item_id, item_version, item_variant, country
         ORDER BY downloads DESC
@@ -1379,15 +1402,69 @@ export default {
         downloads?: number | string | null;
       }>();
 
+      const dailyRows = await env.creatorrr_db.prepare(`
+        WITH pageview_days AS (
+          SELECT
+            date(created_at) AS day,
+            COUNT(*) AS pageviews,
+            COUNT(DISTINCT CASE WHEN is_bot=0 THEN ip_hash END) AS unique_visitors,
+            SUM(CASE WHEN is_bot=0 THEN 1 ELSE 0 END) AS human_pageviews,
+            SUM(CASE WHEN is_bot=1 THEN 1 ELSE 0 END) AS bot_pageviews,
+            0 AS downloads
+          FROM analytics_pageviews
+          WHERE 1=1
+            ${windowCondition}
+          GROUP BY date(created_at)
+        ),
+        download_days AS (
+          SELECT
+            date(created_at) AS day,
+            0 AS pageviews,
+            0 AS unique_visitors,
+            0 AS human_pageviews,
+            0 AS bot_pageviews,
+            COUNT(*) AS downloads
+          FROM analytics_events
+          WHERE event_name='download_click'
+            ${windowCondition}
+            AND is_bot=0
+          GROUP BY date(created_at)
+        )
+        SELECT
+          day,
+          SUM(pageviews) AS pageviews,
+          SUM(unique_visitors) AS unique_visitors,
+          SUM(human_pageviews) AS human_pageviews,
+          SUM(bot_pageviews) AS bot_pageviews,
+          SUM(downloads) AS downloads
+        FROM (
+          SELECT * FROM pageview_days
+          UNION ALL
+          SELECT * FROM download_days
+        )
+        GROUP BY day
+        ORDER BY day ASC
+      `).all<{
+        day?: string | null;
+        pageviews?: number | string | null;
+        unique_visitors?: number | string | null;
+        human_pageviews?: number | string | null;
+        bot_pageviews?: number | string | null;
+        downloads?: number | string | null;
+      }>();
+
       return json(req, {
         ok: true,
         generated_at: nowIso(),
-        window_days: 30,
+        window: trafficWindow.key,
+        window_label: trafficWindow.label,
+        window_days: trafficWindow.days,
         totals: {
-          pageviews: numberOrZero(totalsRow?.pageviews_30d),
-          unique_visitors: numberOrZero(totalsRow?.unique_visitors_30d),
-          bot_pageviews: numberOrZero(totalsRow?.bot_pageviews_30d),
-          human_pageviews: numberOrZero(totalsRow?.human_pageviews_30d),
+          pageviews: numberOrZero(totalsRow?.pageviews),
+          unique_visitors: numberOrZero(totalsRow?.unique_visitors),
+          bot_pageviews: numberOrZero(totalsRow?.bot_pageviews),
+          human_pageviews: numberOrZero(totalsRow?.human_pageviews),
+          downloads: numberOrZero(downloadTotalsRow?.downloads),
         },
         countries: (countryRows.results || []).map((row) => ({
           country: String(row.country || "ZZ"),
@@ -1404,6 +1481,14 @@ export default {
           country: String(row.country || "ZZ"),
           downloads: numberOrZero(row.downloads),
         })),
+        daily: (dailyRows.results || []).map((row) => ({
+          day: String(row.day || ""),
+          pageviews: numberOrZero(row.pageviews),
+          unique_visitors: numberOrZero(row.unique_visitors),
+          human_pageviews: numberOrZero(row.human_pageviews),
+          bot_pageviews: numberOrZero(row.bot_pageviews),
+          downloads: numberOrZero(row.downloads),
+        })).filter((row) => row.day),
       });
     }
 
