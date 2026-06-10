@@ -168,8 +168,100 @@
       .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .section-head h2 { margin: 0; }
+
+    .range-tabs {
+      display: inline-flex;
+      gap: 6px;
+      padding: 4px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+    }
+
+    .range-tab {
+      min-height: 32px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 999px;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+    }
+
+    .range-tab.active {
+      color: #080808;
+      background: linear-gradient(180deg, var(--gold-1), var(--gold-2));
+    }
+
+    .chart-card {
+      margin-top: 12px;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255,255,255,0.03);
+    }
+
+    .chart-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .traffic-chart {
+      width: 100%;
+      height: 260px;
+      display: block;
+      overflow: visible;
+    }
+
+    .chart-grid-line { stroke: rgba(255,255,255,0.10); stroke-width: 1; }
+    .chart-axis-label { fill: rgba(245,245,245,0.62); font-size: 11px; }
+    .chart-line { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    .chart-line.pageviews { stroke: var(--gold-1); }
+    .chart-line.downloads { stroke: var(--green); }
+    .chart-dot { stroke: #050505; stroke-width: 2; }
+    .chart-dot.pageviews { fill: var(--gold-1); }
+    .chart-dot.downloads { fill: var(--green); }
+    .chart-empty { color: var(--muted); padding: 24px 0; text-align: center; }
+
+    .chart-legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .legend-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      margin-right: 6px;
+    }
+
     @media (max-width: 620px) {
       .kpi-grid { grid-template-columns: 1fr; }
+      .traffic-chart { height: 220px; }
     }
   </style>
 
@@ -197,8 +289,26 @@
     </section>
 
     <section class="card">
-      <h2 style="margin-top:0;">Traffic (last 30 days)</h2>
+      <div class="section-head">
+        <h2 id="traffic-title">Traffic (last 30 days)</h2>
+        <div class="range-tabs" aria-label="Traffic date range">
+          <button class="range-tab" type="button" data-window="all">All</button>
+          <button class="range-tab active" type="button" data-window="30">30 days</button>
+          <button class="range-tab" type="button" data-window="7">7 days</button>
+        </div>
+      </div>
       <div class="kpi-grid" id="traffic-grid"></div>
+      <div class="chart-card" aria-label="Traffic by day">
+        <div class="chart-head">
+          <span>Daily trend</span>
+          <span id="chart-summary">Loading...</span>
+        </div>
+        <div id="traffic-chart"></div>
+        <div class="chart-legend">
+          <span><i class="legend-dot" style="background: var(--gold-1);"></i>Pageviews</span>
+          <span><i class="legend-dot" style="background: var(--green);"></i>Downloads</span>
+        </div>
+      </div>
       <div style="display:grid; gap:12px; margin-top:12px;">
         <div>
           <h3 style="margin:0 0 8px 0;">Top countries</h3>
@@ -209,7 +319,7 @@
           <div class="muted" id="pages-list" style="white-space: pre-line;">Loading...</div>
         </div>
         <div>
-          <h3 style="margin:0 0 8px 0;">Downloads (last 30 days)</h3>
+          <h3 style="margin:0 0 8px 0;" id="downloads-title">Downloads (last 30 days)</h3>
           <div class="muted" id="downloads-list" style="white-space: pre-line;">Loading...</div>
         </div>
       </div>
@@ -223,10 +333,16 @@
     const statusEl = document.getElementById("status");
     const gridEl = document.getElementById("kpi-grid");
     const trafficGridEl = document.getElementById("traffic-grid");
+    const trafficTitleEl = document.getElementById("traffic-title");
+    const downloadsTitleEl = document.getElementById("downloads-title");
+    const trafficChartEl = document.getElementById("traffic-chart");
+    const chartSummaryEl = document.getElementById("chart-summary");
+    const rangeTabs = Array.from(document.querySelectorAll(".range-tab"));
     const countriesListEl = document.getElementById("countries-list");
     const pagesListEl = document.getElementById("pages-list");
     const downloadsListEl = document.getElementById("downloads-list");
     const refreshBtn = document.getElementById("refresh-btn");
+    let selectedTrafficWindow = "30";
 
     function getToken() {
       try {
@@ -262,32 +378,78 @@
       return node;
     }
 
-    const countryNameFormatter = typeof Intl !== "undefined" && Intl.DisplayNames
-      ? new Intl.DisplayNames(["en"], { type: "region" })
-      : null;
-
-    function countryLabel(code) {
-      const normalized = String(code || "ZZ").trim().toUpperCase();
-      if (normalized === "ZZ") return "Unknown";
-      try {
-        return countryNameFormatter?.of(normalized) || normalized;
-      } catch {
-        return normalized;
-      }
-    }
-
     function makePairsList(rows, keyLabel) {
       if (!Array.isArray(rows) || rows.length === 0) return "No data yet.";
       return rows
-        .map((row) => `${keyLabel === "country" ? countryLabel(row[keyLabel]) : row[keyLabel]}: ${fmtNumber(row.visits)}`)
+        .map((row) => `${row[keyLabel]}: ${fmtNumber(row.visits)}`)
         .join("\n");
     }
 
     function makeDownloadList(rows) {
       if (!Array.isArray(rows) || rows.length === 0) return "No data yet.";
       return rows
-        .map((row) => `${row.item_id} v${row.item_version} (${row.item_variant}) [${countryLabel(row.country)}]: ${fmtNumber(row.downloads)}`)
+        .map((row) => `${row.item_id} v${row.item_version} (${row.item_variant}) [${row.country || "ZZ"}]: ${fmtNumber(row.downloads)}`)
         .join("\n");
+    }
+
+    function escapeXml(value) {
+      return String(value).replace(/[&<>'"]/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&apos;",
+        "\"": "&quot;",
+      }[char]));
+    }
+
+    function updateRangeTabs() {
+      rangeTabs.forEach((tab) => {
+        const active = tab.dataset.window === selectedTrafficWindow;
+        tab.classList.toggle("active", active);
+        tab.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+    }
+
+    function renderTrafficChart(rows) {
+      const daily = Array.isArray(rows) ? rows : [];
+      if (daily.length === 0) {
+        trafficChartEl.innerHTML = '<div class="chart-empty">No chart data yet.</div>';
+        chartSummaryEl.textContent = "0 days";
+        return;
+      }
+
+      const width = 900;
+      const height = 260;
+      const pad = { top: 18, right: 18, bottom: 34, left: 42 };
+      const innerW = width - pad.left - pad.right;
+      const innerH = height - pad.top - pad.bottom;
+      const maxValue = Math.max(1, ...daily.flatMap((row) => [Number(row.pageviews || 0), Number(row.downloads || 0)]));
+      const x = (idx) => pad.left + (daily.length === 1 ? innerW / 2 : (idx / (daily.length - 1)) * innerW);
+      const y = (value) => pad.top + innerH - (Number(value || 0) / maxValue) * innerH;
+      const pointsFor = (key) => daily.map((row, idx) => `${x(idx).toFixed(1)},${y(row[key]).toFixed(1)}`).join(" ");
+      const yTicks = [0, Math.ceil(maxValue / 2), maxValue];
+      const firstDay = daily[0]?.day || "";
+      const lastDay = daily[daily.length - 1]?.day || "";
+      const totalPageviews = daily.reduce((sum, row) => sum + Number(row.pageviews || 0), 0);
+      const totalDownloads = daily.reduce((sum, row) => sum + Number(row.downloads || 0), 0);
+
+      chartSummaryEl.textContent = `${daily.length} days · ${fmtNumber(totalPageviews)} pageviews · ${fmtNumber(totalDownloads)} downloads`;
+      trafficChartEl.innerHTML = `
+        <svg class="traffic-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Daily pageviews and downloads from ${escapeXml(firstDay)} to ${escapeXml(lastDay)}">
+          ${yTicks.map((tick) => `
+            <line class="chart-grid-line" x1="${pad.left}" x2="${width - pad.right}" y1="${y(tick).toFixed(1)}" y2="${y(tick).toFixed(1)}"></line>
+            <text class="chart-axis-label" x="${pad.left - 8}" y="${(y(tick) + 4).toFixed(1)}" text-anchor="end">${fmtNumber(tick)}</text>
+          `).join("")}
+          <polyline class="chart-line pageviews" points="${pointsFor("pageviews")}"></polyline>
+          <polyline class="chart-line downloads" points="${pointsFor("downloads")}"></polyline>
+          ${daily.map((row, idx) => `
+            <circle class="chart-dot pageviews" cx="${x(idx).toFixed(1)}" cy="${y(row.pageviews).toFixed(1)}" r="4"><title>${escapeXml(row.day)} pageviews: ${fmtNumber(row.pageviews)}</title></circle>
+            <circle class="chart-dot downloads" cx="${x(idx).toFixed(1)}" cy="${y(row.downloads).toFixed(1)}" r="4"><title>${escapeXml(row.day)} downloads: ${fmtNumber(row.downloads)}</title></circle>
+          `).join("")}
+          <text class="chart-axis-label" x="${pad.left}" y="${height - 8}">${escapeXml(firstDay)}</text>
+          <text class="chart-axis-label" x="${width - pad.right}" y="${height - 8}" text-anchor="end">${escapeXml(lastDay)}</text>
+        </svg>
+      `;
     }
 
     async function loadDashboard() {
@@ -308,7 +470,8 @@
         });
         const data = await overviewRes.json().catch(() => null);
 
-        const trafficEndpoint = `${API_BASE}/dashboard/traffic`;
+        updateRangeTabs();
+        const trafficEndpoint = `${API_BASE}/dashboard/traffic?window=${encodeURIComponent(selectedTrafficWindow)}`;
         const trafficRes = await fetch(trafficEndpoint, {
           method: "GET",
           headers: { authorization: `Bearer ${token}` },
@@ -343,14 +506,19 @@
         );
 
         const t = traffic.totals || {};
+        const windowLabel = traffic.window_label || "Last 30 days";
+        trafficTitleEl.textContent = `Traffic (${windowLabel.toLowerCase()})`;
+        downloadsTitleEl.textContent = `Downloads (${windowLabel.toLowerCase()})`;
         trafficGridEl.innerHTML = "";
         trafficGridEl.append(
           tile("Pageviews", fmtNumber(t.pageviews)),
           tile("Unique Visitors", fmtNumber(t.unique_visitors)),
           tile("Human Visits", fmtNumber(t.human_pageviews)),
-          tile("Bot Visits", fmtNumber(t.bot_pageviews))
+          tile("Bot Visits", fmtNumber(t.bot_pageviews)),
+          tile("Downloads", fmtNumber(t.downloads))
         );
 
+        renderTrafficChart(traffic.daily || []);
         countriesListEl.textContent = makePairsList(traffic.countries || [], "country");
         pagesListEl.textContent = makePairsList(traffic.top_pages || [], "path");
         downloadsListEl.textContent = makeDownloadList(traffic.downloads || []);
@@ -374,8 +542,17 @@
         countriesListEl.textContent = "Unavailable";
         pagesListEl.textContent = "Unavailable";
         downloadsListEl.textContent = "Unavailable";
+        trafficChartEl.innerHTML = '<div class="chart-empty">Unavailable</div>';
+        chartSummaryEl.textContent = "Unavailable";
       }
     }
+
+    rangeTabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        selectedTrafficWindow = tab.dataset.window || "30";
+        loadDashboard();
+      });
+    });
 
     refreshBtn.addEventListener("click", loadDashboard);
     loadDashboard();

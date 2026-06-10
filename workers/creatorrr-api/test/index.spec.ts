@@ -265,7 +265,7 @@ describe("creatorrr-api worker", () => {
 			item_variant: "exe",
 		});
 	});
-	it("returns dashboard traffic with CH excluded from visits and downloads", async () => {
+	it("returns dashboard traffic windows with unbounded download totals and daily downloads", async () => {
 		await ensureTestSchema();
 		await env.creatorrr_db.batch([
 			env.creatorrr_db.prepare("DELETE FROM analytics_pageviews"),
@@ -277,7 +277,6 @@ describe("creatorrr-api worker", () => {
 		const testEnv = {
 			...env,
 			DASHBOARD_OWNER_EMAILS: email,
-			ANALYTICS_EXCLUDED_COUNTRIES: "CH",
 			JWT_SECRET: jwtSecret,
 		};
 		const token = await jwtSign(jwtSecret, {
@@ -289,30 +288,60 @@ describe("creatorrr-api worker", () => {
 
 		const now = new Date();
 		const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
-		await env.creatorrr_db.batch([
+		const statements = [
 			env.creatorrr_db.prepare("INSERT INTO analytics_pageviews (id, created_at, path, country, ip_hash, is_bot) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind("pv-us-1", daysAgo(1), "/", "US", "ip-us", 0),
+			env.creatorrr_db.prepare("INSERT INTO analytics_pageviews (id, created_at, path, country, ip_hash, is_bot) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind("pv-ch", daysAgo(1), "/", "CH", "ip-ch", 0),
 			env.creatorrr_db.prepare("INSERT INTO analytics_pageviews (id, created_at, path, country, ip_hash, is_bot) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind("pv-us-2", daysAgo(10), "/account", "US", "ip-us-2", 0),
 			env.creatorrr_db.prepare("INSERT INTO analytics_pageviews (id, created_at, path, country, ip_hash, is_bot) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind("pv-old", daysAgo(40), "/old", "DE", "ip-de", 0),
-			env.creatorrr_db.prepare("INSERT INTO analytics_pageviews (id, created_at, path, country, ip_hash, is_bot) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind("pv-ch", daysAgo(1), "/", "CH", "ip-ch", 0),
-			env.creatorrr_db.prepare("INSERT INTO analytics_events (id, created_at, event_name, item_id, item_version, item_variant, country, ip_hash, is_bot) VALUES (?1, ?2, 'download_click', ?3, ?4, ?5, ?6, ?7, 0)").bind("dl-us", daysAgo(1), "contentorrr_windows", "1.1.2", "exe", "US", "ip-us"),
-			env.creatorrr_db.prepare("INSERT INTO analytics_events (id, created_at, event_name, item_id, item_version, item_variant, country, ip_hash, is_bot) VALUES (?1, ?2, 'download_click', ?3, ?4, ?5, ?6, ?7, 0)").bind("dl-ch", daysAgo(1), "contentorrr_macos", "1.1.2", "dmg", "CH", "ip-ch"),
-			env.creatorrr_db.prepare("INSERT INTO analytics_events (id, created_at, event_name, item_id, item_version, item_variant, country, ip_hash, is_bot) VALUES (?1, ?2, 'download_click', ?3, ?4, ?5, ?6, ?7, 0)").bind("dl-old", daysAgo(40), "contentorrr_macos", "1.1.2", "dmg", "DE", "ip-de"),
-		]);
+			env.creatorrr_db.prepare("INSERT INTO analytics_events (id, created_at, event_name, item_id, item_version, item_variant, country, ip_hash, is_bot) VALUES (?1, ?2, 'download_click', ?3, ?4, ?5, ?6, ?7, 0)").bind("dl-old", daysAgo(40), "contentorrr_macos_old", "1.1.2", "dmg", "DE", "ip-de"),
+		];
 
-		const request = new IncomingRequest("https://example.com/dashboard/traffic", {
+		for (let i = 0; i < 35; i += 1) {
+			statements.push(
+				env.creatorrr_db.prepare("INSERT INTO analytics_events (id, created_at, event_name, item_id, item_version, item_variant, country, ip_hash, is_bot) VALUES (?1, ?2, 'download_click', ?3, ?4, ?5, ?6, ?7, 0)")
+					.bind(`dl-${i}`, daysAgo(1), `contentorrr_${i}`, "1.1.2", "exe", i === 0 ? "CH" : "US", `ip-${i}`),
+			);
+		}
+
+		await env.creatorrr_db.batch(statements);
+
+		const sevenDayRequest = new IncomingRequest("https://example.com/dashboard/traffic?window=7", {
 			headers: { authorization: `Bearer ${token}` },
 		});
-		const ctx = createExecutionContext();
-		const response = await worker.fetch(request, testEnv, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(response.status).toBe(200);
-		await expect(response.json()).resolves.toMatchObject({
-			ok: true,
-			window_days: 30,
-			excluded_countries: ["CH"],
-			totals: { pageviews: 2 },
-			countries: [{ country: "US", visits: 2 }],
-			downloads: [{ country: "US", downloads: 1 }],
+		const sevenDayCtx = createExecutionContext();
+		const sevenDay = await worker.fetch(sevenDayRequest, testEnv, sevenDayCtx);
+		await waitOnExecutionContext(sevenDayCtx);
+		expect(sevenDay.status).toBe(200);
+		const sevenDayBody = await sevenDay.json<{
+			window: string;
+			totals: { pageviews: number; downloads: number };
+			countries: Array<{ country: string; visits: number }>;
+			downloads: Array<{ downloads: number }>;
+			daily: Array<{ downloads: number }>;
+		}>();
+		expect(sevenDayBody).toMatchObject({
+			window: "7",
+			totals: { pageviews: 2, downloads: 35 },
+		});
+		expect(sevenDayBody.countries).toEqual(
+			expect.arrayContaining([
+				{ country: "US", visits: 1 },
+				{ country: "CH", visits: 1 },
+			]),
+		);
+		expect(sevenDayBody.downloads).toHaveLength(30);
+		expect(sevenDayBody.daily.reduce((sum, row) => sum + row.downloads, 0)).toBe(35);
+
+		const allTimeRequest = new IncomingRequest("https://example.com/dashboard/traffic?window=all", {
+			headers: { authorization: `Bearer ${token}` },
+		});
+		const allTimeCtx = createExecutionContext();
+		const allTime = await worker.fetch(allTimeRequest, testEnv, allTimeCtx);
+		await waitOnExecutionContext(allTimeCtx);
+		expect(allTime.status).toBe(200);
+		await expect(allTime.json()).resolves.toMatchObject({
+			window: "all",
+			totals: { pageviews: 4, downloads: 36 },
 		});
 	});
 
