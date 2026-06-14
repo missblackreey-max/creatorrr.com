@@ -378,17 +378,44 @@
       return node;
     }
 
-    function makePairsList(rows, keyLabel) {
+    const countryNameFormatter = typeof Intl !== "undefined" && typeof Intl.DisplayNames !== "undefined"
+      ? new Intl.DisplayNames(["en"], { type: "region" })
+      : null;
+
+    const countryNameFallbacks = {
+      EU: "European Union",
+      ZZ: "Unknown",
+      XX: "Unknown",
+      T1: "Tor network",
+      A1: "Anonymous proxy",
+      A2: "Satellite provider",
+      O1: "Other country",
+    };
+
+    function countryName(code) {
+      const raw = String(code || "").trim().toUpperCase();
+      if (!raw) return "Unknown";
+      if (countryNameFallbacks[raw]) return countryNameFallbacks[raw];
+
+      try {
+        const name = countryNameFormatter?.of(raw);
+        return name && name !== raw ? name : raw;
+      } catch {
+        return raw;
+      }
+    }
+
+    function makePairsList(rows, keyLabel, formatter) {
       if (!Array.isArray(rows) || rows.length === 0) return "No data yet.";
       return rows
-        .map((row) => `${row[keyLabel]}: ${fmtNumber(row.visits)}`)
+        .map((row) => `${formatter ? formatter(row[keyLabel]) : row[keyLabel]}: ${fmtNumber(row.visits)}`)
         .join("\n");
     }
 
     function makeDownloadList(rows) {
       if (!Array.isArray(rows) || rows.length === 0) return "No data yet.";
       return rows
-        .map((row) => `${row.item_id} v${row.item_version} (${row.item_variant}) [${row.country || "ZZ"}]: ${fmtNumber(row.downloads)}`)
+        .map((row) => `${row.item_id} v${row.item_version} (${row.item_variant}) [${countryName(row.country)}]: ${fmtNumber(row.downloads)}`)
         .join("\n");
     }
 
@@ -519,7 +546,7 @@
         );
 
         renderTrafficChart(traffic.daily || []);
-        countriesListEl.textContent = makePairsList(traffic.countries || [], "country");
+        countriesListEl.textContent = makePairsList(traffic.countries || [], "country", countryName);
         pagesListEl.textContent = makePairsList(traffic.top_pages || [], "path");
         downloadsListEl.textContent = makeDownloadList(traffic.downloads || []);
 

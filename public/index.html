@@ -681,6 +681,227 @@
     pointer-events: none;
   }
 
+
+  .workflow-with-previews {
+    align-items: center;
+  }
+
+  .step-stack {
+    display: grid;
+    grid-template-rows: 96px 96px;
+    gap: 10px;
+    min-height: 202px;
+    min-width: 0;
+  }
+
+  .step-compact {
+    align-self: center;
+    min-height: 96px;
+    height: 96px;
+    padding: 12px 14px;
+    display: grid;
+    align-items: start;
+  }
+
+  .step-half {
+    align-self: stretch;
+    min-height: 96px;
+    height: 96px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    display: grid;
+    align-items: start;
+  }
+
+  .step-copy {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    display: grid;
+    grid-template-rows: 30px auto;
+    gap: 8px;
+  }
+
+  .step-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    min-height: 30px;
+    margin: 0;
+    padding-right: 76px;
+  }
+
+  .step-compact .step-number,
+  .step-half .step-number {
+    width: 30px;
+    height: 30px;
+    margin-bottom: 0;
+    flex: 0 0 auto;
+    font-size: 12px;
+  }
+
+  .step-compact h3,
+  .step-half h3 {
+    margin: 0;
+    min-width: 0;
+    font-size: 17px;
+    line-height: 1.1;
+    letter-spacing: -0.35px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .step-half h3 {
+    font-size: 15px;
+  }
+
+  .step-compact p,
+  .step-half p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.26;
+    display: block;
+    overflow: visible;
+  }
+
+  .step-half p {
+    font-size: 12.5px;
+    line-height: 1.24;
+  }
+
+  .step-preview-button {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+    width: 64px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid rgba(247, 213, 106, 0.24);
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.42);
+    box-shadow: 0 12px 22px rgba(0, 0, 0, 0.34);
+    cursor: pointer;
+  }
+
+  .step-preview-button-compact {
+    top: 12px;
+    right: 12px;
+    width: 58px;
+    height: 32px;
+    border-radius: 9px;
+  }
+
+  .step-preview-button img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.88;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  .step-preview-button span {
+    position: absolute;
+    inset: auto 4px 4px;
+    min-height: 14px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    color: #0b0b0b;
+    background: linear-gradient(180deg, var(--gold-1), var(--gold-2));
+    font-size: 8px;
+    font-weight: 850;
+    line-height: 1;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+
+  .step-preview-button:hover img,
+  .step-preview-button:focus-visible img {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+
+  .step-preview-button:hover span,
+  .step-preview-button:focus-visible span {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .step-preview-button:focus-visible {
+    outline: 3px solid rgba(247, 213, 106, 0.45);
+    outline-offset: 3px;
+  }
+
+  .image-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1300;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 34px;
+    background: rgba(0, 0, 0, 0.82);
+    backdrop-filter: blur(10px);
+  }
+
+  .image-lightbox.is-open {
+    display: flex;
+  }
+
+  .image-lightbox-content {
+    position: relative;
+    width: min(1180px, 100%);
+    max-height: min(86vh, 900px);
+    display: grid;
+    gap: 12px;
+    justify-items: center;
+  }
+
+  .image-lightbox img {
+    max-width: 100%;
+    max-height: calc(86vh - 54px);
+    border-radius: 20px;
+    border: 1px solid rgba(247, 213, 106, 0.22);
+    background: #101010;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.68);
+  }
+
+  .image-lightbox-caption {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 650;
+    text-align: center;
+  }
+
+  .image-lightbox-close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    z-index: 2;
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    color: var(--text);
+    background: rgba(12, 12, 12, 0.78);
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .image-lightbox-close:hover,
+  .image-lightbox-close:focus-visible {
+    border-color: rgba(247, 213, 106, 0.5);
+    color: var(--gold-1);
+    outline: none;
+  }
+
   .pricing-grid {
     align-items: stretch;
   }
@@ -1146,6 +1367,10 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .step-stack {
+      min-height: 178px;
+    }
+
     .footer-links {
       justify-content: flex-start;
     }
@@ -1296,6 +1521,40 @@
 
     .workflow {
       grid-template-columns: 1fr;
+    }
+
+    .workflow-with-previews {
+      align-items: stretch;
+    }
+
+    .step-compact {
+      height: auto;
+      min-height: 98px;
+      align-self: stretch;
+    }
+
+    .step-stack {
+      min-height: 198px;
+    }
+
+    .step-compact {
+      height: 90px;
+      min-height: 90px;
+      padding-right: 102px;
+    }
+
+    .step-half {
+      padding-right: 82px;
+    }
+
+    .step-preview-button {
+      width: 78px;
+      height: 56px;
+    }
+
+    .step-preview-button-compact {
+      width: 60px;
+      height: 42px;
     }
 
     .hero {
@@ -1712,31 +1971,79 @@
       <div class="container">
         <div class="section-head">
           <h2>How it works</h2>
+          <p>Click on a thumbnail to open the full screenshot:</p>
         </div>
-
-        <div class="workflow">
-          <article class="step">
-            <div class="step-number">1</div>
-            <h3>Import</h3>
-            <p>Drop a full video.</p>
+        <div class="workflow workflow-with-previews">
+          <article class="step step-with-preview step-compact">
+            <button class="step-preview-button" type="button" data-lightbox-src="./1_upload.jpg" data-lightbox-alt="Import screenshot" data-lightbox-caption="1 · Import">
+              <img src="./1_upload.jpg" alt="Import screenshot thumbnail" loading="lazy">
+              <span>Expand</span>
+            </button>
+            <div class="step-copy">
+              <div class="step-title-row">
+                <div class="step-number">1</div>
+                <h3>Import</h3>
+              </div>
+              <p>Drop a full video.</p>
+            </div>
           </article>
 
-          <article class="step">
-            <div class="step-number">2</div>
-            <h3>Create assets</h3>
-            <p>Create clips, trailers, screenshots. Add tags and metadata.</p>
+          <div class="step-stack" aria-label="Create and tag assets">
+            <article class="step step-with-preview step-half">
+              <button class="step-preview-button step-preview-button-compact" type="button" data-lightbox-src="./2_create%20assets.jpg" data-lightbox-alt="Create assets screenshot" data-lightbox-caption="2a · Create assets">
+                <img src="./2_create%20assets.jpg" alt="Create assets screenshot thumbnail" loading="lazy">
+                <span>Expand</span>
+              </button>
+              <div class="step-copy">
+                <div class="step-title-row">
+                  <div class="step-number">2a</div>
+                  <h3>Create assets</h3>
+                </div>
+                <p>Create clips, trailers, and screenshots.</p>
+              </div>
+            </article>
+
+            <article class="step step-with-preview step-half">
+              <button class="step-preview-button step-preview-button-compact" type="button" data-lightbox-src="./2_tag%20assets.jpg" data-lightbox-alt="Tag assets screenshot" data-lightbox-caption="2b · Tag assets">
+                <img src="./2_tag%20assets.jpg" alt="Tag assets screenshot thumbnail" loading="lazy">
+                <span>Expand</span>
+              </button>
+              <div class="step-copy">
+                <div class="step-title-row">
+                  <div class="step-number">2b</div>
+                  <h3>Tag assets</h3>
+                </div>
+                <p>Add tags and metadata.</p>
+              </div>
+            </article>
+          </div>
+
+          <article class="step step-with-preview step-compact">
+            <button class="step-preview-button" type="button" data-lightbox-src="./3_media%20library.jpg" data-lightbox-alt="Media library screenshot" data-lightbox-caption="3 · Media library">
+              <img src="./3_media%20library.jpg" alt="Media library screenshot thumbnail" loading="lazy">
+              <span>Expand</span>
+            </button>
+            <div class="step-copy">
+              <div class="step-title-row">
+                <div class="step-number">3</div>
+                <h3>Media library</h3>
+              </div>
+              <p>Every import, asset, and tag builds your searchable media library.</p>
+            </div>
           </article>
 
-          <article class="step">
-            <div class="step-number">3</div>
-            <h3>Media library</h3>
-            <p>Every import, asset, and tag builds your complete media library automatically in the background.</p>
-          </article>
-
-          <article class="step">
-            <div class="step-number">4</div>
-            <h3>Export</h3>
-            <p>Filter, organize, and export your media library or parts of it for tracking, scheduling and more.</p>
+          <article class="step step-with-preview step-compact">
+            <button class="step-preview-button" type="button" data-lightbox-src="./4_export.jpg" data-lightbox-alt="Export screenshot" data-lightbox-caption="4 · Export">
+              <img src="./4_export.jpg" alt="Export screenshot thumbnail" loading="lazy">
+              <span>Expand</span>
+            </button>
+            <div class="step-copy">
+              <div class="step-title-row">
+                <div class="step-number">4</div>
+                <h3>Export</h3>
+              </div>
+              <p>Filter, organize, and export for tracking, scheduling, and more.</p>
+            </div>
           </article>
         </div>
       </div>
@@ -1927,6 +2234,15 @@
       </div>
     </div>
   </footer>
+
+
+  <div class="image-lightbox" id="image-lightbox" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Workflow screenshot preview">
+    <button class="image-lightbox-close" id="image-lightbox-close" type="button" aria-label="Close preview">×</button>
+    <div class="image-lightbox-content">
+      <img id="image-lightbox-img" src="" alt="">
+      <div class="image-lightbox-caption" id="image-lightbox-caption"></div>
+    </div>
+  </div>
 
   <script>
     const API_BASE = "https://api.creatorrr.com";
@@ -2149,6 +2465,59 @@
       const link = target.closest("[data-analytics-link]");
       if (!(link instanceof HTMLAnchorElement)) return;
       trackEvent("link_click", { item_id: link.getAttribute("data-analytics-link") });
+    });
+
+
+    const lightbox = document.getElementById("image-lightbox");
+    const lightboxImg = document.getElementById("image-lightbox-img");
+    const lightboxCaption = document.getElementById("image-lightbox-caption");
+    const lightboxClose = document.getElementById("image-lightbox-close");
+    let lastLightboxTrigger = null;
+
+    function openImageLightbox(trigger) {
+      if (!lightbox || !lightboxImg || !lightboxCaption) return;
+
+      lastLightboxTrigger = trigger;
+      lightboxImg.src = trigger.dataset.lightboxSrc || "";
+      lightboxImg.alt = trigger.dataset.lightboxAlt || "Workflow screenshot";
+      lightboxCaption.textContent = trigger.dataset.lightboxCaption || "";
+      lightbox.classList.add("is-open");
+      lightbox.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+      lightboxClose?.focus();
+    }
+
+    function closeImageLightbox() {
+      if (!lightbox || !lightboxImg) return;
+
+      lightbox.classList.remove("is-open");
+      lightbox.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      lightboxImg.src = "";
+
+      if (lastLightboxTrigger) {
+        lastLightboxTrigger.focus();
+      }
+    }
+
+    document.querySelectorAll(".step-preview-button").forEach((button) => {
+      button.addEventListener("click", () => openImageLightbox(button));
+    });
+
+    if (lightboxClose) {
+      lightboxClose.addEventListener("click", closeImageLightbox);
+    }
+
+    if (lightbox) {
+      lightbox.addEventListener("click", (event) => {
+        if (event.target === lightbox) closeImageLightbox();
+      });
+    }
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && lightbox?.classList.contains("is-open")) {
+        closeImageLightbox();
+      }
     });
 
     // bootstrapPreviewGate();
