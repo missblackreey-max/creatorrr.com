@@ -49,6 +49,17 @@ body{
   text-rendering:optimizeLegibility;
 }
 
+.text-link {
+  color: var(--gold-1);
+  font-weight: 760;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.text-link:hover {
+  color: var(--text);
+}
+
 a { color:inherit; text-decoration:none; }
 .container { width:min(calc(100% - 32px),var(--max)); margin:0 auto; }
 
@@ -483,9 +494,9 @@ td{
     <section class="hero">
       <span class="eyebrow">The Contentorrr Challenge</span>
       <div class="hero-copy">
-        <h1>Create 18 tagged exports + 1 spreadsheet in under 2 minutes.</h1>
-        <p>Use your current workflow on the same source video (download button below).</p>
-        <p>8 clips and 1 trailer, each 8 seconds. Export all as watermarked and unwatermarked versions, then create a spreadsheet with filenames, filepaths, and tags.</p>
+        <h1>Create 18 media files and one spreadsheet in under 2 minutes.</h1>
+        <p>Use your current workflow on the same source video. Download it below and try to beat the benchmark.</p>
+        <p>Create 8 clips and 1 trailer, each 8 seconds. Export all as watermarked and unwatermarked versions, then create a spreadsheet with filenames, filepaths, and tags. <a class="text-link" href="#output">See exact challenge output.</a></p>
       </div>
 
       <div class="hero-stats">
@@ -495,7 +506,7 @@ td{
         </div>
         <div class="stat">
           <strong>18</strong>
-          <span>Total media exports</span>
+          <span>Total media files</span>
         </div>
         <div class="stat">
           <strong>1</strong>
