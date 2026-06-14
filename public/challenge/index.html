@@ -279,6 +279,26 @@ p{
   text-transform:uppercase;
 }
 
+.challenge-run{
+  margin-top:18px;
+}
+
+.challenge-run + .challenge-run{
+  margin-top:28px;
+}
+
+.challenge-run-title{
+  margin:0 0 12px;
+  color:var(--text);
+  font-size:18px;
+  line-height:1.25;
+  letter-spacing:-0.25px;
+}
+
+.challenge-run .video-shell{
+  margin-top:0;
+}
+
 .grid-2{
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
@@ -521,11 +541,34 @@ td{
 
     <section class="video-card" id="video">
       <span class="eyebrow">Video</span>
-      <h2>Our result: Old workflow vs. Contentorrr</h2>
+      <h2>Our result with Contentorrr vs. old workflow</h2>
 
-      <div class="video-shell">
-        <div class="video-label">Our Challenge Run</div>
-        <iframe src="https://www.youtube.com/embed/sPIi9SyLDuw" title="Contentorrr challenge run" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      <div class="challenge-run">
+        <h3 class="challenge-run-title">With Contentorrr - 1:48.8:</h3>
+        <div class="video-shell">
+          <div class="video-label">Contentorrr workflow</div>
+          <iframe
+            src="https://www.youtube.com/embed/PJ9A2j8AwWg"
+            title="Contentorrr Challenge with Contentorrr"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen
+          ></iframe>
+        </div>
+      </div>
+
+      <div class="challenge-run">
+        <h3 class="challenge-run-title">With our old workflow - 10:42.9...no chance:</h3>
+        <div class="video-shell">
+          <div class="video-label">Old workflow</div>
+          <iframe
+            src="https://www.youtube.com/embed/vZN3CwVc_JY"
+            title="Contentorrr Challenge with our old workflow"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen
+          ></iframe>
+        </div>
       </div>
     </section>
 
