@@ -10,6 +10,7 @@ export interface Env {
   RESEND_API_KEY?: string;
   RESEND_FROM_EMAIL?: string;
   RESEND_FROM_NAME?: string;
+  BOOST_ADMIN_EMAIL?: string;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
   GOOGLE_OAUTH_ENABLED?: string;

@@ -53,6 +53,7 @@ import {
   isEmailDeliveryConfigured,
   issueEmailVerification,
   issuePasswordReset,
+  sendBoostFitEmails,
   sendSubscriberVerificationEmail,
 } from "./services/email";
 
@@ -426,6 +427,18 @@ function isSafeAnalyticsToken(value: string): boolean {
   return /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(value);
 }
 
+const BOOST_STAGES = new Set(["Not launched yet", "Under 1 month", "1–6 months", "6–12 months", "1–2 years", "2+ years"]);
+const BOOST_REVENUE_HAVE = new Set(["$0–$500", "$500–$2,000", "$2,000–$5,000", "$5,000–$10,000", "$10,000+"]);
+const BOOST_REVENUE_WANT = new Set(["$500–$2,000", "$2,000–$5,000", "$5,000–$10,000", "$10,000+"]);
+const BOOST_TIME = new Set(["Under 30 minutes", "30–60 minutes", "1–2 hours", "2–4 hours", "4+ hours"]);
+
+function boostText(value: unknown, maxLength: number, required = true): string | null {
+  if (typeof value !== "string") return required ? null : "";
+  const text = value.trim();
+  if ((required && !text) || text.length > maxLength) return null;
+  return text;
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     (req as Request & { __env?: Env }).__env = env;
@@ -515,6 +528,56 @@ export default {
         verification_sent: verificationSent,
         email_delivery_configured: isEmailDeliveryConfigured(env),
       });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/boost-fit") {
+      const contentLength = Number(req.headers.get("content-length") || "0");
+      if (Number.isFinite(contentLength) && contentLength > 20_000) return bad(req, "request_too_large", 413);
+
+      const body = await readJson<Record<string, unknown>>(req);
+      if (!body) return bad(req, "invalid_json");
+
+      const email = normalizeEmail(String(body.email || ""));
+      const telegram = boostText(body.telegram, 100, false);
+      const links = boostText(body.links, 3000);
+      const stage = boostText(body.stage, 40);
+      const revenueHave = boostText(body.revenueHave, 30);
+      const revenueWant = boostText(body.revenueWant, 30);
+      const help = boostText(body.help, 5000);
+      const timePerDay = boostText(body.timePerDay, 40);
+      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
+
+      if (!validEmail || telegram === null || !links || !stage || !revenueHave || !revenueWant || !help || !timePerDay ||
+          !BOOST_STAGES.has(stage) || !BOOST_REVENUE_HAVE.has(revenueHave) || !BOOST_REVENUE_WANT.has(revenueWant) || !BOOST_TIME.has(timePerDay)) {
+        return bad(req, "invalid_input", 400, { message: "Please check your answers and try again." });
+      }
+
+      const ip = getRequestIpAddress(req);
+      const ipHash = ip ? await sha256Hex(ip) : null;
+      if (ipHash) {
+        const recent = await env.creatorrr_db
+          .prepare("SELECT COUNT(*) AS count FROM boost_fit_requests WHERE ip_hash=?1 AND created_at>=?2")
+          .bind(ipHash, new Date(Date.now() - 60 * 60 * 1000).toISOString())
+          .first<{ count: number }>();
+        if (Number(recent?.count || 0) >= 3) return bad(req, "rate_limited", 429, { message: "Too many requests. Please try again later." });
+      }
+
+      const id = uuid();
+      const now = nowIso();
+      await env.creatorrr_db.prepare(`
+        INSERT INTO boost_fit_requests (
+          id, email, telegram, links, stage, revenue_have, revenue_want, help,
+          time_per_day, status, ip_hash, user_agent, created_at, updated_at
+        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,'received',?10,?11,?12,?12)
+      `).bind(id, email, telegram || null, links, stage, revenueHave, revenueWant, help,
+        timePerDay, ipHash, getRequestUserAgent(req), now).run();
+
+      const sent = await sendBoostFitEmails(env, { email, telegram: telegram || "", links, stage, revenueHave, revenueWant, help, timePerDay }).catch(() => false);
+      await env.creatorrr_db.prepare("UPDATE boost_fit_requests SET status=?2, updated_at=?3 WHERE id=?1")
+        .bind(id, sent ? "emailed" : "email_failed", nowIso()).run();
+      if (!sent) return bad(req, "email_delivery_failed", 502, { message: "Could not send the request. Please try again." });
+
+      return json(req, { ok: true });
     }
 
     if (req.method === "GET" && url.pathname === "/email/verify") {
