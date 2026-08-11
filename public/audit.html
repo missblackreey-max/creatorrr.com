@@ -294,33 +294,7 @@
     status.textContent = 'Sending your fit request…';
 
     try {
-      /*
-        TODO(Codex/backend):
-        Implement POST /api/boost-fit.
-
-        Expected JSON body:
-        {
-          email,
-          telegram,
-          links,
-          stage,
-          revenueHave,
-          revenueWant,
-          help,
-          timePerDay
-        }
-
-        Backend requirements:
-        1. Validate/sanitize all fields server-side.
-        2. Send the full fit request to ben@creatorrr.com.
-        3. Send a confirmation/copy of the submitted answers to data.email.
-        4. Use data.email as Reply-To on the admin email if supported.
-        5. Return HTTP 200 with JSON: { "ok": true } on success.
-        6. Return a non-2xx response with JSON: { "error": "..." } on failure.
-        7. Add abuse/spam protection before production.
-      */
-
-      const response = await fetch('/api/boost-fit', {
+      const response = await fetch('https://api.creatorrr.com/api/boost-fit', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify(data)
@@ -330,7 +304,7 @@
       try { result = await response.json(); } catch (_) {}
 
       if(!response.ok || result.ok === false){
-        throw new Error(result.error || 'Could not send the request.');
+        throw new Error(result.message || result.error || 'Could not send the request.');
       }
 
       if(typeof gtag === 'function'){

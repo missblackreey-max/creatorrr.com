@@ -1,5 +1,5 @@
 import { env, createExecutionContext, waitOnExecutionContext, SELF } from "cloudflare:test";
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import worker from "../src/index";
 import { jwtSign, makeSalt, pbkdf2 } from "../src/lib/crypto";
 
@@ -88,9 +88,40 @@ async function ensureTestSchema() {
         is_bot INTEGER NOT NULL DEFAULT 0,
         bot_score INTEGER
       )
+		`),
+		env.creatorrr_db.prepare(`
+      CREATE TABLE IF NOT EXISTS boost_fit_requests (
+        id TEXT PRIMARY KEY,
+        email TEXT NOT NULL,
+        telegram TEXT,
+        links TEXT NOT NULL,
+        stage TEXT NOT NULL,
+        revenue_have TEXT NOT NULL,
+        revenue_want TEXT NOT NULL,
+        help TEXT NOT NULL,
+        time_per_day TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'received',
+        ip_hash TEXT,
+        user_agent TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `),
+		env.creatorrr_db.prepare(`
+      CREATE TABLE IF NOT EXISTS boost_fit_rate_limits (
+        ip_hash TEXT NOT NULL,
+        window_start TEXT NOT NULL,
+        submission_count INTEGER NOT NULL DEFAULT 1,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (ip_hash, window_start)
+      )
     `),
 	]);
 }
+
+afterEach(() => {
+	vi.restoreAllMocks();
+});
 
 async function seedVerifiedUserWithDevices(deviceIds: string[]) {
 	await ensureTestSchema();
@@ -264,6 +295,99 @@ describe("creatorrr-api worker", () => {
 			item_version: "1.1.0",
 			item_variant: "exe",
 		});
+	});
+
+	it("rejects invalid Creatorrr Boost fit requests", async () => {
+		await ensureTestSchema();
+		const response = await SELF.fetch("https://example.com/api/boost-fit", {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ email: "not-an-email" }),
+		});
+
+		expect(response.status).toBe(400);
+		await expect(response.json()).resolves.toMatchObject({ ok: false, error: "invalid_input" });
+	});
+
+	it("rejects oversized Boost requests based on bytes read without Content-Length", async () => {
+		await ensureTestSchema();
+		const request = new IncomingRequest("https://example.com/api/boost-fit", {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ help: "x".repeat(20_001) }),
+		});
+		expect(request.headers.get("content-length")).toBeNull();
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(413);
+		await expect(response.json()).resolves.toMatchObject({ ok: false, error: "request_too_large" });
+	});
+
+	it("stores a valid Boost request and sends both emails", async () => {
+		await ensureTestSchema();
+		await env.creatorrr_db.prepare("DELETE FROM boost_fit_requests").run();
+		await env.creatorrr_db.prepare("DELETE FROM boost_fit_rate_limits").run();
+		const resend = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
+		const testEnv = { ...env, RESEND_API_KEY: "test-key", RESEND_FROM_EMAIL: "noreply@mail.creatorrr.com" };
+		const request = new IncomingRequest("https://api.creatorrr.com/api/boost-fit", {
+			method: "POST",
+			headers: { "content-type": "application/json", "CF-Connecting-IP": "203.0.113.10" },
+			body: JSON.stringify({
+				email: "creator@example.com",
+				telegram: "@creator",
+				links: "https://example.com/profile",
+				stage: "1–6 months",
+				revenueHave: "$0–$500",
+				revenueWant: "$2,000–$5,000",
+				help: "I post three times per week.",
+				timePerDay: "1–2 hours",
+			}),
+		});
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, testEnv, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		await expect(response.json()).resolves.toEqual({ ok: true });
+		expect(resend).toHaveBeenCalledOnce();
+		const [, init] = resend.mock.calls[0];
+		const messages = JSON.parse(String(init?.body));
+		expect(messages).toHaveLength(2);
+		expect(messages[0]).toMatchObject({ to: ["ben@creatorrr.com"], reply_to: "creator@example.com" });
+		expect(messages[1]).toMatchObject({ to: ["creator@example.com"] });
+
+		const stored = await env.creatorrr_db.prepare("SELECT email, status FROM boost_fit_requests LIMIT 1")
+			.first<{ email: string; status: string }>();
+		expect(stored).toEqual({ email: "creator@example.com", status: "emailed" });
+	});
+
+	it("atomically limits concurrent Boost requests to three per IP and hour", async () => {
+		await ensureTestSchema();
+		await env.creatorrr_db.prepare("DELETE FROM boost_fit_requests").run();
+		await env.creatorrr_db.prepare("DELETE FROM boost_fit_rate_limits").run();
+		vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
+		const testEnv = { ...env, RESEND_API_KEY: "test-key", RESEND_FROM_EMAIL: "noreply@mail.creatorrr.com" };
+		const payload = {
+			email: "creator@example.com", telegram: "", links: "https://example.com/profile",
+			stage: "1–6 months", revenueHave: "$0–$500", revenueWant: "$2,000–$5,000",
+			help: "I post three times per week.", timePerDay: "1–2 hours",
+		};
+		const responses = await Promise.all(Array.from({ length: 6 }, async () => {
+			const request = new IncomingRequest("https://api.creatorrr.com/api/boost-fit", {
+				method: "POST",
+				headers: { "content-type": "application/json", "CF-Connecting-IP": "203.0.113.20" },
+				body: JSON.stringify(payload),
+			});
+			const ctx = createExecutionContext();
+			const response = await worker.fetch(request, testEnv, ctx);
+			await waitOnExecutionContext(ctx);
+			return response;
+		}));
+
+		expect(responses.filter((response) => response.status === 200)).toHaveLength(3);
+		expect(responses.filter((response) => response.status === 429)).toHaveLength(3);
 	});
 	it("returns dashboard traffic windows with unbounded download totals and daily downloads", async () => {
 		await ensureTestSchema();

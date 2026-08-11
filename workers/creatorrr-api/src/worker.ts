@@ -53,6 +53,7 @@ import {
   isEmailDeliveryConfigured,
   issueEmailVerification,
   issuePasswordReset,
+  sendBoostFitEmails,
   sendSubscriberVerificationEmail,
 } from "./services/email";
 
@@ -426,6 +427,54 @@ function isSafeAnalyticsToken(value: string): boolean {
   return /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(value);
 }
 
+const BOOST_STAGES = new Set(["Not launched yet", "Under 1 month", "1–6 months", "6–12 months", "1–2 years", "2+ years"]);
+const BOOST_REVENUE_HAVE = new Set(["$0–$500", "$500–$2,000", "$2,000–$5,000", "$5,000–$10,000", "$10,000+"]);
+const BOOST_REVENUE_WANT = new Set(["$500–$2,000", "$2,000–$5,000", "$5,000–$10,000", "$10,000+"]);
+const BOOST_TIME = new Set(["Under 30 minutes", "30–60 minutes", "1–2 hours", "2–4 hours", "4+ hours"]);
+
+function boostText(value: unknown, maxLength: number, required = true): string | null {
+  if (typeof value !== "string") return required ? null : "";
+  const text = value.trim();
+  if ((required && !text) || text.length > maxLength) return null;
+  return text;
+}
+
+async function readJsonWithByteLimit(
+  req: Request,
+  maxBytes: number,
+): Promise<{ ok: true; value: Record<string, unknown> } | { ok: false; error: "invalid_json" | "request_too_large" }> {
+  const reader = req.body?.getReader();
+  if (!reader) return { ok: false, error: "invalid_json" };
+
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    byteLength += value.byteLength;
+    if (byteLength > maxBytes) {
+      await reader.cancel();
+      return { ok: false, error: "request_too_large" };
+    }
+    chunks.push(value);
+  }
+
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  try {
+    const value = JSON.parse(new TextDecoder().decode(bytes));
+    if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false, error: "invalid_json" };
+    return { ok: true, value: value as Record<string, unknown> };
+  } catch {
+    return { ok: false, error: "invalid_json" };
+  }
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     (req as Request & { __env?: Env }).__env = env;
@@ -515,6 +564,61 @@ export default {
         verification_sent: verificationSent,
         email_delivery_configured: isEmailDeliveryConfigured(env),
       });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/boost-fit") {
+      const parsed = await readJsonWithByteLimit(req, 20_000);
+      if (!parsed.ok) return bad(req, parsed.error, parsed.error === "request_too_large" ? 413 : 400);
+      const body = parsed.value;
+
+      const email = normalizeEmail(String(body.email || ""));
+      const telegram = boostText(body.telegram, 100, false);
+      const links = boostText(body.links, 3000);
+      const stage = boostText(body.stage, 40);
+      const revenueHave = boostText(body.revenueHave, 30);
+      const revenueWant = boostText(body.revenueWant, 30);
+      const help = boostText(body.help, 5000);
+      const timePerDay = boostText(body.timePerDay, 40);
+      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
+
+      if (!validEmail || telegram === null || !links || !stage || !revenueHave || !revenueWant || !help || !timePerDay ||
+          !BOOST_STAGES.has(stage) || !BOOST_REVENUE_HAVE.has(revenueHave) || !BOOST_REVENUE_WANT.has(revenueWant) || !BOOST_TIME.has(timePerDay)) {
+        return bad(req, "invalid_input", 400, { message: "Please check your answers and try again." });
+      }
+
+      const ip = getRequestIpAddress(req);
+      const ipHash = ip ? await sha256Hex(ip) : null;
+      if (ipHash) {
+        const windowStart = new Date(Math.floor(Date.now() / 3_600_000) * 3_600_000).toISOString();
+        const reservation = await env.creatorrr_db.prepare(`
+          INSERT INTO boost_fit_rate_limits (ip_hash, window_start, submission_count, updated_at)
+          VALUES (?1, ?2, 1, ?3)
+          ON CONFLICT(ip_hash, window_start) DO UPDATE SET
+            submission_count=submission_count+1,
+            updated_at=excluded.updated_at
+          WHERE submission_count < 3
+        `).bind(ipHash, windowStart, nowIso()).run();
+        if (Number(reservation.meta.changes || 0) === 0) {
+          return bad(req, "rate_limited", 429, { message: "Too many requests. Please try again later." });
+        }
+      }
+
+      const id = uuid();
+      const now = nowIso();
+      await env.creatorrr_db.prepare(`
+        INSERT INTO boost_fit_requests (
+          id, email, telegram, links, stage, revenue_have, revenue_want, help,
+          time_per_day, status, ip_hash, user_agent, created_at, updated_at
+        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,'received',?10,?11,?12,?12)
+      `).bind(id, email, telegram || null, links, stage, revenueHave, revenueWant, help,
+        timePerDay, ipHash, getRequestUserAgent(req), now).run();
+
+      const sent = await sendBoostFitEmails(env, { email, telegram: telegram || "", links, stage, revenueHave, revenueWant, help, timePerDay }).catch(() => false);
+      await env.creatorrr_db.prepare("UPDATE boost_fit_requests SET status=?2, updated_at=?3 WHERE id=?1")
+        .bind(id, sent ? "emailed" : "email_failed", nowIso()).run();
+      if (!sent) return bad(req, "email_delivery_failed", 502, { message: "Could not send the request. Please try again." });
+
+      return json(req, { ok: true });
     }
 
     if (req.method === "GET" && url.pathname === "/email/verify") {

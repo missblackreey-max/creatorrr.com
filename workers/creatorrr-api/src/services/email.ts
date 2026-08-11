@@ -201,3 +201,62 @@ export async function sendSubscriberVerificationEmail(
 
   return response.ok;
 }
+
+export type BoostFitEmailData = {
+  email: string;
+  telegram: string;
+  links: string;
+  stage: string;
+  revenueHave: string;
+  revenueWant: string;
+  help: string;
+  timePerDay: string;
+};
+
+export async function sendBoostFitEmails(env: Env, data: BoostFitEmailData): Promise<boolean> {
+  const apiKey = String(env.RESEND_API_KEY || "").trim();
+  const fromEmail = String(env.RESEND_FROM_EMAIL || "noreply@mail.creatorrr.com").trim();
+  const fromName = String(env.RESEND_FROM_NAME || "Creatorrr").trim() || "Creatorrr";
+  const adminEmail = String(env.BOOST_ADMIN_EMAIL || "ben@creatorrr.com").trim();
+  if (!apiKey || !fromEmail || !adminEmail) return false;
+
+  const rows: Array<[string, string]> = [
+    ["Email", data.email],
+    ["Telegram", data.telegram || "—"],
+    ["Profiles / links", data.links],
+    ["Creating for", data.stage],
+    ["Monthly revenue now", data.revenueHave],
+    ["Monthly revenue goal", data.revenueWant],
+    ["Current strategy & workflow", data.help],
+    ["Time available per day", data.timePerDay],
+  ];
+  const answers = rows.map(([label, value]) =>
+    `<p><strong>${escapeHtml(label)}</strong><br>${escapeHtml(value).replace(/\n/g, "<br>")}</p>`,
+  ).join("");
+  const header = '<div style="padding:22px 18px;text-align:center;background:#060606;border-radius:18px;margin-bottom:24px;"><img src="https://creatorrr.com/creatorrr-logo-nolink.png" alt="creatorrr.com" width="72" height="72" style="display:inline-block;border-radius:16px;"></div>';
+
+  const response = await fetch("https://api.resend.com/emails/batch", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify([
+      {
+        from: `${fromName} <${fromEmail}>`,
+        to: [adminEmail],
+        reply_to: data.email,
+        subject: `New Creatorrr Boost fit request — ${data.email}`,
+        html: `${header}<h2>New Creatorrr Boost fit request</h2>${answers}`,
+      },
+      {
+        from: `${fromName} <${fromEmail}>`,
+        to: [data.email],
+        subject: "We received your Creatorrr Boost fit request",
+        html: `${header}<p>Thanks for applying for Creatorrr Boost. We received your fit request and will get back to you as soon as possible.</p><h2>Your answers</h2>${answers}`,
+      },
+    ]),
+  });
+
+  return response.ok;
+}
