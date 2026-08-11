@@ -107,6 +107,15 @@ async function ensureTestSchema() {
         updated_at TEXT NOT NULL
       )
     `),
+		env.creatorrr_db.prepare(`
+      CREATE TABLE IF NOT EXISTS boost_fit_rate_limits (
+        ip_hash TEXT NOT NULL,
+        window_start TEXT NOT NULL,
+        submission_count INTEGER NOT NULL DEFAULT 1,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (ip_hash, window_start)
+      )
+    `),
 	]);
 }
 
@@ -300,9 +309,26 @@ describe("creatorrr-api worker", () => {
 		await expect(response.json()).resolves.toMatchObject({ ok: false, error: "invalid_input" });
 	});
 
+	it("rejects oversized Boost requests based on bytes read without Content-Length", async () => {
+		await ensureTestSchema();
+		const request = new IncomingRequest("https://example.com/api/boost-fit", {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ help: "x".repeat(20_001) }),
+		});
+		expect(request.headers.get("content-length")).toBeNull();
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(413);
+		await expect(response.json()).resolves.toMatchObject({ ok: false, error: "request_too_large" });
+	});
+
 	it("stores a valid Boost request and sends both emails", async () => {
 		await ensureTestSchema();
 		await env.creatorrr_db.prepare("DELETE FROM boost_fit_requests").run();
+		await env.creatorrr_db.prepare("DELETE FROM boost_fit_rate_limits").run();
 		const resend = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
 		const testEnv = { ...env, RESEND_API_KEY: "test-key", RESEND_FROM_EMAIL: "noreply@mail.creatorrr.com" };
 		const request = new IncomingRequest("https://api.creatorrr.com/api/boost-fit", {
@@ -335,6 +361,33 @@ describe("creatorrr-api worker", () => {
 		const stored = await env.creatorrr_db.prepare("SELECT email, status FROM boost_fit_requests LIMIT 1")
 			.first<{ email: string; status: string }>();
 		expect(stored).toEqual({ email: "creator@example.com", status: "emailed" });
+	});
+
+	it("atomically limits concurrent Boost requests to three per IP and hour", async () => {
+		await ensureTestSchema();
+		await env.creatorrr_db.prepare("DELETE FROM boost_fit_requests").run();
+		await env.creatorrr_db.prepare("DELETE FROM boost_fit_rate_limits").run();
+		vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
+		const testEnv = { ...env, RESEND_API_KEY: "test-key", RESEND_FROM_EMAIL: "noreply@mail.creatorrr.com" };
+		const payload = {
+			email: "creator@example.com", telegram: "", links: "https://example.com/profile",
+			stage: "1–6 months", revenueHave: "$0–$500", revenueWant: "$2,000–$5,000",
+			help: "I post three times per week.", timePerDay: "1–2 hours",
+		};
+		const responses = await Promise.all(Array.from({ length: 6 }, async () => {
+			const request = new IncomingRequest("https://api.creatorrr.com/api/boost-fit", {
+				method: "POST",
+				headers: { "content-type": "application/json", "CF-Connecting-IP": "203.0.113.20" },
+				body: JSON.stringify(payload),
+			});
+			const ctx = createExecutionContext();
+			const response = await worker.fetch(request, testEnv, ctx);
+			await waitOnExecutionContext(ctx);
+			return response;
+		}));
+
+		expect(responses.filter((response) => response.status === 200)).toHaveLength(3);
+		expect(responses.filter((response) => response.status === 429)).toHaveLength(3);
 	});
 	it("returns dashboard traffic windows with unbounded download totals and daily downloads", async () => {
 		await ensureTestSchema();

@@ -439,6 +439,42 @@ function boostText(value: unknown, maxLength: number, required = true): string |
   return text;
 }
 
+async function readJsonWithByteLimit(
+  req: Request,
+  maxBytes: number,
+): Promise<{ ok: true; value: Record<string, unknown> } | { ok: false; error: "invalid_json" | "request_too_large" }> {
+  const reader = req.body?.getReader();
+  if (!reader) return { ok: false, error: "invalid_json" };
+
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    byteLength += value.byteLength;
+    if (byteLength > maxBytes) {
+      await reader.cancel();
+      return { ok: false, error: "request_too_large" };
+    }
+    chunks.push(value);
+  }
+
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  try {
+    const value = JSON.parse(new TextDecoder().decode(bytes));
+    if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false, error: "invalid_json" };
+    return { ok: true, value: value as Record<string, unknown> };
+  } catch {
+    return { ok: false, error: "invalid_json" };
+  }
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     (req as Request & { __env?: Env }).__env = env;
@@ -531,11 +567,9 @@ export default {
     }
 
     if (req.method === "POST" && url.pathname === "/api/boost-fit") {
-      const contentLength = Number(req.headers.get("content-length") || "0");
-      if (Number.isFinite(contentLength) && contentLength > 20_000) return bad(req, "request_too_large", 413);
-
-      const body = await readJson<Record<string, unknown>>(req);
-      if (!body) return bad(req, "invalid_json");
+      const parsed = await readJsonWithByteLimit(req, 20_000);
+      if (!parsed.ok) return bad(req, parsed.error, parsed.error === "request_too_large" ? 413 : 400);
+      const body = parsed.value;
 
       const email = normalizeEmail(String(body.email || ""));
       const telegram = boostText(body.telegram, 100, false);
@@ -555,11 +589,18 @@ export default {
       const ip = getRequestIpAddress(req);
       const ipHash = ip ? await sha256Hex(ip) : null;
       if (ipHash) {
-        const recent = await env.creatorrr_db
-          .prepare("SELECT COUNT(*) AS count FROM boost_fit_requests WHERE ip_hash=?1 AND created_at>=?2")
-          .bind(ipHash, new Date(Date.now() - 60 * 60 * 1000).toISOString())
-          .first<{ count: number }>();
-        if (Number(recent?.count || 0) >= 3) return bad(req, "rate_limited", 429, { message: "Too many requests. Please try again later." });
+        const windowStart = new Date(Math.floor(Date.now() / 3_600_000) * 3_600_000).toISOString();
+        const reservation = await env.creatorrr_db.prepare(`
+          INSERT INTO boost_fit_rate_limits (ip_hash, window_start, submission_count, updated_at)
+          VALUES (?1, ?2, 1, ?3)
+          ON CONFLICT(ip_hash, window_start) DO UPDATE SET
+            submission_count=submission_count+1,
+            updated_at=excluded.updated_at
+          WHERE submission_count < 3
+        `).bind(ipHash, windowStart, nowIso()).run();
+        if (Number(reservation.meta.changes || 0) === 0) {
+          return bad(req, "rate_limited", 429, { message: "Too many requests. Please try again later." });
+        }
       }
 
       const id = uuid();

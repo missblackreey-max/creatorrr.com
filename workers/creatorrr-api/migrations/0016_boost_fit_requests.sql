@@ -20,3 +20,11 @@ CREATE INDEX IF NOT EXISTS idx_boost_fit_requests_created_at
 
 CREATE INDEX IF NOT EXISTS idx_boost_fit_requests_ip_created
   ON boost_fit_requests(ip_hash, created_at);
+
+CREATE TABLE IF NOT EXISTS boost_fit_rate_limits (
+  ip_hash TEXT NOT NULL,
+  window_start TEXT NOT NULL,
+  submission_count INTEGER NOT NULL DEFAULT 1,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (ip_hash, window_start)
+);
