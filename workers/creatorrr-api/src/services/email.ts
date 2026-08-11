@@ -246,14 +246,14 @@ export async function sendBoostFitEmails(env: Env, data: BoostFitEmailData): Pro
         from: `${fromName} <${fromEmail}>`,
         to: [adminEmail],
         reply_to: data.email,
-        subject: `New Creatorrr Boost fit request — ${data.email}`,
-        html: `${header}<h2>New Creatorrr Boost fit request</h2>${answers}`,
+        subject: `New Creatorrr Boost submission — ${data.email}`,
+        html: `${header}<h2>New Creatorrr Boost submission</h2>${answers}`,
       },
       {
         from: `${fromName} <${fromEmail}>`,
         to: [data.email],
-        subject: "We received your Creatorrr Boost fit request",
-        html: `${header}<p>Thanks for applying for Creatorrr Boost. We received your fit request and will get back to you as soon as possible.</p><h2>Your answers</h2>${answers}`,
+        subject: "We received your Creatorrr Boost submission",
+        html: `${header}<p>Thanks for reaching out about Creatorrr Boost. We received your answers and will get back to you as soon as possible.</p><h2>Your answers</h2>${answers}`,
       },
     ]),
   });
