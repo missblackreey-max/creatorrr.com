@@ -1423,14 +1423,14 @@
     }
 
     .hero-grid > div:first-child,
-    .hero-copy,
-    .eyebrow,
-    .kicker,
-    .hero h1,
-    .second-headline,
-    .hero p,
-    .product-chip,
-    .hero-actions {
+    .hero-grid .hero-copy,
+    .hero-grid .eyebrow,
+    .hero-grid .kicker,
+    .hero-grid h1,
+    .hero-grid .second-headline,
+    .hero-grid p,
+    .hero-grid .product-chip,
+    .hero-grid .hero-actions {
       text-align: center;
       margin-left: auto;
       margin-right: auto;
@@ -1595,17 +1595,17 @@
       padding-top: 48px;
     }
 
-    .hero-copy,
+    .hero-grid .hero-copy,
     .section-head {
       text-align: center;
     }
 
-    .eyebrow,
-    .kicker {
+    .hero-grid .eyebrow,
+    .hero-grid .kicker {
       text-align: center;
     }
 
-    .hero h1 {
+    .hero-grid h1 {
       margin: 0 0 12px;
       font-size: clamp(22px, 8.2vw, 42px);
       line-height: 1.02;
@@ -1616,16 +1616,7 @@
       max-width: 100%;
     }
 
-    .section-head h2,
-    .demo-card .demo-top h2,
-    .launch-curtain-card h2 {
-      margin-left: auto;
-      margin-right: auto;
-      max-width: 100%;
-      line-height: 1.08;
-    }
-
-    .hero p,
+    .hero-grid p,
     .section-head p {
       font-size: 14px;
       margin-left: auto;
@@ -2345,10 +2336,22 @@
     <section class="hero creatorrr-simple-hero">
       <div class="container">
         <div class="creatorrr-hero-copy creatorrr-hero-copy-simple">
-          <span class="eyebrow">From creators, for creators.</span>
           <h1>Grow smart. Create fast.</h1>
-          <p class="creatorrr-lead">As a creator, it’s easy to be tempted by agencies, managers, and paid promotions. But more often than not it's really worth giving up a big cut, losing control of your accounts, using risky tactics that can get accounts restricted or banned. Also paid promo, been there - done that, often delivers little to no meaningful return.</p>
-          <p class="creatorrr-lead" style="margin-top:14px;"><strong>And here is our alternative:</strong> Creatorrr Boost coaching, where we analyze your current creator business and recommmend tailored adjustments of your workflows, systems, tools, strategies, and lessons we use in our own creator business, directly and at a fair price; and our 3-in-1 workflow app, Contentorrr, for turning full videos into tagged, organized promo material while building a complete media library at the same time, exportable as CSV spreadsheets.</p>          <div class="creatorrr-offers" aria-label="Creatorrr offers">
+          <p class="creatorrr-lead">As an NSFW creator, it’s easy to be tempted by paid promo, agencies, and managers. In our experience paid promo doesn't do much and giving up a big cut, losing control of your accounts, using risky tactics that can get accounts restricted or banned: nope, not for us!</p>
+          <p class="creatorrr-lead" style="margin-top:14px;">
+          <strong style="color:rgba(245,245,245,0.88); font-weight:700;">Our alternative for you:</strong>
+        </p>
+        <p class="creatorrr-lead">We're now approaching $20k/mo, organicly, as a couple. And rather sooner than later we'll start building our own team. So, we can't promise you any specific monthly revenue, but in our view, reaching $5k/mo is really not that difficult.</p>
+        <p class="creatorrr-lead" style="margin-top:10px;">
+          <strong style="color:rgba(245,245,245,0.88); font-weight:700;">1. Creatorrr Boost:</strong>
+          We analyze your creator business from top to bottom, find the biggest opportunities you’re missing, and give you a prioritized action plan based on the strategies, systems, tools, and workflows we use in our own creator business.</p>
+
+        <p class="creatorrr-lead" style="margin-top:8px;">
+          <strong style="color:rgba(245,245,245,0.88); font-weight:700;">2. Contentorrr:</strong>
+          Our 3-in-1 workflow app for turning full videos into tagged, organized promo material while building a complete media library at the same time, exportable as CSV spreadsheets.</p>
+
+            <div class="creatorrr-offers" aria-label="Creatorrr offers">
+                  
             <article class="creatorrr-offer-card creatorrr-offer-card-growth">
               <span class="offer-label">Creator coaching</span>
               <strong>Creatorrr Boost</strong>
